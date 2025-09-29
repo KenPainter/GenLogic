@@ -1,0 +1,140 @@
+# GenLogic Testing Guide
+
+This document outlines the comprehensive testing framework for GenLogic, implementing Phase 8 of the development plan.
+
+## Test Structure
+
+### Group 1: YAML Validation Tests (Unit Tests)
+These tests verify schema validation without requiring a database connection.
+
+**Files:**
+- `tests/validation/schema-syntax.test.ts` - Basic syntax validation
+- `tests/validation/type-system.test.ts` - PostgreSQL type system validation
+- `tests/validation/cross-reference.test.ts` - Column inheritance validation
+- `tests/validation/graph-validation.test.ts` - Cycle detection
+- `tests/validation/inheritance.test.ts` - Column inheritance edge cases
+
+**Run Command:**
+```bash
+npm run test:validation
+```
+
+### Group 2: End-to-End Database Tests (Integration Tests)
+These tests verify complete functionality with a real PostgreSQL database.
+
+**Files:**
+- `tests/database/setup.test.ts` - Database connection and basic operations
+- `tests/database/automation.test.ts` - SUM, COUNT, MAX, LATEST automations
+
+**Prerequisites:**
+- PostgreSQL database (Docker recommended)
+- Environment variables set for database connection
+
+**Run Commands:**
+```bash
+# Setup test database (Docker)
+npm run test:db:setup
+
+# Run database tests
+DB_HOST=localhost DB_PORT=5433 DB_USER=genlogic DB_PASSWORD=testpassword npm run test:database
+
+# Cleanup test database
+npm run test:db:teardown
+```
+
+## Test Environment Setup
+
+### Option 1: Docker (Recommended)
+```bash
+# Start PostgreSQL test container
+npm run test:db:setup
+
+# Verify container is running
+docker ps | grep postgres
+
+# Run all database tests
+DB_HOST=localhost DB_PORT=5433 DB_USER=genlogic DB_PASSWORD=testpassword npm run test:database
+
+# Stop and remove test container
+npm run test:db:teardown
+```
+
+### Option 2: Local PostgreSQL
+If you have PostgreSQL installed locally:
+
+```bash
+# Create test database
+createdb genlogic_test
+
+# Set environment variables
+export DB_HOST=localhost
+export DB_PORT=5432
+export DB_USER=postgres
+export DB_PASSWORD=your_password
+
+# Run tests
+npm run test:database
+```
+
+## Environment Variables
+
+The database tests use these environment variables:
+
+- `DB_HOST` - PostgreSQL host (default: localhost)
+- `DB_PORT` - PostgreSQL port (default: 5432)
+- `DB_USER` - PostgreSQL username (default: postgres)
+- `DB_PASSWORD` - PostgreSQL password (default: postgres)
+
+## Test Coverage
+
+### Validation Tests (Group 1)
+- ✅ Top-level key validation
+- ✅ Column/table name patterns
+- ✅ PostgreSQL type system (require/allow/prohibit size)
+- ✅ Cross-reference validation (column inheritance, automation references)
+- ✅ Cycle detection (foreign key cycles, automation dependency cycles)
+- ✅ Column inheritance patterns
+
+### Database Tests (Group 2)
+- ✅ Database connection and setup
+- ✅ Schema processing pipeline
+- ✅ Column inheritance processing
+- ✅ SUM automation with incremental updates
+- ✅ COUNT automation with incremental updates
+- ✅ MAX/MIN automation with incremental updates
+- ✅ LATEST automation
+- ✅ Multiple automations (consolidated triggers)
+
+## Known Issues
+
+1. **Database tests**: Require live PostgreSQL instance. Not suitable for CI/CD without proper database setup.
+
+2. **Performance tests**: Large-scale performance testing not yet implemented. Would require datasets with 100k+ records and timing measurements.
+
+3. **CI Integration**: Automated test runs on code changes not yet configured.
+
+## Running All Tests
+
+```bash
+# Run only validation tests (fast, no database needed)
+npm run test:validation
+
+# Run full test suite (requires database setup)
+npm run test:db:setup
+DB_HOST=localhost DB_PORT=5433 DB_USER=genlogic DB_PASSWORD=testpassword npm test
+npm run test:db:teardown
+```
+
+## Development Workflow
+
+1. **During development**: Use `npm run test:validation` for fast feedback
+2. **Before commits**: Run full test suite including database tests
+3. **CI/CD**: Currently validation tests only (database tests need infrastructure)
+
+## Future Enhancements
+
+- [ ] Large-scale performance and stress testing (100k+ records)
+- [ ] Error recovery testing
+- [ ] Concurrent modification testing
+- [ ] Database migration testing
+- [ ] CI/CD integration with automated database setup

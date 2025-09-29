@@ -1,0 +1,241 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://genlogic.dev/schema/v1",
+  "title": "GenLogic Schema",
+  "description": "GenLogic YAML schema for Augmented Normalization - Foreign keys are DATA PIPELINES that create columns AND automation pathways",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "columns": {
+      "type": "object",
+      "description": "Reusable column definitions that can be inherited and overridden in table definitions",
+      "patternProperties": {
+        "^[a-zA-Z_][a-zA-Z0-9_]*$": {
+          "$ref": "#/definitions/columnDefinition"
+        }
+      },
+      "additionalProperties": false
+    },
+    "tables": {
+      "type": "object",
+      "description": "Table definitions with foreign keys as named data pipelines",
+      "patternProperties": {
+        "^[a-zA-Z_][a-zA-Z0-9_]*$": {
+          "$ref": "#/definitions/tableDefinition",
+          "title": "Valid PostgreSQL table name",
+          "description": "Must start with letter or underscore, followed by letters, numbers, or underscores"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "definitions": {
+    "columnDefinition": {
+      "type": "object",
+      "description": "Column definition with type, constraints, and optional automation",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "PostgreSQL column type (e.g., integer, varchar, numeric)"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Size parameter for types that support it (e.g., varchar size)"
+        },
+        "decimal": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Decimal places for numeric types (only valid when size is present)"
+        },
+        "primary_key": {
+          "type": "boolean",
+          "description": "Whether this column is part of the primary key"
+        },
+        "unique": {
+          "type": "boolean",
+          "description": "Whether this column has a unique constraint"
+        },
+        "sequence": {
+          "type": "boolean",
+          "description": "Whether to create a sequence for this column (auto-increment)"
+        },
+        "automation": {
+          "$ref": "#/definitions/automationDefinition",
+          "description": "GENLOGIC CORE: Automation that references FK names, not table names"
+        }
+      },
+      "required": ["type"],
+      "dependencies": {
+        "decimal": ["size"]
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": ["varchar", "char", "bit"]
+              }
+            }
+          },
+          "then": {
+            "required": ["size"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": ["date", "timestamp", "timestamptz", "boolean", "bool", "integer", "int", "int4", "bigint", "int8", "smallint", "int2", "real", "float4", "double precision", "float8", "text", "uuid", "json", "jsonb"]
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "anyOf": [
+                { "required": ["size"] },
+                { "required": ["decimal"] }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "tableColumnDefinition": {
+      "description": "Table column with mixed inheritance: empty object (inherit same name), string (inherit named), object with $ref (inherit + override)",
+      "oneOf": [
+        {
+          "type": "null",
+          "description": "Null/empty value - inherit from reusable column of same name"
+        },
+        {
+          "type": "string",
+          "description": "String value - inherit from named reusable column (for renaming)",
+          "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$"
+        },
+        {
+          "type": "object",
+          "description": "Object with $ref - inherit from reusable column and override properties",
+          "properties": {
+            "$ref": {
+              "type": "string",
+              "description": "Name of reusable column to inherit from - VALIDATION REQUIRED: Must exist in top-level 'columns' section",
+              "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$"
+            },
+            "type": {
+              "type": "string",
+              "description": "Override PostgreSQL column type"
+            },
+            "size": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Override size parameter"
+            },
+            "decimal": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Override decimal places"
+            },
+            "primary_key": {
+              "type": "boolean",
+              "description": "Override primary key setting"
+            },
+            "unique": {
+              "type": "boolean",
+              "description": "Override unique constraint"
+            },
+            "sequence": {
+              "type": "boolean",
+              "description": "Override sequence setting"
+            },
+            "automation": {
+              "$ref": "#/definitions/automationDefinition",
+              "description": "Override or add automation"
+            }
+          },
+          "required": ["$ref"],
+          "additionalProperties": false
+        },
+        {
+          "$ref": "#/definitions/columnDefinition",
+          "description": "Full column definition (no inheritance)"
+        }
+      ]
+    },
+    "tableDefinition": {
+      "type": "object",
+      "description": "Table definition with foreign keys as named data pipelines",
+      "properties": {
+        "columns": {
+          "type": "object",
+          "description": "Column definitions - can inherit from reusable columns or define inline",
+          "patternProperties": {
+            "^[a-zA-Z_][a-zA-Z0-9_]*$": {
+              "$ref": "#/definitions/tableColumnDefinition"
+            }
+          },
+          "additionalProperties": false
+        },
+        "foreign_keys": {
+          "type": "object",
+          "description": "GENLOGIC CORE: Named data pipelines that create columns AND automation pathways",
+          "additionalProperties": {
+            "$ref": "#/definitions/foreignKeyDefinition"
+          }
+        }
+      }
+    },
+    "foreignKeyDefinition": {
+      "type": "object",
+      "description": "GENLOGIC: Foreign key as named data pipeline - creates columns and defines automation paths",
+      "properties": {
+        "table": {
+          "type": "string",
+          "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
+          "description": "Target table name - VALIDATION REQUIRED: Must exist in 'tables' section"
+        },
+        "prefix": {
+          "type": "string",
+          "description": "Prefix for created column names"
+        },
+        "suffix": {
+          "type": "string",
+          "description": "Suffix for created column names"
+        },
+        "delete": {
+          "type": "string",
+          "enum": ["restrict", "cascade"],
+          "description": "Foreign key delete behavior"
+        }
+      },
+      "required": ["table"]
+    },
+    "automationDefinition": {
+      "type": "object",
+      "description": "GENLOGIC PRINCIPLE: Automations specify explicit data flow pathways",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["SUM", "COUNT", "MAX", "MIN", "LATEST", "FETCH", "FETCH_UPDATES", "DOMINANT", "QUEUEPOS"],
+          "description": "Type of automation"
+        },
+        "table": {
+          "type": "string",
+          "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
+          "description": "Source table name for the automation - VALIDATION REQUIRED: Must exist in 'tables' section"
+        },
+        "foreign_key": {
+          "type": "string",
+          "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
+          "description": "GENLOGIC CORE: FK name within the source table - VALIDATION REQUIRED: Must exist in specified table's foreign_keys section"
+        },
+        "column": {
+          "type": "string",
+          "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
+          "description": "Source column name for the automation"
+        }
+      },
+      "required": ["type", "table", "foreign_key", "column"]
+    }
+  }
+}
