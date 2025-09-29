@@ -35,8 +35,10 @@ genlogic --schema ./schema.yaml --dry-run
 # Test mode (validate schema without database connection)
 genlogic --schema ./schema.yaml --test-mode
 ```
-
 ### Example Schema
+
+[docs/toc.md](./docs/toc.md)** - Complete examples and documentation index
+
 ```yaml
 columns:
   amount: { type: numeric, size: 10, decimal: 2 }
@@ -93,6 +95,7 @@ npm run clean         # Remove build artifacts
 
 ## 📚 Documentation
 
+- **[docs/toc.md](./docs/toc.md)** - Complete examples and documentation index
 - **[DESIGN.md](./DESIGN.md)** - Core philosophy and concepts
 - **[IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md)** - Development phases and technical details
 - **[TEST_GUIDE.md](./TEST_GUIDE.md)** - Comprehensive testing instructions

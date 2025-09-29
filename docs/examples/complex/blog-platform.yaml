@@ -1,0 +1,354 @@
+# Blog Platform Example
+# Demonstrates users, posts, comments, categories, tags, and social features
+# Shows many-to-many relationships and content management patterns
+
+columns:
+  id:
+    type: integer
+    sequence: true
+    primary_key: true
+
+  name:
+    type: varchar
+    size: 100
+
+  email:
+    type: varchar
+    size: 255
+
+  username:
+    type: varchar
+    size: 50
+
+  slug:
+    type: varchar
+    size: 100
+
+  content:
+    type: text
+
+  url:
+    type: varchar
+    size: 500
+
+tables:
+  users:
+    columns:
+      user_id:
+        $ref: id
+
+      username: null
+
+      email: null
+
+      display_name:
+        $ref: name
+
+      bio:
+        $ref: content
+
+      avatar_url:
+        $ref: url
+
+      # Automation: count published posts
+      post_count:
+        type: integer
+        automation:
+          type: COUNT
+          table: posts
+          foreign_key: author_fk
+          column: post_id
+          # Could add condition: WHERE status = 'published'
+
+      # Automation: count comments made
+      comment_count:
+        type: integer
+        automation:
+          type: COUNT
+          table: comments
+          foreign_key: user_fk
+          column: comment_id
+
+      # Automation: total likes received on all posts
+      total_likes:
+        type: integer
+        automation:
+          type: SUM
+          table: posts
+          foreign_key: author_fk
+          column: like_count
+
+      joined_at:
+        type: timestamp
+
+  categories:
+    foreign_keys:
+      parent_fk:
+        table: categories
+
+    columns:
+      category_id:
+        $ref: id
+
+      category_name:
+        $ref: name
+
+      slug: null
+
+      description:
+        $ref: content
+
+      parent_fk:
+        type: integer
+        required: false
+
+      # Automation: count posts in category
+      post_count:
+        type: integer
+        automation:
+          type: COUNT
+          table: posts
+          foreign_key: category_fk
+          column: post_id
+
+  tags:
+    columns:
+      tag_id:
+        $ref: id
+
+      tag_name:
+        $ref: name
+
+      slug: null
+
+      # Automation: count posts with this tag
+      usage_count:
+        type: integer
+        automation:
+          type: COUNT
+          table: post_tags
+          foreign_key: tag_fk
+          column: post_tag_id
+
+  posts:
+    foreign_keys:
+      author_fk:
+        table: users
+      category_fk:
+        table: categories
+
+    columns:
+      post_id:
+        $ref: id
+
+      title:
+        $ref: name
+
+      slug: null
+
+      content: null
+
+      excerpt:
+        type: varchar
+        size: 500
+
+      author_fk:
+        type: integer
+        required: true
+
+      category_fk:
+        type: integer
+        required: false
+
+      status:
+        type: varchar
+        size: 20
+        # draft, published, archived
+
+      # Automation: count comments on this post
+      comment_count:
+        type: integer
+        automation:
+          type: COUNT
+          table: comments
+          foreign_key: post_fk
+          column: comment_id
+
+      # Automation: count likes
+      like_count:
+        type: integer
+        automation:
+          type: COUNT
+          table: post_likes
+          foreign_key: post_fk
+          column: like_id
+
+      # Automation: count tags
+      tag_count:
+        type: integer
+        automation:
+          type: COUNT
+          table: post_tags
+          foreign_key: post_fk
+          column: post_tag_id
+
+      published_at:
+        type: timestamp
+
+      created_at:
+        type: timestamp
+
+  # Many-to-many: posts <-> tags
+  post_tags:
+    foreign_keys:
+      post_fk:
+        table: posts
+        on_delete: CASCADE
+      tag_fk:
+        table: tags
+        on_delete: CASCADE
+
+    columns:
+      post_tag_id:
+        $ref: id
+
+      post_fk:
+        type: integer
+        required: true
+
+      tag_fk:
+        type: integer
+        required: true
+
+      created_at:
+        type: timestamp
+
+  comments:
+    foreign_keys:
+      post_fk:
+        table: posts
+        on_delete: CASCADE
+      user_fk:
+        table: users
+      parent_fk:
+        table: comments  # Self-referencing for nested comments
+
+    columns:
+      comment_id:
+        $ref: id
+
+      post_fk:
+        type: integer
+        required: true
+
+      user_fk:
+        type: integer
+        required: true
+
+      parent_fk:
+        type: integer
+        required: false  # NULL for top-level comments
+
+      content: null
+
+      # Automation: count replies to this comment
+      reply_count:
+        type: integer
+        automation:
+          type: COUNT
+          table: comments
+          foreign_key: parent_fk
+          column: comment_id
+
+      # Automation: count likes on this comment
+      like_count:
+        type: integer
+        automation:
+          type: COUNT
+          table: comment_likes
+          foreign_key: comment_fk
+          column: like_id
+
+      created_at:
+        type: timestamp
+
+  post_likes:
+    foreign_keys:
+      post_fk:
+        table: posts
+        on_delete: CASCADE
+      user_fk:
+        table: users
+        on_delete: CASCADE
+
+    columns:
+      like_id:
+        $ref: id
+
+      post_fk:
+        type: integer
+        required: true
+
+      user_fk:
+        type: integer
+        required: true
+
+      created_at:
+        type: timestamp
+
+    # Unique constraint to prevent duplicate likes
+    unique_constraints:
+      - [post_fk, user_fk]
+
+  comment_likes:
+    foreign_keys:
+      comment_fk:
+        table: comments
+        on_delete: CASCADE
+      user_fk:
+        table: users
+        on_delete: CASCADE
+
+    columns:
+      like_id:
+        $ref: id
+
+      comment_fk:
+        type: integer
+        required: true
+
+      user_fk:
+        type: integer
+        required: true
+
+      created_at:
+        type: timestamp
+
+    unique_constraints:
+      - [comment_fk, user_fk]
+
+# Complex interaction patterns:
+#
+# 1. User publishes a post:
+#    - users.post_count increases
+#    - categories.post_count increases
+#    - Each tag.usage_count increases (via post_tags)
+#
+# 2. User adds comment:
+#    - posts.comment_count increases
+#    - users.comment_count increases
+#    - If nested, parent comment.reply_count increases
+#
+# 3. User likes a post:
+#    - posts.like_count increases
+#    - author's users.total_likes increases
+#
+# 4. Post gets tagged:
+#    - posts.tag_count increases
+#    - tags.usage_count increases
+#
+# This creates a living system where metrics update in real-time:
+# - Popular posts/tags are immediately identifiable
+# - User engagement metrics stay current
+# - Content categorization maintains accurate counts
+# - Social features (likes, comments) drive real-time engagement metrics

@@ -1,0 +1,60 @@
+# $ref Inheritance Pattern
+# When table column uses $ref, it inherits the reusable column and can OVERRIDE properties
+
+columns:
+  id:
+    type: integer
+
+  name:
+    type: varchar
+    size: 50
+
+  amount:
+    type: numeric
+    size: 10
+    decimal: 2
+
+  email:
+    type: varchar
+    size: 255
+
+tables:
+  users:
+    columns:
+      user_id:
+        $ref: id
+        sequence: true      # ADD sequence to inherited id
+        primary_key: true   # ADD primary key to inherited id
+
+      username:
+        $ref: name
+        unique: true        # ADD unique constraint to inherited name
+
+      primary_email:
+        $ref: email
+        unique: true        # ADD unique constraint to inherited email
+        not_null: true      # ADD not null constraint
+
+  products:
+    columns:
+      product_id:
+        $ref: id
+        sequence: true
+        primary_key: true
+
+      large_amount:
+        $ref: amount
+        size: 15           # OVERRIDE size from 10 to 15
+        decimal: 4         # OVERRIDE decimal from 2 to 4
+
+      long_name:
+        $ref: name
+        size: 200          # OVERRIDE size from 50 to 200
+
+  # Result:
+  # users.user_id: integer with sequence and primary key
+  # users.username: varchar(50) with unique constraint
+  # users.primary_email: varchar(255) with unique and not null
+  # products.product_id: integer with sequence and primary key
+  # products.large_amount: numeric(15,4) instead of numeric(10,2)
+  # products.long_name: varchar(200) instead of varchar(50)

@@ -1,0 +1,40 @@
+# Simple Blog Schema
+# Demonstrates basic table relationships with foreign keys
+
+columns:
+  id:
+    type: integer
+    sequence: true
+    primary_key: true
+
+  title:
+    type: varchar
+    size: 200
+
+  content:
+    type: text
+
+  created_at:
+    type: timestamp
+
+tables:
+  authors:
+    columns:
+      author_id: id
+      name:
+        type: varchar
+        size: 100
+      email:
+        type: varchar
+        size: 255
+        unique: true
+
+  posts:
+    foreign_keys:
+      author_fk:
+        table: authors
+    columns:
+      post_id: id
+      title: null        # Null reference - inherits 'title' with same name
+      content: null      # Null reference - inherits 'content' with same name
+      created_at: null   # Null reference - inherits 'created_at' with same name

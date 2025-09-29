@@ -1,0 +1,30 @@
+# Null Inheritance Pattern
+# When table column is null, it inherits the reusable column with the SAME NAME
+
+columns:
+  id:
+    type: integer
+    sequence: true
+    primary_key: true
+
+  name:
+    type: varchar
+    size: 100
+
+  email:
+    type: varchar
+    size: 255
+
+  created_at:
+    type: timestamp
+
+tables:
+  users:
+    columns:
+      id: null           # Inherits 'id' column definition as 'id'
+      name: null         # Inherits 'name' column definition as 'name'
+      email: null        # Inherits 'email' column definition as 'email'
+      created_at: null   # Inherits 'created_at' column definition as 'created_at'
+
+  # Result: users table has columns: id, name, email, created_at
+  # with exact same types and constraints as defined in reusable columns

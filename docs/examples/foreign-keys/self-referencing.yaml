@@ -1,0 +1,80 @@
+# Self-Referencing Foreign Key Example
+# Demonstrates tables that reference themselves (hierarchical data)
+
+columns:
+  id:
+    type: integer
+    sequence: true
+    primary_key: true
+
+  name:
+    type: varchar
+    size: 100
+
+tables:
+  categories:
+    # Self-referencing foreign key
+    foreign_keys:
+      parent_fk:
+        table: categories  # References the same table
+
+    columns:
+      category_id:
+        $ref: id
+
+      category_name:
+        $ref: name
+
+      # Foreign key column pointing to parent category
+      parent_fk:
+        type: integer
+        # NULL allowed - root categories have no parent
+        required: false
+
+      description:
+        type: text
+
+  employees:
+    # Another self-referencing example
+    foreign_keys:
+      manager_fk:
+        table: employees
+
+    columns:
+      employee_id:
+        $ref: id
+
+      employee_name:
+        $ref: name
+
+      # Manager is also an employee
+      manager_fk:
+        type: integer
+        required: false  # CEO has no manager
+
+      department:
+        type: varchar
+        size: 50
+
+      salary:
+        type: numeric
+        size: 10
+        decimal: 2
+
+# What this generates:
+# 1. categories table with self-referencing parent_fk
+# 2. employees table with self-referencing manager_fk
+# 3. Foreign key constraints:
+#    - categories.parent_fk REFERENCES categories(category_id)
+#    - employees.manager_fk REFERENCES employees(employee_id)
+#
+# Example hierarchical data:
+# categories:
+#   1 | Electronics | NULL     (root category)
+#   2 | Computers   | 1        (sub-category of Electronics)
+#   3 | Laptops     | 2        (sub-category of Computers)
+#
+# employees:
+#   1 | John Smith  | NULL     (CEO)
+#   2 | Jane Doe    | 1        (reports to CEO)
+#   3 | Bob Wilson  | 2        (reports to Jane)

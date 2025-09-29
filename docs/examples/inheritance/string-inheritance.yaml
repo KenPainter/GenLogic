@@ -1,0 +1,40 @@
+# String Inheritance Pattern
+# When table column is a string, it inherits the named reusable column with a NEW NAME
+
+columns:
+  id:
+    type: integer
+    sequence: true
+    primary_key: true
+
+  name:
+    type: varchar
+    size: 100
+
+  amount:
+    type: numeric
+    size: 10
+    decimal: 2
+
+  timestamp:
+    type: timestamp
+
+tables:
+  products:
+    columns:
+      product_id: id        # Inherits 'id' definition as 'product_id'
+      product_name: name    # Inherits 'name' definition as 'product_name'
+      price: amount         # Inherits 'amount' definition as 'price'
+      created_at: timestamp # Inherits 'timestamp' definition as 'created_at'
+
+  orders:
+    columns:
+      order_id: id          # Inherits 'id' definition as 'order_id'
+      customer_name: name   # Inherits 'name' definition as 'customer_name'
+      total: amount         # Inherits 'amount' definition as 'total'
+      order_date: timestamp # Inherits 'timestamp' definition as 'order_date'
+
+  # Result:
+  # products: product_id, product_name, price, created_at
+  # orders: order_id, customer_name, total, order_date
+  # All with appropriate types from the reusable columns
