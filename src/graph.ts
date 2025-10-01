@@ -41,6 +41,80 @@ export class DataFlowGraphValidator {
   }
 
   /**
+   * Extract column names from a calculated expression
+   * Simple regex-based parser to find potential column references
+   */
+  private extractColumnReferences(expression: string): string[] {
+    // Match SQL identifiers (letters, numbers, underscores)
+    // This will capture column names from expressions like "col1 + col2" or "case when col1 > 0 then col2 else col3 end"
+    const identifierRegex = /\b[a-zA-Z_][a-zA-Z0-9_]*\b/g;
+    const matches = expression.match(identifierRegex) || [];
+
+    // Filter out SQL keywords to avoid false positives
+    const sqlKeywords = new Set([
+      'case', 'when', 'then', 'else', 'end', 'and', 'or', 'not', 'null', 'true', 'false',
+      'select', 'from', 'where', 'order', 'by', 'group', 'having', 'distinct',
+      'as', 'is', 'in', 'like', 'between', 'exists', 'all', 'any', 'some',
+      'union', 'intersect', 'except', 'join', 'inner', 'outer', 'left', 'right', 'full', 'cross',
+      'on', 'using', 'natural', 'asc', 'desc', 'limit', 'offset'
+    ]);
+
+    return matches.filter(match => !sqlKeywords.has(match.toLowerCase()));
+  }
+
+  /**
+   * Build calculated column dependency graph within each table
+   * Returns a map of table names to their internal column dependency graphs
+   */
+  buildCalculatedColumnGraphs(schema: GenLogicSchema): Map<string, DataFlowGraph> {
+    const tableGraphs = new Map<string, DataFlowGraph>();
+
+    if (!schema.tables) return tableGraphs;
+
+    for (const [tableName, table] of Object.entries(schema.tables)) {
+      const nodes = new Set<string>();
+      const edges = new Map<string, Set<string>>();
+
+      if (!table.columns) continue;
+
+      // Add all columns as nodes
+      for (const columnName of Object.keys(table.columns)) {
+        nodes.add(columnName);
+        edges.set(columnName, new Set());
+      }
+
+      // Add edges for calculated column dependencies
+      for (const [columnName, column] of Object.entries(table.columns)) {
+        let calculated: string | undefined = undefined;
+
+        if (column && typeof column === 'object' && 'calculated' in column) {
+          calculated = (column as any).calculated;
+        }
+
+        if (calculated) {
+          // Extract column references from the expression
+          const referencedColumns = this.extractColumnReferences(calculated);
+
+          // Add edges from this column to each referenced column
+          const columnEdges = edges.get(columnName);
+          if (columnEdges) {
+            for (const refColumn of referencedColumns) {
+              // Only add edge if the referenced column exists in this table
+              if (nodes.has(refColumn)) {
+                columnEdges.add(refColumn);
+              }
+            }
+          }
+        }
+      }
+
+      tableGraphs.set(tableName, { nodes, edges });
+    }
+
+    return tableGraphs;
+  }
+
+  /**
    * Build automation dependency graph
    * Each edge represents an automation dependency from source table to target table
    */
@@ -221,8 +295,65 @@ export class DataFlowGraphValidator {
   }
 
   /**
+   * Topological sort of calculated columns to determine evaluation order
+   * Returns ordered list of column names, or null if cycle detected
+   */
+  topologicalSortCalculatedColumns(graph: DataFlowGraph): string[] | null {
+    const inDegree = new Map<string, number>();
+    const result: string[] = [];
+
+    // Initialize in-degree for all nodes
+    for (const node of graph.nodes) {
+      inDegree.set(node, 0);
+    }
+
+    // Calculate in-degrees
+    for (const [_, neighbors] of graph.edges) {
+      for (const neighbor of neighbors) {
+        inDegree.set(neighbor, (inDegree.get(neighbor) || 0) + 1);
+      }
+    }
+
+    // Queue all nodes with in-degree 0
+    const queue: string[] = [];
+    for (const [node, degree] of inDegree) {
+      if (degree === 0) {
+        queue.push(node);
+      }
+    }
+
+    // Process queue
+    while (queue.length > 0) {
+      const node = queue.shift()!;
+      result.push(node);
+
+      const neighbors = graph.edges.get(node);
+      if (neighbors) {
+        for (const neighbor of neighbors) {
+          const newDegree = (inDegree.get(neighbor) || 0) - 1;
+          inDegree.set(neighbor, newDegree);
+          if (newDegree === 0) {
+            queue.push(neighbor);
+          }
+        }
+      }
+    }
+
+    // If we processed all nodes, no cycle exists
+    if (result.length === graph.nodes.size) {
+      return result;
+    }
+
+    // Cycle detected
+    return null;
+  }
+
+  /**
    * Perform complete data flow validation
    * This is the main safety check before any database operations
+   *
+   * NOTE: With consolidated triggers and change detection, automation cycles are SAFE
+   * We only check for structural FK cycles and calculated column cycles
    */
   validateDataFlowSafety(schema: GenLogicSchema): ValidationResult {
     const errors: string[] = [];
@@ -230,18 +361,26 @@ export class DataFlowGraphValidator {
 
     // Build graphs
     const fkGraph = this.buildForeignKeyGraph(schema);
-    const automationGraph = this.buildAutomationGraph(schema);
+    const calculatedGraphs = this.buildCalculatedColumnGraphs(schema);
 
-    // Check for cycles in foreign key relationships
+    // Check for cycles in foreign key relationships (structural cycles only)
     const fkCycleResult = this.detectCycles(fkGraph);
     if (!fkCycleResult.isValid) {
       errors.push(...fkCycleResult.errors.map(e => `Foreign Key Cycle: ${e}`));
     }
 
-    // Check for cycles in automation dependencies
-    const automationCycleResult = this.detectCycles(automationGraph);
-    if (!automationCycleResult.isValid) {
-      errors.push(...automationCycleResult.errors.map(e => `Automation Cycle: ${e}`));
+    // REMOVED: Automation cycle detection
+    // With change detection in consolidated triggers, automation cycles are safe:
+    // - PUSH to children only if parent columns changed
+    // - PUSH to parents only if child columns changed
+    // - This breaks potential infinite loops at runtime
+
+    // Check for cycles in calculated columns (per table)
+    for (const [tableName, graph] of calculatedGraphs) {
+      const calcCycleResult = this.detectCycles(graph);
+      if (!calcCycleResult.isValid) {
+        errors.push(...calcCycleResult.errors.map(e => `Calculated Column Cycle in table '${tableName}': ${e}`));
+      }
     }
 
     // Validate automation pathways

@@ -236,10 +236,43 @@ export class DatabaseManager {
 
   /**
    * Check if trigger follows GenLogic naming convention
-   * Convention: <TABLE>_<INSERT|UPDATE|DELETE>_genlogic
+   * Convention: <TABLE>_before_<INSERT|UPDATE|DELETE>_genlogic
    */
   private isGenLogicTrigger(triggerName: string): boolean {
     return triggerName.endsWith('_genlogic');
+  }
+
+  /**
+   * Get ALL GenLogic triggers in the database
+   * Used for unconditional cleanup at start of processing
+   */
+  async getAllGenLogicTriggers(): Promise<Array<{ triggerName: string; tableName: string }>> {
+    const query = `
+      SELECT
+        t.trigger_name,
+        t.event_object_table as table_name
+      FROM information_schema.triggers t
+      WHERE t.event_object_schema = 'public'
+        AND t.trigger_name LIKE '%_genlogic'
+      ORDER BY t.event_object_table, t.trigger_name
+    `;
+
+    const result = await this.client.query(query);
+    return result.rows.map(row => ({
+      triggerName: row.trigger_name,
+      tableName: row.table_name
+    }));
+  }
+
+  /**
+   * Generate SQL to drop all GenLogic triggers
+   * Returns array of DROP TRIGGER statements
+   */
+  async generateDropAllGenLogicTriggersSQL(): Promise<string[]> {
+    const triggers = await this.getAllGenLogicTriggers();
+    return triggers.map(({ triggerName, tableName }) =>
+      `DROP TRIGGER IF EXISTS ${triggerName} ON "${tableName}";`
+    );
   }
 
   /**
@@ -249,8 +282,17 @@ export class DatabaseManager {
     await this.client.query('BEGIN');
 
     try {
-      for (const sql of sqlStatements) {
-        await this.client.query(sql);
+      for (let i = 0; i < sqlStatements.length; i++) {
+        const sql = sqlStatements[i];
+        try {
+          await this.client.query(sql);
+        } catch (sqlError: any) {
+          // Add context about which statement failed
+          throw new Error(
+            `SQL execution failed at statement ${i + 1}/${sqlStatements.length}: ${sqlError.message}\n` +
+            `Full statement:\n${sql}`
+          );
+        }
       }
       await this.client.query('COMMIT');
     } catch (error) {
@@ -264,5 +306,12 @@ export class DatabaseManager {
    */
   async execute(sql: string): Promise<any> {
     return await this.client.query(sql);
+  }
+
+  /**
+   * Execute a query with optional parameters
+   */
+  async query(sql: string, params?: any[]): Promise<any> {
+    return await this.client.query(sql, params);
   }
 }

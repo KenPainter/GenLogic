@@ -1,7 +1,12 @@
 import Ajv from 'ajv';
 import { readFileSync } from 'fs';
-import { join } from 'path';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import type { GenLogicSchema, ValidationResult } from './types';
+
+// ES module equivalent of __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Load the JSON Schema we created
 const schemaPath = join(__dirname, '..', 'genlogic-schema.json');
@@ -95,6 +100,11 @@ export class SchemaValidator {
               }
             }
 
+            // Check mutual exclusion: automation and calculated cannot coexist
+            if (column && typeof column === 'object' && 'automation' in column && 'calculated' in column) {
+              errors.push(`Table '${tableName}', column '${columnName}': cannot have both 'automation' and 'calculated' properties`);
+            }
+
             // Check automation references
             if (column && typeof column === 'object' && 'automation' in column) {
               const automation = (column as any).automation;
@@ -104,10 +114,23 @@ export class SchemaValidator {
                   errors.push(`Table '${tableName}', column '${columnName}': automation table '${automation.table}' does not exist`);
                 }
 
-                // Validate foreign_key reference exists in the specified table
-                const sourceTable = schema.tables?.[automation.table];
-                if (sourceTable?.foreign_keys && !sourceTable.foreign_keys[automation.foreign_key]) {
-                  errors.push(`Table '${tableName}', column '${columnName}': automation foreign_key '${automation.foreign_key}' does not exist in table '${automation.table}'`);
+                // Validate foreign_key reference
+                // For aggregations (SUM/COUNT/MAX/MIN/LATEST): FK is in source table (child)
+                // For cascades (SNAPSHOT/FOLLOW): FK is in current table (child)
+                const isAggregation = ['SUM', 'COUNT', 'MAX', 'MIN', 'LATEST'].includes(automation.type);
+                const isCascade = ['SNAPSHOT', 'FOLLOW'].includes(automation.type);
+
+                if (isAggregation) {
+                  // FK must exist in source table (child)
+                  const sourceTable = schema.tables?.[automation.table];
+                  if (sourceTable?.foreign_keys && !sourceTable.foreign_keys[automation.foreign_key]) {
+                    errors.push(`Table '${tableName}', column '${columnName}': automation foreign_key '${automation.foreign_key}' does not exist in table '${automation.table}'`);
+                  }
+                } else if (isCascade) {
+                  // FK must exist in current table (child)
+                  if (table.foreign_keys && !table.foreign_keys[automation.foreign_key]) {
+                    errors.push(`Table '${tableName}', column '${columnName}': automation foreign_key '${automation.foreign_key}' does not exist in current table`);
+                  }
                 }
               }
             }
@@ -119,6 +142,94 @@ export class SchemaValidator {
           for (const [fkName, fk] of Object.entries(table.foreign_keys)) {
             if (!tableNames.has(fk.table)) {
               errors.push(`Table '${tableName}', foreign_key '${fkName}': target table '${fk.table}' does not exist`);
+            }
+          }
+        }
+
+        // Validate sync target table references (but NOT column names yet - they may be FK-derived)
+        if (table.sync) {
+          for (const targetTableName of Object.keys(table.sync)) {
+            if (!tableNames.has(targetTableName)) {
+              errors.push(`Table '${tableName}', sync target '${targetTableName}': target table does not exist`);
+            }
+          }
+        }
+      }
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+      warnings
+    };
+  }
+
+  /**
+   * PHASE 2.5: Validate sync definitions against processed schema
+   * This must run AFTER schema processing, when FK columns are expanded
+   */
+  validateSyncDefinitions(schema: GenLogicSchema, processedSchema: any): ValidationResult {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+
+    if (!schema.tables) {
+      return { isValid: true, errors: [], warnings: [] };
+    }
+
+    // Helper to get all columns (both explicit and generated)
+    const getAllColumns = (tableName: string): Set<string> => {
+      const table = processedSchema.tables?.[tableName];
+      if (!table) return new Set();
+
+      const allColumns = new Set<string>();
+      // Add explicitly defined columns
+      for (const col of Object.keys(table.columns || {})) {
+        allColumns.add(col);
+      }
+      // Add FK-generated columns
+      for (const col of Object.keys(table.generatedColumns || {})) {
+        allColumns.add(col);
+      }
+      return allColumns;
+    };
+
+    for (const [sourceTableName, table] of Object.entries(schema.tables)) {
+      if (!table.sync) continue;
+
+      const sourceColumns = getAllColumns(sourceTableName);
+
+      for (const [targetTableName, syncDef] of Object.entries(table.sync)) {
+        const targetColumns = getAllColumns(targetTableName);
+
+        // Validate match_columns - both source and target must exist
+        if (syncDef.match_columns) {
+          for (const [sourceCol, targetCol] of Object.entries(syncDef.match_columns)) {
+            if (!sourceColumns.has(sourceCol)) {
+              errors.push(`Table '${sourceTableName}', sync to '${targetTableName}': match_columns source column '${sourceCol}' does not exist (after FK expansion)`);
+            }
+            if (!targetColumns.has(targetCol)) {
+              errors.push(`Table '${sourceTableName}', sync to '${targetTableName}': match_columns target column '${targetCol}' does not exist in target table`);
+            }
+          }
+        }
+
+        // Validate column_map - both source and target must exist
+        if (syncDef.column_map) {
+          for (const [sourceCol, targetCol] of Object.entries(syncDef.column_map)) {
+            if (!sourceColumns.has(sourceCol)) {
+              errors.push(`Table '${sourceTableName}', sync to '${targetTableName}': column_map source column '${sourceCol}' does not exist (after FK expansion)`);
+            }
+            if (!targetColumns.has(targetCol)) {
+              errors.push(`Table '${sourceTableName}', sync to '${targetTableName}': column_map target column '${targetCol}' does not exist in target table`);
+            }
+          }
+        }
+
+        // Validate literals - target columns must exist
+        if (syncDef.literals) {
+          for (const targetCol of Object.keys(syncDef.literals)) {
+            if (!targetColumns.has(targetCol)) {
+              errors.push(`Table '${sourceTableName}', sync to '${targetTableName}': literals target column '${targetCol}' does not exist in target table`);
             }
           }
         }

@@ -1,5 +1,5 @@
-import { readFileSync } from 'fs';
-import { parse } from 'yaml';
+import { readFileSync, writeFileSync } from 'fs';
+import { parse, stringify } from 'yaml';
 import type { DatabaseConfig, GenLogicSchema } from './types.js';
 import { SchemaValidator } from './validation.js';
 import { DataFlowGraphValidator } from './graph.js';
@@ -8,6 +8,8 @@ import { DatabaseManager } from './database.js';
 import { DiffEngine } from './diff-engine.js';
 import { SQLGenerator } from './sql-generator.js';
 import { TriggerGenerator } from './trigger-generator.js';
+import { ContentManager } from './content-manager.js';
+import { ResolvedSchemaGenerator } from './resolved-schema-generator.js';
 
 /**
  * GenLogic Core Processor
@@ -24,6 +26,8 @@ export class GenLogicProcessor {
   private diffEngine: DiffEngine;
   private sqlGenerator: SQLGenerator;
   private triggerGenerator: TriggerGenerator;
+  private contentManager: ContentManager;
+  private resolvedSchemaGenerator: ResolvedSchemaGenerator;
 
   constructor(config: DatabaseConfig) {
     this.config = config;
@@ -34,6 +38,8 @@ export class GenLogicProcessor {
     this.diffEngine = new DiffEngine();
     this.sqlGenerator = new SQLGenerator();
     this.triggerGenerator = new TriggerGenerator();
+    this.contentManager = new ContentManager();
+    this.resolvedSchemaGenerator = new ResolvedSchemaGenerator();
   }
 
   /**
@@ -79,6 +85,20 @@ export class GenLogicProcessor {
       console.log('🔄 Processing schema inheritance...');
       const processedSchema = this.schemaProcessor.processSchema(schema);
 
+      // PHASE 5.5: Validate sync definitions (must happen AFTER FK expansion)
+      console.log('🔄 Validating sync definitions...');
+      const syncResult = this.validator.validateSyncDefinitions(schema, processedSchema);
+      if (!syncResult.isValid) {
+        throw new Error(`Sync validation failed:\n${syncResult.errors.join('\n')}`);
+      }
+
+      // PHASE 5.6: Validate content sections
+      console.log('📦 Validating content sections...');
+      const contentResult = this.contentManager.validateContent(schema, processedSchema);
+      if (!contentResult.isValid) {
+        throw new Error(`Content validation failed:\n${contentResult.errors.join('\n')}`);
+      }
+
       // PHASE 6: Database introspection and diffing
       if (this.config.testMode) {
         console.log('🔍 Test mode - skipping database analysis...');
@@ -97,14 +117,21 @@ export class GenLogicProcessor {
         };
 
         const triggerStatements = this.triggerGenerator.generateTriggers(schema, processedSchema);
+        const contentStatements = this.contentManager.generateContentInserts(schema, processedSchema);
+
+        const allStatements = [...triggerStatements, ...contentStatements];
 
         console.log('📋 TEST MODE - Schema validation completed successfully!');
-        this.reportPlannedChanges(mockDiff, triggerStatements);
+        this.reportPlannedChanges(mockDiff, allStatements);
 
       } else {
         console.log('🔍 Analyzing current database state...');
         await this.database.connect();
         try {
+          // PHASE 6.5: Drop ALL GenLogic triggers first for clean slate
+          console.log('🧹 Dropping all existing GenLogic triggers...');
+          const dropAllTriggersSQL = await this.database.generateDropAllGenLogicTriggersSQL();
+
           const currentSchema = await this.database.analyzeCurrentSchema();
           const diff = this.diffEngine.generateDiff(processedSchema, currentSchema);
 
@@ -112,15 +139,21 @@ export class GenLogicProcessor {
           console.log('📝 Generating SQL statements...');
           const ddlStatements = this.sqlGenerator.generateSQL(diff);
           const triggerStatements = this.triggerGenerator.generateTriggers(schema, processedSchema);
+          const contentStatements = this.contentManager.generateContentInserts(schema, processedSchema);
 
-          // Combine all SQL statements in execution order
+          // ROBUST EXECUTION ORDER:
+          // 1. Drop ALL GenLogic triggers (clean slate)
+          // 2. Run all DDL (tables, columns, constraints)
+          // 3. Create ALL triggers (fresh from schema)
+          // 4. Insert content (with complete schema and active triggers)
           const allStatements = [
-            ...ddlStatements.dropTriggers,
+            ...dropAllTriggersSQL,
             ...ddlStatements.createTables,
             ...ddlStatements.addColumns,
             ...ddlStatements.addForeignKeys,
             ...ddlStatements.createIndexes,
-            ...triggerStatements
+            ...triggerStatements,
+            ...contentStatements
           ].filter(sql => sql.trim().length > 0 && !sql.startsWith('--'));
 
           // PHASE 8: Execution or dry-run reporting
@@ -141,6 +174,10 @@ export class GenLogicProcessor {
           await this.database.disconnect();
         }
       }
+
+      // PHASE 9: Generate resolved schema documentation
+      console.log('📝 Generating resolved schema documentation...');
+      this.writeResolvedSchema(schemaPath, schema, processedSchema);
 
       console.log('');
       console.log('✨ GenLogic processing completed successfully!');
@@ -207,7 +244,7 @@ export class GenLogicProcessor {
       }
 
       // Process schema
-      const processedSchema = this.schemaProcessor.processInheritance(schema);
+      const processedSchema = this.schemaProcessor.processSchema(schema);
 
       // Connect and execute
       await this.database.connect();
@@ -219,7 +256,6 @@ export class GenLogicProcessor {
         const triggerStatements = this.triggerGenerator.generateTriggers(schema, processedSchema);
 
         const allStatements = [
-          ...ddlStatements.dropTriggers,
           ...ddlStatements.createTables,
           ...ddlStatements.addColumns,
           ...ddlStatements.addForeignKeys,
@@ -252,7 +288,7 @@ export class GenLogicProcessor {
         WHERE table_schema = 'public'
         ORDER BY table_name;
       `);
-      return result.rows.map(row => row.table_name);
+      return result.rows.map((row: any) => row.table_name);
     } finally {
       await this.database.disconnect();
     }
@@ -269,7 +305,7 @@ export class GenLogicProcessor {
         ORDER BY ordinal_position;
       `, [tableName]);
 
-      return result.rows.map(row => ({
+      return result.rows.map((row: any) => ({
         name: row.column_name,
         type: this.formatColumnType(row)
       }));
@@ -357,6 +393,32 @@ export class GenLogicProcessor {
         console.log(`\\n-- Statement ${i + 1}:`);
         console.log(sqlStatements[i]);
       }
+    }
+  }
+
+  /**
+   * Write resolved schema documentation file
+   */
+  private writeResolvedSchema(schemaPath: string, schema: GenLogicSchema, processedSchema: any): void {
+    try {
+      const resolvedSchema = this.resolvedSchemaGenerator.generateResolvedSchema(
+        schema,
+        processedSchema,
+        schemaPath,
+        this.config.database
+      );
+
+      const outputPath = `${schemaPath}.resolved.yaml`;
+      const yamlContent = stringify(resolvedSchema, {
+        lineWidth: 0,  // Prevent line wrapping
+        indent: 2
+      });
+
+      writeFileSync(outputPath, yamlContent, 'utf-8');
+      console.log(`✅ Resolved schema written to: ${outputPath}`);
+    } catch (error) {
+      console.warn(`⚠️  Warning: Could not write resolved schema: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      // Don't fail the entire process if this fails
     }
   }
 }

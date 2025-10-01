@@ -63,7 +63,8 @@ export class SchemaProcessor {
     return {
       columns: processedColumns,
       foreignKeys: table.foreign_keys || {},
-      generatedColumns: {} // Will be populated by FK column generation
+      generatedColumns: {}, // Will be populated by FK column generation
+      fkColumnMapping: {} // Will be populated by FK column generation
     };
   }
 
@@ -151,6 +152,9 @@ export class SchemaProcessor {
         throw new Error(`Referenced table '${fk.table}' has no primary key columns`);
       }
 
+      // Track generated column names for this FK
+      const generatedFkColumns: string[] = [];
+
       // Generate FK columns for each primary key column
       for (const pkColumn of primaryKeyColumns) {
         const fkColumnName = this.generateFKColumnName(pkColumn.name, fk);
@@ -166,7 +170,11 @@ export class SchemaProcessor {
         };
 
         processedTable.generatedColumns[fkColumnName] = fkColumnDef;
+        generatedFkColumns.push(fkColumnName);
       }
+
+      // Store the mapping from FK name to generated column names
+      processedTable.fkColumnMapping[fkName] = generatedFkColumns;
     }
   }
 
@@ -220,4 +228,5 @@ export interface ProcessedTable {
   columns: Record<string, ColumnDefinition>;
   foreignKeys: Record<string, ForeignKeyDefinition>;
   generatedColumns: Record<string, ColumnDefinition>; // FK columns generated automatically
+  fkColumnMapping: Record<string, string[]>; // Maps FK name to generated column names
 }

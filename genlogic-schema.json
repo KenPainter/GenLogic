@@ -63,11 +63,18 @@
         "automation": {
           "$ref": "#/definitions/automationDefinition",
           "description": "GENLOGIC CORE: Automation that references FK names, not table names"
+        },
+        "calculated": {
+          "type": "string",
+          "description": "SQL expression for calculated column (e.g., 'column1 + column2'). Mutually exclusive with automation."
         }
       },
       "required": ["type"],
       "dependencies": {
         "decimal": ["size"]
+      },
+      "not": {
+        "required": ["automation", "calculated"]
       },
       "allOf": [
         {
@@ -151,10 +158,17 @@
             "automation": {
               "$ref": "#/definitions/automationDefinition",
               "description": "Override or add automation"
+            },
+            "calculated": {
+              "type": "string",
+              "description": "Override or add calculated expression"
             }
           },
           "required": ["$ref"],
-          "additionalProperties": false
+          "additionalProperties": false,
+          "not": {
+            "required": ["automation", "calculated"]
+          }
         },
         {
           "$ref": "#/definitions/columnDefinition",
@@ -166,6 +180,25 @@
       "type": "object",
       "description": "Table definition with foreign keys as named data pipelines",
       "properties": {
+        "ui-notes": {
+          "type": "array",
+          "description": "UI guidance notes - not processed by database, expanded in resolved schema",
+          "items": {
+            "type": "string",
+            "enum": ["singleton", "no-insert", "no-update", "no-delete"],
+            "description": "UI behavior hints: singleton (expect 1 row), no-insert/update/delete (disable CRUD operations)"
+          }
+        },
+        "sync": {
+          "type": "object",
+          "description": "GENLOGIC: Synchronize this table's rows to other tables via triggers",
+          "patternProperties": {
+            "^[a-zA-Z_][a-zA-Z0-9_]*$": {
+              "$ref": "#/definitions/syncDefinition"
+            }
+          },
+          "additionalProperties": false
+        },
         "columns": {
           "type": "object",
           "description": "Column definitions - can inherit from reusable columns or define inline",
@@ -182,8 +215,18 @@
           "additionalProperties": {
             "$ref": "#/definitions/foreignKeyDefinition"
           }
+        },
+        "content": {
+          "type": "array",
+          "description": "Seed data rows to insert if not already present (checked by primary key)",
+          "items": {
+            "type": "object",
+            "description": "Row data as key-value pairs matching column names. Values can be literals or $lookup objects for foreign key resolution.",
+            "additionalProperties": true
+          }
         }
-      }
+      },
+      "additionalProperties": false
     },
     "foreignKeyDefinition": {
       "type": "object",
@@ -216,7 +259,7 @@
       "properties": {
         "type": {
           "type": "string",
-          "enum": ["SUM", "COUNT", "MAX", "MIN", "LATEST", "FETCH", "FETCH_UPDATES", "DOMINANT", "QUEUEPOS"],
+          "enum": ["SUM", "COUNT", "MAX", "MIN", "LATEST", "SNAPSHOT", "FOLLOW", "DOMINANT", "QUEUEPOS"],
           "description": "Type of automation"
         },
         "table": {
@@ -236,6 +279,69 @@
         }
       },
       "required": ["type", "table", "foreign_key", "column"]
+    },
+    "syncDefinition": {
+      "type": "object",
+      "description": "GENLOGIC: Synchronize rows from this table to another table via triggers",
+      "properties": {
+        "direction": {
+          "type": "string",
+          "enum": ["push", "pull", "bidirectional"],
+          "description": "Direction of synchronization: push (to target), pull (from target), bidirectional (both)",
+          "default": "push"
+        },
+        "operations": {
+          "type": "array",
+          "description": "Which operations trigger synchronization",
+          "items": {
+            "type": "string",
+            "enum": ["insert", "update", "delete"]
+          },
+          "default": ["insert", "update", "delete"]
+        },
+        "match_columns": {
+          "type": "object",
+          "description": "Columns that identify the row relationship (always propagated on INSERT/UPDATE). Maps source columns to target columns.",
+          "patternProperties": {
+            "^[a-zA-Z_][a-zA-Z0-9_]*$": {
+              "type": "string",
+              "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
+              "description": "Source column mapped to target column (e.g., id: source_id)"
+            }
+          },
+          "minProperties": 1
+        },
+        "match_conditions": {
+          "type": "array",
+          "description": "Optional SQL WHERE conditions for matching (e.g., \"batch = 'OPENING'\"). Only used in WHERE clause, not propagated.",
+          "items": {
+            "type": "string",
+            "description": "SQL condition string"
+          }
+        },
+        "column_map": {
+          "type": "object",
+          "description": "Data columns to sync (not used for row matching). Maps source columns to target columns.",
+          "patternProperties": {
+            "^[a-zA-Z_][a-zA-Z0-9_]*$": {
+              "type": "string",
+              "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
+              "description": "Source column name mapped to target column name"
+            }
+          }
+        },
+        "literals": {
+          "type": "object",
+          "description": "Constant values to set in target table (only on INSERT)",
+          "patternProperties": {
+            "^[a-zA-Z_][a-zA-Z0-9_]*$": {
+              "type": "string",
+              "description": "Target column name and literal value to set"
+            }
+          }
+        }
+      },
+      "required": ["match_columns"]
     }
   }
 }

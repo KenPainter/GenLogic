@@ -25,11 +25,26 @@ export interface ColumnDefinition {
   unique?: boolean;
   sequence?: boolean;
   automation?: AutomationDefinition;
+  calculated?: string;
 }
 
 export interface TableDefinition {
+  'ui-notes'?: UINote[];
+  sync?: Record<string, SyncDefinition>;
   columns?: Record<string, TableColumnDefinition>;
   foreign_keys?: Record<string, ForeignKeyDefinition>;
+  content?: Record<string, any>[];
+}
+
+export type UINote = 'singleton' | 'no-insert' | 'no-update' | 'no-delete';
+
+export interface SyncDefinition {
+  direction?: 'push' | 'pull' | 'bidirectional';
+  operations?: ('insert' | 'update' | 'delete')[];
+  match_columns: Record<string, string>;  // source_col: target_col - always propagated
+  match_conditions?: string[];  // Extra WHERE conditions (not propagated)
+  column_map?: Record<string, string>;  // Data columns to sync
+  literals?: Record<string, string>;  // Constants (INSERT only)
 }
 
 // Mixed inheritance syntax for table columns
@@ -51,7 +66,7 @@ export interface ForeignKeyDefinition {
 }
 
 export interface AutomationDefinition {
-  type: 'SUM' | 'COUNT' | 'MAX' | 'MIN' | 'LATEST' | 'FETCH' | 'FETCH_UPDATES' | 'DOMINANT' | 'QUEUEPOS';
+  type: 'SUM' | 'COUNT' | 'MAX' | 'MIN' | 'LATEST' | 'SNAPSHOT' | 'FOLLOW' | 'DOMINANT' | 'QUEUEPOS';
   table: string;      // VALIDATION REQUIRED: Must exist in 'tables' section
   foreign_key: string; // VALIDATION REQUIRED: Must exist in specified table's foreign_keys section
   column: string;

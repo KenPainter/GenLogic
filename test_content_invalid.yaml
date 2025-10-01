@@ -1,0 +1,13 @@
+tables:
+  users:
+    columns:
+      user_id:
+        type: integer
+        primary_key: true
+      name:
+        type: varchar
+        size: 50
+    content:
+      - user_id: 1
+        name: "Alice"
+        invalid_column: "This shouldn't exist"  # This should cause an error

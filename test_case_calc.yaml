@@ -1,0 +1,20 @@
+columns:
+  amount:
+    type: numeric
+    size: 10
+    decimal: 2
+
+tables:
+  ledger:
+    columns:
+      id:
+        type: integer
+        primary_key: true
+        sequence: true
+      amount:
+      amount_debit:
+        $ref: amount
+        calculated: "CASE WHEN amount > 0 THEN amount ELSE 0 END"
+      amount_credit:
+        $ref: amount
+        calculated: "CASE WHEN amount < 0 THEN -amount ELSE 0 END"

@@ -1,0 +1,51 @@
+# Test schema for consolidated triggers with change detection
+# This tests the infinite loop prevention scenario we discussed
+
+tables:
+  parent:
+    columns:
+      parent_id: { type: integer, primary_key: true, sequence: true }
+      parent_value: { type: numeric, size: 10, decimal: 2 }
+
+      # Aggregation from children
+      child_sum:
+        type: numeric
+        size: 10
+        decimal: 2
+        automation:
+          type: SUM
+          table: child
+          foreign_key: parent_fk
+          column: child_value
+
+      # Calculated column that depends on aggregation
+      total:
+        type: numeric
+        size: 10
+        decimal: 2
+        calculated: "COALESCE(parent_value, 0) + COALESCE(child_sum, 0)"
+
+  child:
+    foreign_keys:
+      parent_fk: { table: parent }
+    columns:
+      child_id: { type: integer, primary_key: true, sequence: true }
+      child_value: { type: numeric, size: 10, decimal: 2 }
+
+      # FETCH_UPDATES from parent
+      fetched_parent_value:
+        type: numeric
+        size: 10
+        decimal: 2
+        automation:
+          type: FETCH_UPDATES
+          table: parent
+          foreign_key: parent_fk
+          column: parent_value
+
+      # Calculated column that depends on fetched value
+      doubled:
+        type: numeric
+        size: 10
+        decimal: 2
+        calculated: "COALESCE(fetched_parent_value, 0) * 2"

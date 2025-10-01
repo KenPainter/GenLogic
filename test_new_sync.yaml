@@ -1,0 +1,82 @@
+columns:
+  skey:
+    type: integer
+    sequence: true
+    primary_key: true
+  amount:
+    type: numeric
+    size: 10
+    decimal: 2
+
+tables:
+  accounts:
+    columns:
+      account_id: skey
+      name:
+        type: varchar
+        size: 100
+
+  begin_balance:
+    ui-notes:
+      - singleton
+    sync:
+      ledger:
+        direction: push
+        operations: [insert, update, delete]
+
+        # Columns that identify the row (always propagated)
+        match_columns:
+          id: source_id
+          base_account_account_id: account_id_credit
+          offset_account_account_id: account_id_debit
+
+        # Extra WHERE conditions (not propagated)
+        match_conditions:
+          - "batch = 'BEGIN_BAL'"
+          - "ledger_type = 'OPENING'"
+
+        # Data columns to sync
+        column_map:
+          date: transaction_date
+          amount: amount
+
+        # Constants (INSERT only)
+        literals:
+          batch: "BEGIN_BAL"
+          ledger_type: "OPENING"
+          description: "Beginning Balance Entry"
+
+    foreign_keys:
+      base_account:
+        table: accounts
+        prefix: base_account_
+      offset_account:
+        table: accounts
+        prefix: offset_account_
+    columns:
+      id: skey
+      date:
+        type: date
+      amount: null
+
+  ledger:
+    columns:
+      ledger_id: skey
+      transaction_date:
+        type: date
+      amount: null
+      account_id_credit:
+        type: integer
+      account_id_debit:
+        type: integer
+      batch:
+        type: varchar
+        size: 20
+      ledger_type:
+        type: varchar
+        size: 20
+      description:
+        type: varchar
+        size: 200
+      source_id:
+        type: integer

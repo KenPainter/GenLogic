@@ -1,0 +1,11 @@
+tables:
+  users:
+    columns:
+      user_id:
+        type: integer
+        primary_key: true
+      name:
+        type: varchar
+        size: 50
+    content:
+      - name: "Alice"  # Missing primary key user_id
