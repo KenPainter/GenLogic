@@ -13,6 +13,22 @@ Traditional databases treat foreign keys as constraints. GenLogic treats them as
 
 The result: business logic runs in the database with maximum efficiency and minimal middleware complexity.
 
+## AI Philosophy
+
+AI-written code is accepted.  We judge the code, not the source.
+
+GenLogic generates a schema description intended for use by AI agents
+when coding up middleware and UI's that access a GenLogic database.
+
+## Short History
+
+This product is the spiritual descendant of [Andromeda](https://github.com/Andromeda-Project/andromeda),
+originally written by [Ken Downs](https://github.com/KenPainter) 
+in 2002 in PHP, and most recently maintained 
+by [Donald Organ](https://github.com/dorgan/).
+
+GenLogic is a complete rewrite in Typescript.
+
 ## 🚀 Quick Start
 
 ### Installation
@@ -137,8 +153,5 @@ GenLogic is designed for reliability and performance. When contributing:
 
 ## 📜 License
 
-MIT License - see LICENSE file for details.
+Affero GPL v3, see [LICENSE.md](./LICENSE.md) for more details.
 
----
-
-*"Twenty years ago, they said I was doing it wrong. Today, GenLogic proves that foreign keys as data pipelines create the most efficient business logic systems."*
