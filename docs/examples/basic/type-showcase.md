@@ -1,13 +1,15 @@
+Previous: [Minimal Schema](../basic/minimal-schema.md) | Next: [String Inheritance](../inheritance/string-inheritance.md)
+
 # PostgreSQL Type Showcase
 
 A comprehensive example demonstrating all supported PostgreSQL data types and their size requirements in GenLogic. This reference helps you choose the right data type for your columns.
 
 ## Key Concepts
 
-- **Required Size Types**: varchar, char, bit must specify size
-- **Optional Size Types**: numeric, decimal can optionally specify precision/scale
-- **No Size Types**: Most other types don't accept size parameters
-- **Size Validation**: GenLogic validates that size parameters are used correctly
+- Required Size Types: varchar, char, bit must specify size
+- Optional Size Types: numeric, decimal can optionally specify precision/scale
+- No Size Types: Most other types don't accept size parameters
+- Size Validation: GenLogic validates that size parameters are used correctly
 
 ## Type Categories
 
@@ -173,3 +175,7 @@ CREATE TABLE type_examples (
 | Structured data | `jsonb` | Settings, metadata |
 
 This comprehensive type showcase ensures you choose the most appropriate PostgreSQL data type for your GenLogic schemas.
+
+---
+
+Previous: [Minimal Schema](../basic/minimal-schema.md) | Next: [String Inheritance](../inheritance/string-inheritance.md)

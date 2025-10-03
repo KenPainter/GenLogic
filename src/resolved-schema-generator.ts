@@ -130,6 +130,43 @@ export class ResolvedSchemaGenerator {
   }
 
   /**
+   * Expand column-level ui-notes into UI guidance
+   */
+  private expandColumnUIGuidance(uiNotes: ('read-only' | 'hidden')[]): any {
+    const guidance: any = {};
+
+    for (const note of uiNotes) {
+      switch (note) {
+        case 'read-only':
+          guidance.read_only = {
+            editable: false,
+            description: 'This column should not be editable in the UI',
+            ui_behavior: [
+              'Display as read-only text or disabled input field',
+              'Do not allow user modifications',
+              'Show value but prevent editing'
+            ]
+          };
+          break;
+
+        case 'hidden':
+          guidance.hidden = {
+            visible: false,
+            description: 'This column should not be visible in the UI',
+            ui_behavior: [
+              'Do not display this column in forms or tables',
+              'Exclude from user-facing displays',
+              'May be used internally but hidden from users'
+            ]
+          };
+          break;
+      }
+    }
+
+    return guidance;
+  }
+
+  /**
    * Expand ui-notes into detailed UI guidance
    */
   private expandUIGuidance(uiNotes: string[]): any {
@@ -247,6 +284,11 @@ export class ResolvedSchemaGenerator {
     );
 
     Object.assign(doc, writabilityInfo);
+
+    // Add column-level UI notes if present
+    if (columnDef['ui-notes'] && Array.isArray(columnDef['ui-notes']) && columnDef['ui-notes'].length > 0) {
+      doc.ui_notes = this.expandColumnUIGuidance(columnDef['ui-notes']);
+    }
 
     return doc;
   }

@@ -1,3 +1,5 @@
+Previous: [COUNT Automation](../automations/count-automation.md) | Next: [LATEST Automation](../automations/latest-automation.md)
+
 # MAX and MIN Automation Examples
 
 Automatically tracks the maximum and minimum values from child records.
@@ -121,3 +123,7 @@ tables:
 # - For DELETE of extreme value: Recalculation query (O(n))
 # - For UPDATE of extreme value to non-extreme: Recalculation query (O(n))
 ```
+
+---
+
+Previous: [COUNT Automation](../automations/count-automation.md) | Next: [LATEST Automation](../automations/latest-automation.md)

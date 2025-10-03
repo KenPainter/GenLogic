@@ -1,3 +1,5 @@
+Previous: [Circular References](../edge-cases/circular-references.md) | Next: [Schema Evolution](../edge-cases/schema-evolution.md)
+
 # Performance Considerations and Edge Cases
 
 Demonstrates scenarios where GenLogic optimizations matter most.
@@ -310,3 +312,7 @@ tables:
 # - GenLogic approach: N automations = 1 trigger = 1 table scan
 # - Performance improvement scales with number of automations per FK relationship
 ```
+
+---
+
+Previous: [Circular References](../edge-cases/circular-references.md) | Next: [Schema Evolution](../edge-cases/schema-evolution.md)

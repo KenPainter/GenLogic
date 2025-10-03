@@ -24,7 +24,7 @@ These tests verify complete functionality with a real PostgreSQL database.
 
 **Files:**
 - `tests/database/setup.test.ts` - Database connection and basic operations
-- `tests/database/automation.test.ts` - SUM, COUNT, MAX, LATEST automations
+- `tests/database/automation.test.ts` - SUM, COUNT, MAX, LATEST automation
 
 **Prerequisites:**
 - PostgreSQL database (Docker recommended)
@@ -95,6 +95,11 @@ The database tests use these environment variables:
 - ✅ Cycle detection (foreign key cycles, automation dependency cycles)
 - ✅ Column inheritance patterns
 
+For practical schema examples, see:
+- [examples/basic/minimal-schema.md](examples/basic/minimal-schema.md) - Simple schema for getting started
+- [examples/automations/sum-automation.md](examples/automations/sum-automation.md) - SUM automation examples
+- [examples/edge-cases/null-handling.md](examples/edge-cases/null-handling.md) - NULL value edge cases
+
 ### Database Tests (Group 2)
 - ✅ Database connection and setup
 - ✅ Schema processing pipeline
@@ -103,7 +108,7 @@ The database tests use these environment variables:
 - ✅ COUNT automation with incremental updates
 - ✅ MAX/MIN automation with incremental updates
 - ✅ LATEST automation
-- ✅ Multiple automations (consolidated triggers)
+- ✅ Multiple instances of automation (consolidated triggers)
 
 ## Known Issues
 

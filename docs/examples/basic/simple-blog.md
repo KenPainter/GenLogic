@@ -1,13 +1,15 @@
+Previous: [Minimal Schema](../basic/minimal-schema.md) | Next: [Type Showcase](../basic/type-showcase.md)
+
 # Simple Blog Schema
 
 A basic blog schema demonstrating table relationships with foreign keys. This example shows how to create related tables with proper referential integrity.
 
 ## Key Concepts
 
-- **Foreign Keys**: Establish relationships between tables
-- **Null Inheritance**: Use `null` to inherit column definitions with the same name
-- **Unique Constraints**: Ensure data integrity with unique columns
-- **Mixed Column Definition**: Combine inherited and explicitly defined columns
+- Foreign Keys: Establish relationships between tables
+- Null Inheritance: Use `null` to inherit column definitions with the same name
+- Unique Constraints: Ensure data integrity with unique columns
+- Mixed Column Definition: Combine inherited and explicitly defined columns
 
 ## Schema
 
@@ -88,7 +90,7 @@ INSERT INTO posts (title, content, author_fk, created_at)
 VALUES ('My First Post', 'Hello world!', 1, NOW());
 
 INSERT INTO posts (title, content, author_fk, created_at)
-VALUES ('GenLogic is Great', 'I love automated schemas!', 2, NOW());
+VALUES ('Using GenLogic', 'Working with automated schemas', 2, NOW());
 
 -- Query with joins
 SELECT p.title, p.content, a.name as author_name
@@ -97,3 +99,7 @@ JOIN authors a ON p.author_fk = a.author_id;
 ```
 
 This example demonstrates how GenLogic makes it easy to define related tables with proper foreign key relationships while maintaining clean, readable schemas.
+
+---
+
+Previous: [Minimal Schema](../basic/minimal-schema.md) | Next: [Type Showcase](../basic/type-showcase.md)

@@ -1,3 +1,5 @@
+Previous: [NULL Handling](../edge-cases/null-handling.md) | Next: [Performance Considerations](../edge-cases/performance-considerations.md)
+
 # Circular Reference Edge Cases
 
 Demonstrates potential circular dependencies and how GenLogic handles them.
@@ -219,3 +221,7 @@ tables:
 # 4. If cycles found, reject schema with specific error messages
 # 5. Suggest breaking cycles by removing problematic automations
 ```
+
+---
+
+Previous: [NULL Handling](../edge-cases/null-handling.md) | Next: [Performance Considerations](../edge-cases/performance-considerations.md)

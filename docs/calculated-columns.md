@@ -110,7 +110,7 @@ balance:
 ## Implementation Details
 
 ### Generated SQL
-GenLogic uses a **consolidated trigger architecture** where calculated columns are evaluated within the main AFTER trigger for each table. This ensures proper execution order alongside automations.
+GenLogic uses a **consolidated trigger architecture** where calculated columns are evaluated within the main AFTER trigger for each table. This ensures proper execution order alongside automation.
 
 See [CONSOLIDATED_TRIGGERS.md](CONSOLIDATED_TRIGGERS.md) for complete details on the trigger architecture.
 
@@ -294,8 +294,8 @@ See `CALCULATED_EXAMPLE.yaml` for a complete working example with:
 ## Future Enhancements
 
 Possible future additions:
-- **Expression validation**: Parse and validate SQL expressions before execution
-- **Performance optimization**: Cache dependency graphs
-- **Type inference**: Automatically infer column type from expression
-- **Cross-table calculations**: Allow references to parent table columns via FK paths
-- **Async calculations**: Support for long-running calculations
+- Expression validation: Parse and validate SQL expressions before execution
+- Performance optimization: Cache dependency graphs
+- Type inference: Automatically infer column type from expression
+- Cross-table calculations: Allow references to parent table columns via FK paths
+- Async calculations: Support for long-running calculations

@@ -1,3 +1,5 @@
+Previous: [Type Showcase](../basic/type-showcase.md) | Next: [SUM Automation](../automations/sum-automation.md)
+
 # String Inheritance Pattern
 
 ## Overview
@@ -6,10 +8,10 @@ The string inheritance pattern allows you to inherit a reusable column definitio
 
 ## Key Concepts
 
-- **Column Renaming**: The new column gets a different name than the reusable column
-- **Complete Definition Inheritance**: All properties (type, size, constraints) are inherited
-- **Semantic Mapping**: Maps generic reusable columns to domain-specific names
-- **Flexibility**: Same base definition can be reused with contextually appropriate names
+- Column Renaming: The new column gets a different name than the reusable column
+- Complete Definition Inheritance: All properties (type, size, constraints) are inherited
+- Semantic Mapping: Maps generic reusable columns to domain-specific names
+- Flexibility: Same base definition can be reused with contextually appropriate names
 
 ## YAML Configuration
 
@@ -168,10 +170,10 @@ tables:
 ## Common Use Cases
 
 ### Standard Patterns
-- **IDs**: `id` → `user_id`, `product_id`, `order_id`
-- **Names**: `name` → `first_name`, `last_name`, `company_name`
-- **Amounts**: `amount` → `price`, `cost`, `discount`, `tax`
-- **Timestamps**: `timestamp` → `created_at`, `updated_at`, `deleted_at`
+- IDs: `id` → `user_id`, `product_id`, `order_id`
+- Names: `name` → `first_name`, `last_name`, `company_name`
+- Amounts: `amount` → `price`, `cost`, `discount`, `tax`
+- Timestamps: `timestamp` → `created_at`, `updated_at`, `deleted_at`
 
 ### Financial Systems
 ```yaml
@@ -200,5 +202,9 @@ tables:
 
 ## Related Patterns
 
-- **Null Inheritance**: Use when column names should match exactly
-- **$ref Inheritance**: Use when you need to modify properties while inheriting
+- Null Inheritance: Use when column names should match exactly
+- $ref Inheritance: Use when you need to modify properties while inheriting
+
+---
+
+Previous: [Type Showcase](../basic/type-showcase.md) | Next: [SUM Automation](../automations/sum-automation.md)

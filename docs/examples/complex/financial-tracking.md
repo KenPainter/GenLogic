@@ -1,6 +1,27 @@
+Previous: [E-commerce System](../complex/e-commerce-system.md) | Next: [NULL Handling](../edge-cases/null-handling.md)
+
 # Financial Tracking System Example
 
-Demonstrates accounts, transactions, budgets, and financial reporting. Shows currency handling, categorization, and complex financial automations.
+## Overview
+
+A comprehensive personal finance system with multi-currency accounts, categorized transactions, budget tracking, and recurring transaction management. Demonstrates extensive use of MAX, MIN, LATEST, SUM, COUNT, and AVG automations to provide real-time financial insights without complex queries.
+
+**Prerequisites:** Before studying this complex example, familiarize yourself with:
+- [../basic/minimal-schema.md](../basic/minimal-schema.md) - Basic schema structure
+- [../automations/sum-automation.md](../automations/sum-automation.md) - SUM automation for balances
+- [../automations/max-min-automation.md](../automations/max-min-automation.md) - MAX/MIN automation
+- [../automations/latest-automation.md](../automations/latest-automation.md) - LATEST automation
+
+## Key Concepts
+
+- Multi-Currency Support: Different accounts in different currencies
+- Real-Time Balances: Automated account balance calculation from transactions
+- Category Analytics: Spending patterns with automatic totals and averages
+- Budget Management: Track spending against budgets with automated percent calculations
+- Transaction Analysis: Largest, smallest, and latest transactions tracked automatically
+- Recurring Transactions: Manage subscriptions and regular payments
+
+## YAML Configuration
 
 ```yaml
 # Financial Tracking System Example
@@ -353,3 +374,156 @@ tables:
 #
 # This system provides real-time financial insights without complex reporting queries
 ```
+
+## Generated SQL (Core Tables)
+
+```sql
+CREATE TABLE accounts (
+    account_id SERIAL PRIMARY KEY,
+    account_name VARCHAR(100),
+    type_fk INTEGER REFERENCES account_types(type_id),
+    currency_fk VARCHAR(3) REFERENCES currencies(currency_code),
+    current_balance NUMERIC(15,2) DEFAULT 0,
+    transaction_count INTEGER DEFAULT 0,
+    largest_transaction NUMERIC(15,2),
+    smallest_transaction NUMERIC(15,2),
+    last_transaction_date DATE,
+    opened_at DATE
+);
+
+CREATE TABLE transactions (
+    transaction_id SERIAL PRIMARY KEY,
+    account_fk INTEGER REFERENCES accounts(account_id),
+    category_fk INTEGER REFERENCES transaction_categories(category_id),
+    transfer_account_fk INTEGER REFERENCES accounts(account_id),
+    amount NUMERIC(15,2),
+    description VARCHAR(200),
+    transaction_date DATE,
+    reference_number VARCHAR(50),
+    is_cleared BOOLEAN,
+    created_at TIMESTAMP
+);
+
+CREATE TABLE transaction_categories (
+    category_id SERIAL PRIMARY KEY,
+    category_name VARCHAR(100),
+    parent_fk INTEGER REFERENCES transaction_categories(category_id),
+    is_income BOOLEAN,
+    total_amount NUMERIC(15,2) DEFAULT 0,
+    transaction_count INTEGER DEFAULT 0,
+    avg_amount NUMERIC(15,2) DEFAULT 0
+);
+
+-- Automation triggers maintain all financial metrics
+```
+
+## Usage Examples
+
+```sql
+-- Setup currencies and account types
+INSERT INTO currencies (currency_code, currency_name, symbol)
+VALUES ('USD', 'US Dollar', '$'), ('EUR', 'Euro', '€');
+
+INSERT INTO account_types (type_name, is_liability)
+VALUES ('checking', false), ('savings', false), ('credit_card', true);
+
+-- Create accounts
+INSERT INTO accounts (account_name, type_fk, currency_fk, opened_at)
+VALUES ('Main Checking', 1, 'USD', '2024-01-01'),
+       ('Emergency Fund', 2, 'USD', '2024-01-01'),
+       ('Travel Card', 3, 'EUR', '2024-01-01');
+
+-- Create transaction categories
+INSERT INTO transaction_categories (category_name, is_income)
+VALUES ('Salary', true),
+       ('Food', false),
+       ('Transportation', false),
+       ('Entertainment', false);
+
+-- Record salary deposit
+INSERT INTO transactions (account_fk, category_fk, amount, description, transaction_date, is_cleared)
+VALUES (1, 1, 5000.00, 'Monthly salary', '2024-01-01', true);
+-- Automatically: accounts.current_balance = 5000.00
+-- Automatically: accounts.transaction_count = 1
+-- Automatically: accounts.largest_transaction = 5000.00
+-- Automatically: accounts.smallest_transaction = 5000.00
+-- Automatically: accounts.last_transaction_date = '2024-01-01'
+-- Automatically: categories.total_amount = 5000.00 for Salary
+-- Automatically: categories.transaction_count = 1 for Salary
+
+-- Record expenses
+INSERT INTO transactions (account_fk, category_fk, amount, description, transaction_date, is_cleared)
+VALUES (1, 2, -150.50, 'Groceries', '2024-01-05', true),
+       (1, 3, -45.00, 'Gas', '2024-01-06', true),
+       (1, 4, -75.00, 'Movie tickets', '2024-01-10', true);
+-- Automatically: accounts.current_balance = 4729.50 (5000 - 150.50 - 45 - 75)
+-- Automatically: accounts.transaction_count = 4
+-- Automatically: accounts.smallest_transaction = -150.50
+-- Automatically: accounts.last_transaction_date = '2024-01-10'
+-- Automatically: Each category's totals update
+
+-- Transfer between accounts
+INSERT INTO transactions (account_fk, transfer_account_fk, amount, description, transaction_date, is_cleared)
+VALUES (1, 2, -1000.00, 'Transfer to savings', '2024-01-15', true),
+       (2, NULL, 1000.00, 'Transfer from checking', '2024-01-15', true);
+-- Automatically: Account 1 balance -= 1000
+-- Automatically: Account 2 balance += 1000
+
+-- Setup budgets
+INSERT INTO budgets (budget_name, category_fk, budget_amount, budget_period, start_date, end_date)
+VALUES ('Monthly Food Budget', 2, 600.00, 'monthly', '2024-01-01', '2024-01-31'),
+       ('Monthly Transport', 3, 200.00, 'monthly', '2024-01-01', '2024-01-31');
+-- Automatically: budgets.spent_amount updates with each transaction
+-- Automatically: budgets.percent_used calculated
+
+-- Setup recurring transactions
+INSERT INTO recurring_transactions (account_fk, category_fk, amount, description, frequency, next_due_date, is_active)
+VALUES (1, 2, -15.99, 'Netflix subscription', 'monthly', '2024-02-01', true),
+       (1, 3, -120.00, 'Car insurance', 'monthly', '2024-02-01', true);
+
+-- Financial Reports (instant, no aggregation needed)
+-- Account summary
+SELECT account_name, current_balance, transaction_count,
+       largest_transaction, smallest_transaction, last_transaction_date
+FROM accounts
+WHERE type_fk != 3  -- Exclude credit cards
+ORDER BY current_balance DESC;
+
+-- Category spending analysis
+SELECT category_name, total_amount, transaction_count, avg_amount
+FROM transaction_categories
+WHERE is_income = false
+ORDER BY total_amount ASC;  -- Most spent first (negative amounts)
+
+-- Budget status
+SELECT b.budget_name, c.category_name, b.budget_amount, b.spent_amount,
+       b.percent_used,
+       CASE
+         WHEN b.percent_used > 100 THEN 'OVER BUDGET'
+         WHEN b.percent_used > 80 THEN 'WARNING'
+         ELSE 'ON TRACK'
+       END as status
+FROM budgets b
+JOIN transaction_categories c ON b.category_fk = c.category_id
+ORDER BY b.percent_used DESC;
+
+-- Net worth calculation
+SELECT SUM(CASE WHEN at.is_liability THEN -a.current_balance
+                ELSE a.current_balance END) as net_worth
+FROM accounts a
+JOIN account_types at ON a.type_fk = at.type_id
+WHERE a.currency_fk = 'USD';
+
+-- Cash flow by month
+SELECT DATE_TRUNC('month', transaction_date) as month,
+       SUM(CASE WHEN amount > 0 THEN amount ELSE 0 END) as income,
+       SUM(CASE WHEN amount < 0 THEN amount ELSE 0 END) as expenses,
+       SUM(amount) as net_cash_flow
+FROM transactions
+GROUP BY month
+ORDER BY month DESC;
+```
+
+---
+
+Previous: [E-commerce System](../complex/e-commerce-system.md) | Next: [NULL Handling](../edge-cases/null-handling.md)

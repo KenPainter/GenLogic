@@ -1,3 +1,5 @@
+Previous: [Performance Considerations](../edge-cases/performance-considerations.md) | Next: [Minimal Schema](../basic/minimal-schema.md)
+
 # Schema Evolution Edge Cases
 
 Demonstrates how GenLogic handles schema changes and migrations.
@@ -291,3 +293,7 @@ tables:
 #    - Blue-green deployments for trigger changes
 #    - Rollback procedures for failed migrations
 ```
+
+---
+
+Previous: [Performance Considerations](../edge-cases/performance-considerations.md) | Next: [Minimal Schema](../basic/minimal-schema.md)

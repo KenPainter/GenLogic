@@ -1,10 +1,12 @@
+Previous: [Financial Tracking](../complex/financial-tracking.md) | Next: [Circular References](../edge-cases/circular-references.md)
+
 # NULL Value Handling Edge Cases
 
-Demonstrates how GenLogic automations handle NULL values correctly.
+Demonstrates how GenLogic automation handles NULL values correctly.
 
 ```yaml
 # NULL Value Handling Edge Cases
-# Demonstrates how GenLogic automations handle NULL values correctly
+# Demonstrates how GenLogic automation handles NULL values correctly
 
 columns:
   id:
@@ -220,9 +222,9 @@ tables:
 #    - Can return NULL if the most recent record has NULL in that column
 #
 # 3. Incremental updates handle NULL transitions:
-#    - NULL -> value: adds to SUM, increments COUNT
-#    - value -> NULL: subtracts from SUM, decrements COUNT
-#    - value -> value: adjusts SUM by difference
+#    - NULL -> value: adds to SUM automation, increments COUNT automation
+#    - value -> NULL: subtracts from SUM automation, decrements COUNT automation
+#    - value -> value: adjusts SUM automation by difference
 #    - NULL -> NULL: no change
 #
 # 4. DELETE operations:
@@ -233,3 +235,7 @@ tables:
 #    - Automation target columns should allow NULL if source can be empty
 #    - Required columns for automation targets need default values
 ```
+
+---
+
+Previous: [Financial Tracking](../complex/financial-tracking.md) | Next: [Circular References](../edge-cases/circular-references.md)

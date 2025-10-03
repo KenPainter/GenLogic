@@ -1,6 +1,26 @@
+Previous: [Blog Platform](../complex/blog-platform.md) | Next: [Financial Tracking](../complex/financial-tracking.md)
+
 # E-commerce System Example
 
-Comprehensive example showing products, customers, orders, and inventory management. Demonstrates multiple foreign keys, automations, and complex relationships.
+## Overview
+
+A complete e-commerce platform schema featuring products with categories and reviews, customers with order history, multi-warehouse inventory management, and automated order calculations. Demonstrates advanced GenLogic features including hierarchical categories, composite automations, and real-time metrics across multiple business domains.
+
+**Prerequisites:** Before studying this complex example, familiarize yourself with:
+- [../basic/minimal-schema.md](../basic/minimal-schema.md) - Basic schema structure
+- [../automations/sum-automation.md](../automations/sum-automation.md) - SUM automation for order totals
+- [../automations/count-automation.md](../automations/count-automation.md) - COUNT automation for metrics
+- [../foreign-keys/multiple-foreign-keys.md](../foreign-keys/multiple-foreign-keys.md) - Multiple relationships
+
+## Key Concepts
+
+- Product Management: Categories, reviews, ratings, and inventory tracking
+- Customer Analytics: Lifetime value, order history, and last purchase tracking
+- Order Processing: Automated totals from line items with real-time updates
+- Inventory Control: Multi-warehouse stock management with automated totals
+- Business Intelligence: Real-time averages, counts, sums for decision-making
+
+## YAML Configuration
 
 ```yaml
 # E-commerce System Example
@@ -319,3 +339,135 @@ tables:
 # - Complex multi-table relationships maintained automatically
 # - Real-time business metrics without manual calculation
 ```
+
+## Generated SQL (Key Tables)
+
+```sql
+CREATE TABLE products (
+    product_id SERIAL PRIMARY KEY,
+    product_name VARCHAR(100),
+    description TEXT,
+    base_price NUMERIC(12,2),
+    category_fk INTEGER REFERENCES categories(category_id),
+    avg_rating NUMERIC(5,2) DEFAULT 0,
+    total_stock INTEGER DEFAULT 0,
+    review_count INTEGER DEFAULT 0,
+    created_at TIMESTAMP
+);
+
+CREATE TABLE customers (
+    customer_id SERIAL PRIMARY KEY,
+    customer_name VARCHAR(100),
+    email VARCHAR(255),
+    shipping_address TEXT,
+    lifetime_value NUMERIC(12,2) DEFAULT 0,
+    order_count INTEGER DEFAULT 0,
+    last_order_date DATE
+);
+
+CREATE TABLE orders (
+    order_id SERIAL PRIMARY KEY,
+    customer_fk INTEGER REFERENCES customers(customer_id),
+    order_date DATE,
+    status VARCHAR(20),
+    total_amount NUMERIC(12,2) DEFAULT 0,
+    item_count INTEGER DEFAULT 0,
+    shipping_address TEXT
+);
+
+-- Automation triggers maintain all metrics automatically
+```
+
+## Usage Examples
+
+```sql
+-- Setup: Create categories and products
+INSERT INTO categories (category_name)
+VALUES ('Electronics'), ('Computers');
+UPDATE categories SET parent_fk = 1 WHERE category_name = 'Computers';
+
+INSERT INTO products (product_name, description, base_price, category_fk)
+VALUES ('Laptop Pro', 'High-performance laptop', 1299.99, 2),
+       ('Wireless Mouse', 'Ergonomic mouse', 29.99, 2);
+-- Automatically: categories.product_count updates
+
+-- Setup: Create warehouses and inventory
+INSERT INTO warehouses (warehouse_name, location)
+VALUES ('East Coast DC', 'New York'), ('West Coast DC', 'California');
+
+INSERT INTO inventory (product_fk, warehouse_fk, quantity, reorder_level)
+VALUES (1, 1, 50, 10), (1, 2, 75, 10),  -- Laptop in 2 warehouses
+       (2, 1, 200, 50);                   -- Mouse in 1 warehouse
+-- Automatically: products.total_stock = 125 for product 1, 200 for product 2
+
+-- Create customer
+INSERT INTO customers (customer_name, email, shipping_address)
+VALUES ('Alice Johnson', 'alice@example.com', '123 Main St');
+
+-- Customer places order
+INSERT INTO orders (customer_fk, order_date, status, shipping_address)
+VALUES (1, '2024-01-15', 'pending', '123 Main St');
+
+INSERT INTO order_items (order_fk, product_fk, quantity, unit_price, line_total)
+VALUES (1, 1, 1, 1299.99, 1299.99),
+       (1, 2, 2, 29.99, 59.98);
+-- Automatically: orders.total_amount = 1359.97
+-- Automatically: orders.item_count = 2
+-- Automatically: customers.lifetime_value = 1359.97
+-- Automatically: customers.order_count = 1
+-- Automatically: customers.last_order_date = '2024-01-15'
+
+-- Add product reviews
+INSERT INTO product_reviews (product_fk, customer_fk, rating, review_text, review_date)
+VALUES (1, 1, 5, 'Excellent laptop!', '2024-01-20');
+-- Automatically: products.avg_rating = 5.0
+-- Automatically: products.review_count = 1
+
+INSERT INTO product_reviews (product_fk, customer_fk, rating, review_text, review_date)
+VALUES (1, 1, 4, 'Great performance', '2024-01-21');
+-- Automatically: products.avg_rating = 4.5
+-- Automatically: products.review_count = 2
+
+-- Customer places another order
+INSERT INTO orders (customer_fk, order_date, status, shipping_address)
+VALUES (1, '2024-02-01', 'shipped', '123 Main St');
+
+INSERT INTO order_items (order_fk, product_fk, quantity, unit_price, line_total)
+VALUES (2, 2, 5, 29.99, 149.95);
+-- Automatically: orders.total_amount for order 2 = 149.95
+-- Automatically: customers.lifetime_value = 1509.92
+-- Automatically: customers.order_count = 2
+-- Automatically: customers.last_order_date = '2024-02-01'
+
+-- Business Intelligence Queries
+-- Top customers by lifetime value
+SELECT customer_name, lifetime_value, order_count, last_order_date
+FROM customers
+ORDER BY lifetime_value DESC
+LIMIT 10;
+
+-- Product performance
+SELECT product_name, base_price, avg_rating, review_count, total_stock
+FROM products
+WHERE review_count > 0
+ORDER BY avg_rating DESC, review_count DESC;
+
+-- Inventory status across warehouses
+SELECT p.product_name, w.warehouse_name, i.quantity, i.reorder_level,
+       CASE WHEN i.quantity < i.reorder_level THEN 'REORDER' ELSE 'OK' END as status
+FROM inventory i
+JOIN products p ON i.product_fk = p.product_id
+JOIN warehouses w ON i.warehouse_fk = w.warehouse_id
+ORDER BY p.product_name, w.warehouse_name;
+
+-- Order details with all metrics
+SELECT o.order_id, c.customer_name, o.order_date, o.status,
+       o.item_count, o.total_amount
+FROM orders o
+JOIN customers c ON o.customer_fk = c.customer_id
+ORDER BY o.order_date DESC;
+```
+
+---
+
+Previous: [Blog Platform](../complex/blog-platform.md) | Next: [Financial Tracking](../complex/financial-tracking.md)

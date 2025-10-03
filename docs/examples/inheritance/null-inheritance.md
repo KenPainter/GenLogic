@@ -1,3 +1,5 @@
+Previous: [Ref Inheritance](../inheritance/ref-inheritance.md) | Next: [Mixed Inheritance](../inheritance/mixed-inheritance.md)
+
 # Null Inheritance Pattern
 
 ## Overview
@@ -6,9 +8,9 @@ The null inheritance pattern is the simplest form of column inheritance in GenLo
 
 ## Key Concepts
 
-- **Exact Name Matching**: The column name in the table must match exactly with a reusable column name
-- **Complete Inheritance**: All properties (type, size, constraints) are inherited without modification
-- **Simplicity**: No additional syntax required - just set the value to `null`
+- Exact Name Matching: The column name in the table must match exactly with a reusable column name
+- Complete Inheritance: All properties (type, size, constraints) are inherited without modification
+- Simplicity: No additional syntax required - just set the value to `null`
 
 ## YAML Configuration
 
@@ -130,5 +132,9 @@ tables:
 
 ## Related Patterns
 
-- **String Inheritance**: Use when you need to rename columns while inheriting definitions
-- **$ref Inheritance**: Use when you need to inherit and modify/extend column properties
+- String Inheritance: Use when you need to rename columns while inheriting definitions
+- $ref Inheritance: Use when you need to inherit and modify/extend column properties
+
+---
+
+Previous: [Ref Inheritance](../inheritance/ref-inheritance.md) | Next: [Mixed Inheritance](../inheritance/mixed-inheritance.md)

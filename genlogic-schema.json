@@ -67,6 +67,15 @@
         "calculated": {
           "type": "string",
           "description": "SQL expression for calculated column (e.g., 'column1 + column2'). Mutually exclusive with automation."
+        },
+        "ui-notes": {
+          "type": "array",
+          "description": "UI guidance notes for this column",
+          "items": {
+            "type": "string",
+            "enum": ["read-only", "hidden"],
+            "description": "UI behavior hints: read-only (not editable), hidden (don't show in UI)"
+          }
         }
       },
       "required": ["type"],
@@ -162,6 +171,14 @@
             "calculated": {
               "type": "string",
               "description": "Override or add calculated expression"
+            },
+            "ui-notes": {
+              "type": "array",
+              "description": "Override or add UI guidance notes",
+              "items": {
+                "type": "string",
+                "enum": ["read-only", "hidden"]
+              }
             }
           },
           "required": ["$ref"],
@@ -195,6 +212,16 @@
           "patternProperties": {
             "^[a-zA-Z_][a-zA-Z0-9_]*$": {
               "$ref": "#/definitions/syncDefinition"
+            }
+          },
+          "additionalProperties": false
+        },
+        "spread": {
+          "type": "object",
+          "description": "GENLOGIC: Generate multiple rows in target table based on date range and interval",
+          "patternProperties": {
+            "^[a-zA-Z_][a-zA-Z0-9_]*$": {
+              "$ref": "#/definitions/spreadDefinition"
             }
           },
           "additionalProperties": false
@@ -342,6 +369,70 @@
         }
       },
       "required": ["match_columns"]
+    },
+    "spreadDefinition": {
+      "type": "object",
+      "description": "GENLOGIC: Generate multiple rows in target table based on date range and interval",
+      "properties": {
+        "operations": {
+          "type": "array",
+          "description": "Which operations trigger spread generation",
+          "items": {
+            "type": "string",
+            "enum": ["insert", "update", "delete"]
+          },
+          "default": ["insert", "update", "delete"]
+        },
+        "generate": {
+          "type": "object",
+          "description": "Date range and interval configuration for generating rows",
+          "properties": {
+            "start_date": {
+              "type": "string",
+              "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
+              "description": "Column name containing the start date"
+            },
+            "end_date": {
+              "type": "string",
+              "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
+              "description": "Column name containing the end date"
+            },
+            "interval": {
+              "type": "string",
+              "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
+              "description": "Column name containing the interval (PostgreSQL interval value)"
+            }
+          },
+          "required": ["start_date", "end_date", "interval"]
+        },
+        "column_map": {
+          "type": "object",
+          "description": "Data columns to copy to generated rows",
+          "patternProperties": {
+            "^[a-zA-Z_][a-zA-Z0-9_]*$": {
+              "type": "string",
+              "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
+              "description": "Source column name mapped to target column name"
+            }
+          }
+        },
+        "literals": {
+          "type": "object",
+          "description": "Constant values to set in all generated rows",
+          "patternProperties": {
+            "^[a-zA-Z_][a-zA-Z0-9_]*$": {
+              "type": "string",
+              "description": "Target column name and literal value to set"
+            }
+          }
+        },
+        "tracking_column": {
+          "type": "string",
+          "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
+          "description": "FK column in target table that points back to source (for tracking generated rows)"
+        }
+      },
+      "required": ["generate", "tracking_column"]
     }
   }
 }

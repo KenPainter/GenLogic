@@ -118,6 +118,8 @@ export class SchemaProcessor {
       if (refColumn.unique !== undefined) merged.unique = refColumn.unique;
       if (refColumn.sequence !== undefined) merged.sequence = refColumn.sequence;
       if (refColumn.automation !== undefined) merged.automation = refColumn.automation;
+      if (refColumn.calculated !== undefined) merged.calculated = refColumn.calculated;
+      if (refColumn['ui-notes'] !== undefined) merged['ui-notes'] = refColumn['ui-notes'];
 
       return merged;
     }

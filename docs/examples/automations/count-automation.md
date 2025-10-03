@@ -1,3 +1,5 @@
+Previous: [SUM Automation](../automations/sum-automation.md) | Next: [MAX/MIN Automation](../automations/max-min-automation.md)
+
 # COUNT Automation: Automatic Record Counting
 
 ## Overview
@@ -259,16 +261,16 @@ DELETE FROM orders WHERE order_id = 3;
 2. **Conditional Count**: Counts only records where the specified column IS NOT NULL
 
 ### Performance Characteristics
-- **O(1) Performance**: Incremental counting without aggregate queries
-- **Real-time Updates**: Counts are immediately accurate
-- **Efficient Storage**: Avoids expensive COUNT(*) queries
-- **Minimal Overhead**: Simple integer arithmetic operations
+- O(1) Performance: Incremental counting without aggregate queries
+- Real-time Updates: Counts are immediately accurate
+- Efficient Storage: Avoids expensive COUNT(*) queries
+- Minimal Overhead: Simple integer arithmetic operations
 
 ### Data Consistency
-- **NULL Handling**: Intelligently manages NULL/NOT NULL transitions
-- **Boundary Protection**: Uses GREATEST() to prevent negative counts
-- **Foreign Key Moves**: Properly adjusts counts when records move between parents
-- **Transaction Safety**: All count updates happen atomically
+- NULL Handling: Intelligently manages NULL/NOT NULL transitions
+- Boundary Protection: Uses GREATEST() to prevent negative counts
+- Foreign Key Moves: Properly adjusts counts when records move between parents
+- Transaction Safety: All count updates happen atomically
 
 ### Edge Cases
 1. **NULL Transitions**: Properly handles column value changes between NULL and NOT NULL
@@ -278,7 +280,7 @@ DELETE FROM orders WHERE order_id = 3;
 
 ## When to Use COUNT Automation
 
-### Perfect For:
+### Suitable For:
 - Order counts per customer
 - Comment counts per post
 - File counts per folder
@@ -287,9 +289,9 @@ DELETE FROM orders WHERE order_id = 3;
 - Subscription counts per plan
 
 ### Advanced Patterns:
-- **Status-based Counting**: Count records by status (active, pending, complete)
-- **Date-based Counting**: Count recent records within time windows
-- **Multi-level Counting**: Count grandchildren through intermediate tables
+- Status-based Counting: Count records by status (active, pending, complete)
+- Date-based Counting: Count recent records within time windows
+- Multi-level Counting: Count grandchildren through intermediate tables
 
 ### Consider Alternatives When:
 - You need complex filtering logic beyond NULL/NOT NULL
@@ -300,10 +302,10 @@ DELETE FROM orders WHERE order_id = 3;
 ## Performance Considerations
 
 ### Advantages:
-- **Dashboard Performance**: Instant count display without queries
-- **Pagination Efficiency**: Total counts available without full table scans
-- **Quota Enforcement**: Real-time limits based on current counts
-- **Reporting Speed**: Aggregate reports use pre-calculated counts
+- Dashboard Performance: Instant count display without queries
+- Pagination Efficiency: Total counts available without full table scans
+- Quota Enforcement: Real-time limits based on current counts
+- Reporting Speed: Aggregate reports use pre-calculated counts
 
 ### Monitoring:
 - Watch for trigger execution time during bulk operations
@@ -327,3 +329,7 @@ The COUNT automation maintains data consistency through:
 4. **Cascade Safety**: Works correctly with foreign key constraints and cascades
 
 This automation eliminates expensive COUNT(*) queries and provides real-time metrics for any parent-child relationship in your database.
+
+---
+
+Previous: [SUM Automation](../automations/sum-automation.md) | Next: [MAX/MIN Automation](../automations/max-min-automation.md)

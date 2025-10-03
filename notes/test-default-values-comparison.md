@@ -41,7 +41,7 @@ $ node test_default_generation.js
 "regular_value" NUMERIC(10, 2)
 ```
 
-✅ **PASSED** - DEFAULT values correctly applied only to aggregations
+PASSED - DEFAULT values correctly applied only to aggregations
 
 ### 2. Trigger Generation - Before Changes
 
@@ -61,7 +61,7 @@ UPDATE accounts SET
 WHERE account_id = NEW.account_id;
 ```
 
-✅ **PASSED** - Triggers simplified, still handle NULL child values
+PASSED - Triggers simplified, still handle NULL child values
 
 ### 4. EXAMPLE.yaml Test
 
@@ -104,7 +104,7 @@ UPDATE accounts SET
 WHERE account_id = OLD.account_id;
 ```
 
-✅ **PASSED** - All operations simplified while maintaining NULL safety on child columns
+PASSED - All operations simplified while maintaining NULL safety on child columns
 
 ## Code Changes
 
@@ -175,11 +175,11 @@ For **existing databases**, this is a schema migration:
 
 ## Next Steps
 
-1. ✅ Column definitions include DEFAULT values
-2. ✅ Trigger generation simplified
-3. ✅ Manual testing completed
-4. ⏳ Database integration tests (requires PostgreSQL setup)
-5. ⏳ Migration guide for existing databases
+1. [x] Column definitions include DEFAULT values
+2. [x] Trigger generation simplified
+3. [x] Manual testing completed
+4. [ ] Database integration tests (requires PostgreSQL setup)
+5. [ ] Migration guide for existing databases
 
 ## Conclusion
 

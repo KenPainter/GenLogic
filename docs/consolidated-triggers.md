@@ -4,12 +4,12 @@
 
 GenLogic uses a **consolidated trigger architecture** where each table has a single AFTER trigger per operation (INSERT, UPDATE, DELETE) instead of multiple specialized triggers. This design ensures:
 
-1. **Predictable execution order** - All automation and calculation steps follow a defined sequence
+1. **Predictable execution order** - All instances of automation and calculation steps follow a defined sequence
 2. **Infinite loop prevention** - Change detection ensures triggers only fire when values actually change
 3. **Maintainability** - One trigger per table/operation is easier to understand and debug
 4. **Performance** - Reduced trigger overhead compared to multiple separate triggers
 
-This architecture was battle-tested 20 years ago in production systems and is now implemented in GenLogic.
+This architecture was used in production systems 20 years ago and is now implemented in GenLogic.
 
 ## Core Design Principles
 
@@ -25,9 +25,9 @@ All automation logic and calculated columns for a given operation are consolidat
 ### 2. AFTER Triggers Only
 
 All triggers fire **AFTER** the operation completes. This is critical for:
-- **Data availability**: All columns (including PKs and sequences) are available in NEW/OLD
-- **Change detection**: Can compare OLD vs NEW values to detect actual changes
-- **FK integrity**: Foreign keys are already established when cascades fire
+- Data availability: All columns (including PKs and sequences) are available in NEW/OLD
+- Change detection: Can compare OLD vs NEW values to detect actual changes
+- FK integrity: Foreign keys are already established when cascades fire
 
 BEFORE triggers are not used because they cannot access generated PKs needed for cascading updates.
 
@@ -278,7 +278,7 @@ interface TableAutomations {
 }
 ```
 
-This structure is built by analyzing the schema and grouping automations by table.
+This structure is built by analyzing the schema and grouping instances of automation by table.
 
 ### Change Detection Utilities
 
@@ -300,10 +300,10 @@ These ensure NULL-safe comparisons using PostgreSQL's `IS DISTINCT FROM` operato
 
 ### Trigger Generation Flow
 
-For each table with automations or calculated columns:
+For each table with automation or calculated columns:
 
 1. **Analyze schema** to build `TableAutomations` data structure
-2. **Group automations** by direction and type
+2. **Group instances of automation** by direction and type
 3. **Order calculated columns** using topological sort on dependency graph
 4. **Generate INSERT trigger** if needed (steps 1, 3, 4)
 5. **Generate UPDATE trigger** if needed (all steps)
@@ -354,7 +354,7 @@ This is checked because circular calculations cannot be evaluated.
 
 ### What IS NOT Checked: Automation Cycles
 
-Automation cycles between tables are **NOT** detected or blocked:
+Cycles in automation between tables are **NOT** detected or blocked:
 
 ```yaml
 # ALLOWED - automation cycle is safe with change detection
@@ -425,7 +425,7 @@ The main implementation file. Key methods:
 - `generateConsolidatedUpdateTrigger()` - Generates UPDATE triggers (most complex)
 - `generateConsolidatedDeleteTrigger()` - Generates DELETE triggers
 - `generatePushToChildren()` - Step 1 logic with change detection
-- `generatePullFromParents()` - Step 2 logic with FK change detection
+- `generatePullFromParents()` - Step 2 logic with foreign key change detection
 - `generateCalculatedColumns()` - Step 3 logic in dependency order
 - `generatePushToParents()` - Step 4 logic with change detection
 
@@ -489,7 +489,7 @@ calculated: "a + b"  # NULL + anything = NULL
 ```
 
 ### 4. Test Bidirectional Flows
-When you have parent ↔ child automations (SUM + FETCH_UPDATES), test updates in both directions to verify loop prevention works.
+When you have parent ↔ child automation (SUM + FETCH_UPDATES), test updates in both directions to verify loop prevention works.
 
 ### 5. Understand the Four Steps
 When debugging trigger issues, trace through the four steps sequentially. Most issues are ordering problems (e.g., calculating before pulling from parent).
@@ -498,11 +498,11 @@ When debugging trigger issues, trace through the four steps sequentially. Most i
 
 Possible improvements to the architecture:
 
-- **Conditional execution**: Only generate trigger sections that are needed (skip empty steps)
-- **Parallel execution**: Steps 1 and 2 could potentially run in parallel
-- **Trigger versioning**: Track trigger schema versions for migration safety
-- **Performance profiling**: Add timing instrumentation to identify slow steps
-- **Dry-run simulation**: Execute trigger logic in memory without database for testing
+- Conditional execution: Only generate trigger sections that are needed (skip empty steps)
+- Parallel execution: Steps 1 and 2 could potentially run in parallel
+- Trigger versioning: Track trigger schema versions for migration safety
+- Performance profiling: Add timing instrumentation to identify slow steps
+- Dry-run simulation: Execute trigger logic in memory without database for testing
 
 ## Historical Context
 
@@ -513,4 +513,4 @@ This architecture was originally developed 20 years ago for a production account
 3. **One trigger per operation is clearer** - Multiple triggers create implicit ordering dependencies
 4. **Explicit step ordering is maintainable** - The four-step structure was easy to debug and extend
 
-GenLogic's implementation modernizes this battle-tested design with TypeScript, better data structures, and comprehensive validation.
+GenLogic's implementation modernizes this design with TypeScript, better data structures, and comprehensive validation.

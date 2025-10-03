@@ -1,3 +1,5 @@
+Previous: [Null Inheritance](../inheritance/null-inheritance.md) | Next: [Simple Foreign Key](../foreign-keys/simple-foreign-key.md)
+
 # Mixed Inheritance Patterns
 
 ## Overview
@@ -6,10 +8,10 @@ Mixed inheritance demonstrates the true power of GenLogic's inheritance system b
 
 ## Key Concepts
 
-- **Pattern Combination**: Using multiple inheritance types within the same schema
-- **Layered Reusability**: Building enhanced reusable columns from base types
-- **Flexible Architecture**: Choosing the right inheritance pattern for each use case
-- **Progressive Enhancement**: Creating hierarchies of column definitions
+- Pattern Combination: Using multiple inheritance types within the same schema
+- Layered Reusability: Building enhanced reusable columns from base types
+- Flexible Architecture: Choosing the right inheritance pattern for each use case
+- Progressive Enhancement: Creating hierarchies of column definitions
 
 ## YAML Configuration
 
@@ -434,7 +436,11 @@ columns:
 
 ## Related Patterns
 
-- **Null Inheritance**: Foundation pattern for exact reuse
-- **String Inheritance**: Flexible renaming pattern
-- **$ref Inheritance**: Powerful customization pattern
-- **Progressive Enhancement**: Building complexity incrementally
+- Null Inheritance: Foundation pattern for exact reuse
+- String Inheritance: Flexible renaming pattern
+- $ref Inheritance: Flexible customization pattern
+- Progressive Enhancement: Building complexity incrementally
+
+---
+
+Previous: [Null Inheritance](../inheritance/null-inheritance.md) | Next: [Simple Foreign Key](../foreign-keys/simple-foreign-key.md)

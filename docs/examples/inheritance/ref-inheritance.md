@@ -1,15 +1,17 @@
+Previous: [String Inheritance](../inheritance/string-inheritance.md) | Next: [Null Inheritance](../inheritance/null-inheritance.md)
+
 # $ref Inheritance Pattern
 
 ## Overview
 
-The `$ref` inheritance pattern is the most powerful and flexible inheritance mechanism in GenLogic. It allows you to inherit a reusable column definition while **adding new properties** or **overriding existing ones**. This pattern gives you complete control over how inherited properties are modified and extended.
+The `$ref` inheritance pattern is the most flexible inheritance mechanism in GenLogic. It allows you to inherit a reusable column definition while **adding new properties** or **overriding existing ones**. This pattern gives you complete control over how inherited properties are modified and extended.
 
 ## Key Concepts
 
-- **Property Extension**: Add new properties to inherited definitions
-- **Property Override**: Modify existing properties from the base definition
-- **Complete Flexibility**: Can both extend and override in the same column
-- **Composition**: Build complex column definitions from simple base types
+- Property Extension: Add new properties to inherited definitions
+- Property Override: Modify existing properties from the base definition
+- Complete Flexibility: Can both extend and override in the same column
+- Composition: Build complex column definitions from simple base types
 
 ## YAML Configuration
 
@@ -319,6 +321,10 @@ tables:
 
 ## Related Patterns
 
-- **Null Inheritance**: Use for simple, exact replication
-- **String Inheritance**: Use for renaming without modification
-- **Mixed Inheritance**: Combine all patterns for maximum flexibility
+- Null Inheritance: Use for simple, exact replication
+- String Inheritance: Use for renaming without modification
+- Mixed Inheritance: Combine all patterns for maximum flexibility
+
+---
+
+Previous: [String Inheritance](../inheritance/string-inheritance.md) | Next: [Null Inheritance](../inheritance/null-inheritance.md)

@@ -4,8 +4,10 @@
 
 The resolved YAML schema now provides clear guidance to UI developers about NULL handling with two distinct fields:
 
-- **`expect_null_on_read`**: Will the UI ever see NULL when reading this column?
-- **`can_write_null`**: Is the UI allowed to write NULL to this column?
+For practical examples demonstrating NULL handling in various automation scenarios, see [examples/edge-cases/null-handling.md](examples/edge-cases/null-handling.md).
+
+- `expect_null_on_read`: Will the UI ever see NULL when reading this column?
+- `can_write_null`: Is the UI allowed to write NULL to this column?
 
 This replaces the ambiguous `nullable` field with precise information for both read and write operations.
 
@@ -16,7 +18,7 @@ This replaces the ambiguous `nullable` field with precise information for both r
 **`false`** - The UI will **never** see NULL when reading this column:
 - Primary keys (auto-generated)
 - Sequence columns (auto-generated)
-- **Aggregation automations (SUM, COUNT, MAX, MIN)** - Have `DEFAULT 0`
+- Aggregation automations (SUM, COUNT, MAX, MIN) - Have `DEFAULT 0`
 
 **`true`** - The UI **may** see NULL when reading this column:
 - Regular columns (nullable by default)

@@ -1,8 +1,10 @@
+Previous: [String Inheritance](../inheritance/string-inheritance.md) | Next: [Simple Foreign Key](../foreign-keys/simple-foreign-key.md)
+
 # SUM Automation: Automatic Balance Calculation
 
 ## Overview
 
-The SUM automation automatically calculates and maintains the sum of child values in parent records. This is perfect for maintaining account balances, inventory totals, order subtotals, and any scenario where you need to aggregate numeric values from related records.
+The SUM automation automatically calculates and maintains the sum of child values in parent records. This is suitable for maintaining account balances, inventory totals, order subtotals, and any scenario where you need to aggregate numeric values from related records.
 
 ## YAML Configuration
 
@@ -37,7 +39,7 @@ tables:
         automation:
           type: SUM
           table: transactions      # Source table (child)
-          foreign_key: account_fk  # FK in source table that points back to this table
+          foreign_key: account_fk  # Foreign key in source table that points back to this table
           column: amount           # Column in source table to sum
 
   transactions:
@@ -187,16 +189,16 @@ DELETE FROM transactions WHERE transaction_id = 3;
 ## Automation Behavior
 
 ### Performance Characteristics
-- **O(1) Performance**: Uses incremental calculations with OLD/NEW values
-- **Single UPDATE**: Each transaction change triggers exactly one account update
-- **Efficient Triggers**: No expensive aggregate queries during normal operations
-- **ACID Compliance**: All updates happen within the same transaction
+- O(1) Performance: Uses incremental calculations with OLD/NEW values
+- Single UPDATE: Each transaction change triggers exactly one account update
+- Efficient Triggers: No expensive aggregate queries during normal operations
+- ACID Compliance: All updates happen within the same transaction
 
 ### Data Consistency
-- **Automatic Maintenance**: Balance always reflects the sum of all related transactions
-- **NULL Handling**: Treats NULL amounts as 0 in calculations
-- **Foreign Key Changes**: Properly handles moving transactions between accounts
-- **Rollback Safety**: Failed transactions don't affect balances
+- Automatic Maintenance: Balance always reflects the sum of all related transactions
+- NULL Handling: Treats NULL amounts as 0 in calculations
+- Foreign Key Changes: Properly handles moving transactions between accounts
+- Rollback Safety: Failed transactions don't affect balances
 
 ### Edge Cases
 1. **NULL Values**: NULL amounts are treated as 0 in summation
@@ -206,7 +208,7 @@ DELETE FROM transactions WHERE transaction_id = 3;
 
 ## When to Use SUM Automation
 
-### Perfect For:
+### Suitable For:
 - Account balances (banking, e-commerce)
 - Inventory quantity tracking
 - Order totals and subtotals
@@ -223,10 +225,10 @@ DELETE FROM transactions WHERE transaction_id = 3;
 ## Performance Considerations
 
 ### Advantages:
-- **Real-time Updates**: Balances are always current
-- **No Batch Processing**: Eliminates need for nightly calculation jobs
-- **Scalable**: Performance doesn't degrade with transaction volume
-- **Memory Efficient**: No need to load all transactions for balance calculation
+- Real-time Updates: Balances are always current
+- No Batch Processing: Eliminates need for nightly calculation jobs
+- Scalable: Performance doesn't degrade with transaction volume
+- Memory Efficient: No need to load all transactions for balance calculation
 
 ### Monitoring:
 - Watch for trigger execution time in high-volume scenarios
@@ -244,3 +246,7 @@ The SUM automation maintains data consistency through:
 4. **Audit Trail**: Transaction table maintains complete history of all changes
 
 This automation eliminates the need for manual balance calculations and prevents the data inconsistencies that often occur with manually maintained aggregate values.
+
+---
+
+Previous: [String Inheritance](../inheritance/string-inheritance.md) | Next: [Simple Foreign Key](../foreign-keys/simple-foreign-key.md)

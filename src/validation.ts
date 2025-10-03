@@ -165,7 +165,7 @@ export class SchemaValidator {
   }
 
   /**
-   * PHASE 2.5: Validate sync definitions against processed schema
+   * PHASE 2.5: Validate sync and spread definitions against processed schema
    * This must run AFTER schema processing, when FK columns are expanded
    */
   validateSyncDefinitions(schema: GenLogicSchema, processedSchema: any): ValidationResult {
@@ -230,6 +230,54 @@ export class SchemaValidator {
           for (const targetCol of Object.keys(syncDef.literals)) {
             if (!targetColumns.has(targetCol)) {
               errors.push(`Table '${sourceTableName}', sync to '${targetTableName}': literals target column '${targetCol}' does not exist in target table`);
+            }
+          }
+        }
+      }
+    }
+
+    // Validate spread definitions
+    for (const [sourceTableName, table] of Object.entries(schema.tables)) {
+      if (!table.spread) continue;
+
+      const sourceColumns = getAllColumns(sourceTableName);
+
+      for (const [targetTableName, spreadDef] of Object.entries(table.spread)) {
+        const targetColumns = getAllColumns(targetTableName);
+
+        // Validate generate columns exist in source
+        if (!sourceColumns.has(spreadDef.generate.start_date)) {
+          errors.push(`Table '${sourceTableName}', spread to '${targetTableName}': generate.start_date '${spreadDef.generate.start_date}' does not exist in source table`);
+        }
+        if (!sourceColumns.has(spreadDef.generate.end_date)) {
+          errors.push(`Table '${sourceTableName}', spread to '${targetTableName}': generate.end_date '${spreadDef.generate.end_date}' does not exist in source table`);
+        }
+        if (!sourceColumns.has(spreadDef.generate.interval)) {
+          errors.push(`Table '${sourceTableName}', spread to '${targetTableName}': generate.interval '${spreadDef.generate.interval}' does not exist in source table`);
+        }
+
+        // Validate tracking_column exists in target
+        if (!targetColumns.has(spreadDef.tracking_column)) {
+          errors.push(`Table '${sourceTableName}', spread to '${targetTableName}': tracking_column '${spreadDef.tracking_column}' does not exist in target table`);
+        }
+
+        // Validate column_map
+        if (spreadDef.column_map) {
+          for (const [sourceCol, targetCol] of Object.entries(spreadDef.column_map)) {
+            if (!sourceColumns.has(sourceCol)) {
+              errors.push(`Table '${sourceTableName}', spread to '${targetTableName}': column_map source column '${sourceCol}' does not exist in source table`);
+            }
+            if (!targetColumns.has(targetCol)) {
+              errors.push(`Table '${sourceTableName}', spread to '${targetTableName}': column_map target column '${targetCol}' does not exist in target table`);
+            }
+          }
+        }
+
+        // Validate literals
+        if (spreadDef.literals) {
+          for (const targetCol of Object.keys(spreadDef.literals)) {
+            if (!targetColumns.has(targetCol)) {
+              errors.push(`Table '${sourceTableName}', spread to '${targetTableName}': literals target column '${targetCol}' does not exist in target table`);
             }
           }
         }

@@ -4,21 +4,32 @@
 
 GenLogic is a TypeScript CLI tool that creates powerful, self-maintaining PostgreSQL databases where foreign keys serve as both relationships and automation pathways. Write normalized data, get computed aggregations automatically.
 
-## 🎯 Philosophy
+## Philosophy
 
-Traditional databases treat foreign keys as constraints. GenLogic treats them as **data pipelines** that:
+Traditional databases treat foreign keys as constraints. GenLogic treats them as data pipelines that:
 - Create column structure (automatic FK columns)
 - Define relationships (standard constraints)
 - Power automations (SUM, COUNT, MAX, LATEST flow along FK paths)
 
 The result: business logic runs in the database with maximum efficiency and minimal middleware complexity.
 
-## AI Philosophy
+## Using AI
+
+### Hacking GenLogic
 
 AI-written code is accepted.  We judge the code, not the source.
 
-GenLogic generates a schema description intended for use by AI agents
+Point the AI to [CONTRIBUTING.md](./CONTRIBUTING.md) at the start of a
+session.
+
+### Using GenLogic
+
+TO-DO: Context files for AI assistants to write schemas.  Ideally we
+just point them to the user documentation.
+
+DONE: GenLogic generates a schema description intended for use by AI agents
 when coding up middleware and UI's that access a GenLogic database.
+
 
 ## Short History
 
@@ -29,7 +40,7 @@ by [Donald Organ](https://github.com/dorgan/).
 
 GenLogic is a complete rewrite in Typescript.
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Installation
 ```bash
@@ -53,7 +64,7 @@ genlogic --schema ./schema.yaml --test-mode
 ```
 ### Example Schema
 
-[docs/toc.md](./docs/toc.md)** - Complete examples and documentation index
+[docs/toc.md](./docs/toc.md) - Complete examples and documentation index
 
 ```yaml
 columns:
@@ -81,16 +92,16 @@ tables:
 
 This creates an `accounts` table where `balance` automatically maintains the SUM of all related `transactions.amount` values via efficient PostgreSQL triggers.
 
-## ⚡ Key Features
+## Key Features
 
-- **Safety-First**: Bulletproof cycle detection prevents infinite loops
-- **Incremental Updates**: O(1) trigger performance using OLD/NEW values
-- **Schema Evolution**: Add-only operations never break existing data
-- **Multiple Inheritance**: Flexible column reuse with null, string, and $ref patterns
-- **Consolidated Triggers**: Groups multiple automations for maximum efficiency
-- **Transaction Safety**: All operations wrapped in atomic transactions
+- Safety-First: Bulletproof cycle detection prevents infinite loops
+- Incremental Updates: O(1) trigger performance using OLD/NEW values
+- Schema Evolution: Add-only operations never break existing data
+- Multiple Inheritance: Flexible column reuse with null, string, and $ref patterns
+- Consolidated Triggers: Groups multiple automations for maximum efficiency
+- Transaction Safety: All operations wrapped in atomic transactions
 
-## 📋 Available Commands
+## Available Commands
 
 ```bash
 # Core commands
@@ -109,41 +120,40 @@ npm run lint          # Code linting
 npm run clean         # Remove build artifacts
 ```
 
-## 📚 Documentation
+## Documentation
 
-- **[docs/toc.md](./docs/toc.md)** - Complete examples and documentation index
-- **[DESIGN.md](./DESIGN.md)** - Core philosophy and concepts
-- **[IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md)** - Development phases and technical details
-- **[TEST_GUIDE.md](./TEST_GUIDE.md)** - Comprehensive testing instructions
-- **[EXAMPLE.yaml](./EXAMPLE.yaml)** - Complete schema example
+- [docs/toc.md](./docs/toc.md) - Complete examples and documentation index
+- [docs/design.md](./docs/design.md) - Core philosophy and concepts
+- [docs/test-guide.md](./docs/test-guide.md) - Comprehensive testing instructions
+- [EXAMPLE.yaml](./EXAMPLE.yaml) - Complete schema example
 
-## 🛠️ Requirements
+## Requirements
 
 - Node.js 18+
 - PostgreSQL database
 - TypeScript (for development)
 
-## 📊 Automation Types
+## Automation Types
 
-- **SUM/COUNT/MAX/MIN** - Aggregate child values to parent
-- **LATEST** - Copy most recent child value to parent
-- **FETCH** - Copy parent value to child on INSERT
-- **FETCH_UPDATES** - Copy parent value to child on UPDATE
+- SUM/COUNT/MAX/MIN - Aggregate child values to parent
+- LATEST - Copy most recent child value to parent
+- FETCH - Copy parent value to child on INSERT
+- FETCH_UPDATES - Copy parent value to child on UPDATE
 
-## 🔒 Safety Features
+## Safety Features
 
-- **Cycle Detection** - Prevents infinite loops in FK relationships and automations
-- **Add-Only Schema** - Never deletes existing columns or tables
-- **Validation-First** - Comprehensive checks before any database changes
-- **Transaction Rollback** - Automatic rollback on any error
+- Cycle Detection - Prevents infinite loops in FK relationships and automations
+- Add-Only Schema - Never deletes existing columns or tables
+- Validation-First - Comprehensive checks before any database changes
+- Transaction Rollback - Automatic rollback on any error
 
-## 📈 Performance
+## Performance
 
-- **Efficient Triggers** - Groups multiple automations into single triggers per FK path
-- **Incremental Updates** - O(1) calculations using OLD/NEW values instead of table scans
-- **Optimized SQL** - Generates minimal, targeted PostgreSQL statements
+- Efficient Triggers - Groups multiple automations into single triggers per FK path
+- Incremental Updates - O(1) calculations using OLD/NEW values instead of table scans
+- Optimized SQL - Generates minimal, targeted PostgreSQL statements
 
-## 🤝 Contributing
+## Contributing
 
 GenLogic is designed for reliability and performance. When contributing:
 1. Run validation tests: `npm run test:validation`
@@ -151,7 +161,7 @@ GenLogic is designed for reliability and performance. When contributing:
 3. Ensure all documentation is updated
 4. Follow existing code patterns and safety principles
 
-## 📜 License
+## License
 
 Affero GPL v3, see [LICENSE.md](./LICENSE.md) for more details.
 

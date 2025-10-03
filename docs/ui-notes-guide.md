@@ -3,9 +3,9 @@
 ## Overview
 
 The `ui-notes` feature allows schema designers to provide UI guidance directly in table definitions. These notes are:
-- **Not processed by the database** - Pure metadata for UI developers
-- **Expanded in resolved schemas** - Detailed guidance generated automatically
-- **Type-safe** - Validated by JSON schema
+- Not processed by the database - Pure metadata for UI developers
+- Expanded in resolved schemas - Detailed guidance generated automatically
+- Type-safe - Validated by JSON Schema
 
 ## Available UI Notes
 
@@ -410,7 +410,7 @@ Possible future ui-notes:
 
 ## Schema Validation
 
-The JSON schema ensures only valid ui-notes are accepted:
+The JSON Schema ensures only valid ui-notes are accepted:
 
 ```json
 {
@@ -428,4 +428,4 @@ Invalid notes will cause schema validation errors.
 
 ## Summary
 
-UI-notes provide a powerful way to communicate table-level UI constraints directly in your GenLogic schema. Combined with column-level fields like `expect_null_on_read`, `can_write_null`, and `writable`, the resolved schema provides complete guidance for UI implementation.
+UI-notes provide a way to communicate table-level UI constraints directly in your GenLogic schema. Combined with column-level fields like `expect_null_on_read`, `can_write_null`, and `writable`, the resolved schema provides complete guidance for UI implementation.

@@ -1,11 +1,13 @@
+Previous: [LATEST Automation](../automations/latest-automation.md) | Next: [Blog Platform](../complex/blog-platform.md)
+
 # Multiple Automations Example
 
-Demonstrates multiple automation types on the same foreign key relationship. GenLogic consolidates these into a single efficient trigger per FK path.
+Demonstrates multiple instances of automation on the same foreign key relationship. GenLogic consolidates these into a single efficient trigger per foreign key path.
 
 ```yaml
 # Multiple Automations Example
-# Demonstrates multiple automation types on the same foreign key relationship
-# GenLogic consolidates these into a single efficient trigger per FK path
+# Demonstrates multiple instances of automation on the same foreign key relationship
+# GenLogic consolidates these into a single efficient trigger per foreign key path
 
 columns:
   amount:
@@ -104,9 +106,9 @@ tables:
 # Instead of creating 6 separate triggers, GenLogic creates ONE consolidated trigger:
 # - transactions_update_accounts_aggregations_genlogic()
 #
-# This single trigger handles all automations efficiently:
+# This single trigger handles all instances of automation efficiently:
 # 1. On INSERT/UPDATE/DELETE of transactions
-# 2. Calculates all 6 automations in one pass
+# 2. Calculates all 6 instances of automation in one pass
 # 3. Updates all 6 columns in accounts table with one UPDATE statement
 # 4. Uses OLD/NEW values for incremental calculations where possible
 #
@@ -114,12 +116,16 @@ tables:
 #          VALUES (1, 150.00, '2024-01-15', 'deposit')
 #
 # Single trigger execution:
-# - total_balance += 150.00 (incremental SUM)
-# - transaction_count += 1 (incremental COUNT)
-# - largest_transaction = MAX(current_max, 150.00) (incremental MAX)
-# - smallest_transaction = MIN(current_min, 150.00) (incremental MIN)
-# - latest_transaction_date = '2024-01-15' (LATEST always uses new value)
-# - latest_transaction_type = 'deposit' (LATEST always uses new value)
+# - total_balance += 150.00 (incremental SUM automation)
+# - transaction_count += 1 (incremental COUNT automation)
+# - largest_transaction = MAX(current_max, 150.00) (incremental MAX automation)
+# - smallest_transaction = MIN(current_min, 150.00) (incremental MIN automation)
+# - latest_transaction_date = '2024-01-15' (LATEST automation always uses new value)
+# - latest_transaction_type = 'deposit' (LATEST automation always uses new value)
 #
-# Result: 6 automations calculated with the performance cost of 1 trigger
+# Result: 6 instances of automation calculated with the performance cost of 1 trigger
 ```
+
+---
+
+Previous: [LATEST Automation](../automations/latest-automation.md) | Next: [Blog Platform](../complex/blog-platform.md)

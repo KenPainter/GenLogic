@@ -1,12 +1,14 @@
+Previous: [Schema Evolution](../edge-cases/schema-evolution.md) | Next: [Type Showcase](../basic/type-showcase.md)
+
 # Minimal Schema Example
 
-This is the simplest possible GenLogic schema, demonstrating the basic concepts of reusable column definitions and table creation. Perfect for getting started with GenLogic.
+This is the simplest possible GenLogic schema, demonstrating the basic concepts of reusable column definitions and table creation. Suitable for getting started with GenLogic.
 
 ## Key Concepts
 
-- **Column Definitions**: Define reusable column templates at the top level
-- **String Inheritance**: Reference columns by name for simple inheritance
-- **Primary Keys**: Use `sequence: true` and `primary_key: true` for auto-incrementing IDs
+- Column Definitions: Define reusable column templates at the top level
+- String Inheritance: Reference columns by name for simple inheritance
+- Primary Keys: Use `sequence: true` and `primary_key: true` for auto-incrementing IDs
 
 ## Schema
 
@@ -57,3 +59,7 @@ SELECT * FROM users;
 ```
 
 This example shows how GenLogic eliminates repetitive column definitions and provides a clean, maintainable schema format.
+
+---
+
+Previous: [Schema Evolution](../edge-cases/schema-evolution.md) | Next: [Type Showcase](../basic/type-showcase.md)

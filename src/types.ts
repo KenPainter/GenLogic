@@ -26,11 +26,13 @@ export interface ColumnDefinition {
   sequence?: boolean;
   automation?: AutomationDefinition;
   calculated?: string;
+  'ui-notes'?: ('read-only' | 'hidden')[];
 }
 
 export interface TableDefinition {
   'ui-notes'?: UINote[];
   sync?: Record<string, SyncDefinition>;
+  spread?: Record<string, SpreadDefinition>;
   columns?: Record<string, TableColumnDefinition>;
   foreign_keys?: Record<string, ForeignKeyDefinition>;
   content?: Record<string, any>[];
@@ -45,6 +47,18 @@ export interface SyncDefinition {
   match_conditions?: string[];  // Extra WHERE conditions (not propagated)
   column_map?: Record<string, string>;  // Data columns to sync
   literals?: Record<string, string>;  // Constants (INSERT only)
+}
+
+export interface SpreadDefinition {
+  operations?: ('insert' | 'update' | 'delete')[];
+  generate: {
+    start_date: string;  // Column name for start date
+    end_date: string;    // Column name for end date
+    interval: string;    // Column name for interval (e.g., '1 month', '14 days')
+  };
+  column_map?: Record<string, string>;  // Data columns to spread
+  literals?: Record<string, string>;  // Constants for generated rows
+  tracking_column: string;  // FK column in target that points back to source
 }
 
 // Mixed inheritance syntax for table columns
