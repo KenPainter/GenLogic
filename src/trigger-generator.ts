@@ -401,13 +401,13 @@ export class TriggerGenerator {
 
     const sections: string[] = [];
 
-    // Step 1: PUSH to children (SNAPSHOT and FOLLOW both trigger on INSERT)
-    const fetchPushes = this.generatePushToChildren(automations, 'INSERT');
-    if (fetchPushes) sections.push(fetchPushes);
-
-    // Step 2: PULL from parents (get initial values)
+    // Step 1: PULL from parents (get initial values FIRST)
     const pulls = this.generatePullFromParents(automations, 'INSERT', processedSchema);
     if (pulls) sections.push(pulls);
+
+    // Step 2: PUSH to children (SNAPSHOT and FOLLOW both trigger on INSERT)
+    const fetchPushes = this.generatePushToChildren(automations, 'INSERT');
+    if (fetchPushes) sections.push(fetchPushes);
 
     // Step 3: Calculate calculated columns
     const calcs = this.generateCalculatedColumns(automations);
@@ -452,13 +452,13 @@ CREATE TRIGGER ${triggerName}
 
     const sections: string[] = [];
 
-    // Step 1: PUSH to children (FOLLOW only, with change detection)
-    const pushes = this.generatePushToChildren(automations, 'UPDATE');
-    if (pushes) sections.push(pushes);
-
-    // Step 2: PULL from parents (if FK changed)
+    // Step 1: PULL from parents (if FK changed, get new values FIRST)
     const pulls = this.generatePullFromParents(automations, 'UPDATE', processedSchema);
     if (pulls) sections.push(pulls);
+
+    // Step 2: PUSH to children (FOLLOW only, with change detection)
+    const pushes = this.generatePushToChildren(automations, 'UPDATE');
+    if (pushes) sections.push(pushes);
 
     // Step 3: Calculate calculated columns
     const calcs = this.generateCalculatedColumns(automations);
@@ -540,7 +540,7 @@ CREATE TRIGGER ${triggerName}
     if (automations.pushToChildren.length === 0) return null;
 
     const sections: string[] = [];
-    sections.push('  -- Step 1: PUSH to children (cascade parent values)');
+    sections.push('  -- Step 2: PUSH to children (cascade parent values)');
 
     for (const push of automations.pushToChildren) {
       const setStatements: string[] = [];
@@ -590,7 +590,7 @@ CREATE TRIGGER ${triggerName}
     if (automations.pullFromParents.length === 0) return null;
 
     const sections: string[] = [];
-    sections.push('  -- Step 2: PULL from parents (fetch parent values)');
+    sections.push('  -- Step 1: PULL from parents (fetch parent values)');
 
     for (const pull of automations.pullFromParents) {
       const parentPKColumns = this.getTablePrimaryKeys(pull.parentTable, processedSchema);
