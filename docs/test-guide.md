@@ -2,7 +2,7 @@ Previous: [UI Notes Guide](guides/ui-notes-guide.md) | Next: [Minimal Schema](ex
 
 # GenLogic Testing Guide
 
-This document outlines the comprehensive testing framework for GenLogic, implementing Phase 8 of the development plan.
+This document outlines the comprehensive testing framework for GenLogic.
 
 ## Test Structure
 
@@ -18,7 +18,7 @@ These tests verify schema validation without requiring a database connection.
 
 **Run Command:**
 ```bash
-npm run test:validation
+bun test tests/validation
 ```
 
 ### Group 2: End-to-End Database Tests (Integration Tests)
@@ -36,7 +36,7 @@ These tests verify complete functionality with a real PostgreSQL database.
 **Run Commands:**
 ```bash
 # Run database tests
-DB_HOST=localhost DB_PORT=5432 DB_USER=postgres DB_PASSWORD=your_password npm run test:database
+DB_HOST=localhost DB_PORT=5432 DB_USER=postgres DB_PASSWORD=your_password bun test tests/database
 ```
 
 ## Test Environment Setup
@@ -62,7 +62,7 @@ export DB_USER=postgres
 export DB_PASSWORD=your_password
 
 # Run tests
-npm run test:database
+bun test tests/database
 ```
 
 ## Environment Variables
@@ -111,15 +111,15 @@ For practical schema examples, see:
 
 ```bash
 # Run only validation tests (fast, no database needed)
-npm run test:validation
+bun test tests/validation
 
 # Run full test suite (requires database setup)
-DB_HOST=localhost DB_PORT=5432 DB_USER=postgres DB_PASSWORD=your_password npm test
+DB_HOST=localhost DB_PORT=5432 DB_USER=postgres DB_PASSWORD=your_password bun test
 ```
 
 ## Development Workflow
 
-1. **During development**: Use `npm run test:validation` for fast feedback
+1. **During development**: Use `bun test tests/validation` for fast feedback
 2. **Before commits**: Run full test suite including database tests
 3. **CI/CD**: Currently validation tests only (database tests need infrastructure)
 

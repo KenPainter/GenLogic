@@ -44,23 +44,28 @@ GenLogic is a complete rewrite in Typescript.
 
 ### Installation
 ```bash
-npm install -g genlogic
-# or clone and build locally
+# Install Bun (if not already installed)
+curl -fsSL https://bun.sh/install | bash
+
+# Install GenLogic
+bun install -g genlogic
+
+# Or clone and run locally
 git clone <repository>
 cd genlogic
-npm install && npm run build
+bun install
 ```
 
 ### Basic Usage
 ```bash
 # Apply schema to database
-genlogic --host localhost --port 5432 --database mydb --user postgres --password secret --schema ./schema.yaml
+bun run genlogic --host localhost --port 5432 --database mydb --user postgres --password secret --schema ./schema.yaml
 
 # Dry run (show planned changes without executing)
-genlogic --schema ./schema.yaml --dry-run
+bun run genlogic --schema ./schema.yaml --dry-run
 
 # Test mode (validate schema without database connection)
-genlogic --schema ./schema.yaml --test-mode
+bun run genlogic --schema ./schema.yaml --test-mode
 ```
 ### Example Schema
 
@@ -104,10 +109,8 @@ This creates an `accounts` table where `balance` automatically maintains the SUM
 ## Available Commands
 
 ```bash
-npm run build    # Compile TypeScript
-npm run dev      # Run in development mode
-npm run lint     # Code linting
-npm run clean    # Remove build artifacts
+bun run dev      # Run in development mode
+bun test         # Run all tests
 ```
 
 For testing commands and setup, see [docs/test-guide.md](./docs/test-guide.md).
@@ -120,9 +123,8 @@ For testing commands and setup, see [docs/test-guide.md](./docs/test-guide.md).
 
 ## Requirements
 
-- Node.js 18+
+- Bun 1.2+
 - PostgreSQL database
-- TypeScript (for development)
 
 ## Automation Types
 

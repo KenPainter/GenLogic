@@ -41,6 +41,29 @@ the table of contents.
 
 ## Development Practices
 
+### Runtime
+
+GenLogic uses Bun as its runtime. Bun provides:
+- Native TypeScript execution
+- Built-in PostgreSQL client
+- Built-in test runner
+- Fast package management
+
+Development workflow:
+```bash
+# Install dependencies
+bun install
+
+# Run in development
+bun run dev
+
+# Run tests
+bun test
+
+# Run specific test file
+bun test tests/validation/schema-syntax.test.ts
+```
+
 ### Debug Files
 
 Debug files and scripts created during development must be placed in the `./debug` directory, not in the project root. This directory is ignored by git.
@@ -57,5 +80,5 @@ To use:
 mkdir -p debug
 
 # Place debug files there
-node debug/my-test.js
+bun run debug/my-test.ts
 ```

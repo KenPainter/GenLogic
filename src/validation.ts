@@ -1,12 +1,7 @@
 import Ajv from 'ajv';
-import { readFileSync } from 'fs';
-import { join } from 'path';
 import type { GenLogicSchema, ValidationResult } from './types';
 import { DataFlowGraphValidator } from './graph.js';
-
-// Load the JSON Schema - use process.cwd() for better test compatibility
-const schemaPath = join(process.cwd(), 'genlogic-schema.json');
-const jsonSchema = JSON.parse(readFileSync(schemaPath, 'utf-8'));
+import jsonSchema from './genlogic-schema.json' assert { type: 'json' };
 
 export class SchemaValidator {
   private ajv: Ajv;
