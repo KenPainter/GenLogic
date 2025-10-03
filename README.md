@@ -104,28 +104,19 @@ This creates an `accounts` table where `balance` automatically maintains the SUM
 ## Available Commands
 
 ```bash
-# Core commands
-npm run build          # Compile TypeScript
-npm run dev           # Run in development mode
-npm start             # Run compiled version
-
-# Testing
-npm run test:validation    # Fast validation tests (no database)
-npm run test:database     # End-to-end tests (requires PostgreSQL)
-npm run test:db:setup     # Start test database (Docker)
-npm run test:db:teardown  # Stop test database
-
-# Development
-npm run lint          # Code linting
-npm run clean         # Remove build artifacts
+npm run build    # Compile TypeScript
+npm run dev      # Run in development mode
+npm run lint     # Code linting
+npm run clean    # Remove build artifacts
 ```
+
+For testing commands and setup, see [docs/test-guide.md](./docs/test-guide.md).
 
 ## Documentation
 
 - [docs/toc.md](./docs/toc.md) - Complete examples and documentation index
 - [docs/design.md](./docs/design.md) - Core philosophy and concepts
-- [docs/test-guide.md](./docs/test-guide.md) - Comprehensive testing instructions
-- [EXAMPLE.yaml](./EXAMPLE.yaml) - Complete schema example
+- [docs/test-guide.md](./docs/test-guide.md) - Testing setup and instructions
 
 ## Requirements
 
@@ -155,11 +146,7 @@ npm run clean         # Remove build artifacts
 
 ## Contributing
 
-GenLogic is designed for reliability and performance. When contributing:
-1. Run validation tests: `npm run test:validation`
-2. Test against real database: `npm run test:database`
-3. Ensure all documentation is updated
-4. Follow existing code patterns and safety principles
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines. Test your changes using the test suite described in [docs/test-guide.md](./docs/test-guide.md).
 
 ## License
 

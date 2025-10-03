@@ -185,10 +185,11 @@ describe('Calculated Column Validation Tests', () => {
       expect(testGraph.nodes.has('b')).toBe(true);
       expect(testGraph.nodes.has('c')).toBe(true);
 
-      // c depends on a and b
-      const cEdges = testGraph.edges.get('c');
-      expect(cEdges?.has('a')).toBe(true);
-      expect(cEdges?.has('b')).toBe(true);
+      // c depends on a and b, so edges are a→c and b→c
+      const aEdges = testGraph.edges.get('a');
+      const bEdges = testGraph.edges.get('b');
+      expect(aEdges?.has('c')).toBe(true);
+      expect(bEdges?.has('c')).toBe(true);
     });
 
     it('should filter out SQL keywords from dependencies', () => {
@@ -208,15 +209,16 @@ describe('Calculated Column Validation Tests', () => {
 
       const graphs = graphValidator.buildCalculatedColumnGraphs(schema);
       const testGraph = graphs.get('test')!;
-      const resultEdges = testGraph.edges.get('result');
+      const valueEdges = testGraph.edges.get('value');
 
       // Should only depend on 'value', not SQL keywords like 'case', 'when', 'then', 'else', 'end'
-      expect(resultEdges?.has('value')).toBe(true);
-      expect(resultEdges?.has('case')).toBe(false);
-      expect(resultEdges?.has('when')).toBe(false);
-      expect(resultEdges?.has('then')).toBe(false);
-      expect(resultEdges?.has('else')).toBe(false);
-      expect(resultEdges?.has('end')).toBe(false);
+      // Edge is value→result
+      expect(valueEdges?.has('result')).toBe(true);
+      expect(testGraph.edges.get('case')).toBeUndefined();
+      expect(testGraph.edges.get('when')).toBeUndefined();
+      expect(testGraph.edges.get('then')).toBeUndefined();
+      expect(testGraph.edges.get('else')).toBeUndefined();
+      expect(testGraph.edges.get('end')).toBeUndefined();
     });
   });
 
@@ -289,11 +291,14 @@ describe('Calculated Column Validation Tests', () => {
 
       const graphs = graphValidator.buildCalculatedColumnGraphs(schema);
       const testGraph = graphs.get('test')!;
-      const resultEdges = testGraph.edges.get('result');
 
-      expect(resultEdges?.has('a')).toBe(true);
-      expect(resultEdges?.has('b')).toBe(true);
-      expect(resultEdges?.has('c')).toBe(true);
+      // result depends on a, b, c, so edges are a→result, b→result, c→result
+      const aEdges = testGraph.edges.get('a');
+      const bEdges = testGraph.edges.get('b');
+      const cEdges = testGraph.edges.get('c');
+      expect(aEdges?.has('result')).toBe(true);
+      expect(bEdges?.has('result')).toBe(true);
+      expect(cEdges?.has('result')).toBe(true);
     });
 
     it('should extract references from complex expressions', () => {
@@ -317,11 +322,14 @@ describe('Calculated Column Validation Tests', () => {
 
       const graphs = graphValidator.buildCalculatedColumnGraphs(schema);
       const testGraph = graphs.get('test')!;
-      const totalEdges = testGraph.edges.get('total');
 
-      expect(totalEdges?.has('price')).toBe(true);
-      expect(totalEdges?.has('quantity')).toBe(true);
-      expect(totalEdges?.has('discount')).toBe(true);
+      // total depends on price, quantity, discount, so edges are price→total, quantity→total, discount→total
+      const priceEdges = testGraph.edges.get('price');
+      const quantityEdges = testGraph.edges.get('quantity');
+      const discountEdges = testGraph.edges.get('discount');
+      expect(priceEdges?.has('total')).toBe(true);
+      expect(quantityEdges?.has('total')).toBe(true);
+      expect(discountEdges?.has('total')).toBe(true);
     });
   });
 });

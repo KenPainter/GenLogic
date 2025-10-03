@@ -158,8 +158,7 @@ describe('Group 1.4: Data Flow Graph Validation', () => {
           },
           level2: {
             foreign_keys: {
-              level1_fk: { table: 'level1' },
-              level3_fk: { table: 'level3' }
+              level1_fk: { table: 'level1' }
             },
             columns: {
               id: { type: 'integer', primary_key: true },
@@ -167,7 +166,7 @@ describe('Group 1.4: Data Flow Graph Validation', () => {
                 automation: {
                   type: 'SUM',
                   table: 'level3',
-                  foreign_key: 'level3_fk',
+                  foreign_key: 'level2_fk',
                   column: 'amount'
                 }
               }

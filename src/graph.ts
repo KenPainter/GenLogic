@@ -84,6 +84,8 @@ export class DataFlowGraphValidator {
       }
 
       // Add edges for calculated column dependencies
+      // Edge direction: dependency → dependent (for topological sort)
+      // If column B depends on column A, edge is A → B
       for (const [columnName, column] of Object.entries(table.columns)) {
         let calculated: string | undefined = undefined;
 
@@ -95,13 +97,13 @@ export class DataFlowGraphValidator {
           // Extract column references from the expression
           const referencedColumns = this.extractColumnReferences(calculated);
 
-          // Add edges from this column to each referenced column
-          const columnEdges = edges.get(columnName);
-          if (columnEdges) {
-            for (const refColumn of referencedColumns) {
-              // Only add edge if the referenced column exists in this table
-              if (nodes.has(refColumn)) {
-                columnEdges.add(refColumn);
+          // Add edges FROM each dependency TO this calculated column
+          for (const refColumn of referencedColumns) {
+            // Only add edge if the referenced column exists in this table
+            if (nodes.has(refColumn)) {
+              const refColumnEdges = edges.get(refColumn);
+              if (refColumnEdges) {
+                refColumnEdges.add(columnName);
               }
             }
           }
@@ -232,7 +234,8 @@ export class DataFlowGraphValidator {
             const sourceTable = automation.table;
             const targetTable = tableName;
 
-            // For aggregation automations (SUM, COUNT, etc.), verify path from source to target
+            // For aggregation automations (SUM, COUNT, MAX, MIN, LATEST), verify path from source to target
+            // Source table (child) must have FK to target table (parent)
             if (['SUM', 'COUNT', 'MAX', 'MIN', 'LATEST'].includes(automation.type)) {
               if (!this.isPathReachable(fkGraph, sourceTable, targetTable)) {
                 errors.push(
@@ -242,8 +245,9 @@ export class DataFlowGraphValidator {
               }
             }
 
-            // For cascade automations (FETCH, FETCH_UPDATES), verify path from target to source
-            if (['FETCH', 'FETCH_UPDATES'].includes(automation.type)) {
+            // For cascade/follow automations (SNAPSHOT, FOLLOW), verify path from target to source
+            // Target table (child) must have FK to source table (parent)
+            if (['SNAPSHOT', 'FOLLOW'].includes(automation.type)) {
               if (!this.isPathReachable(fkGraph, targetTable, sourceTable)) {
                 errors.push(
                   `Automation '${automation.type}' in table '${targetTable}', column '${columnName}': ` +
@@ -363,7 +367,7 @@ export class DataFlowGraphValidator {
     const fkGraph = this.buildForeignKeyGraph(schema);
     const calculatedGraphs = this.buildCalculatedColumnGraphs(schema);
 
-    // Check for cycles in foreign key relationships (structural cycles only)
+    // Check for cycles in foreign key relationships
     const fkCycleResult = this.detectCycles(fkGraph);
     if (!fkCycleResult.isValid) {
       errors.push(...fkCycleResult.errors.map(e => `Foreign Key Cycle: ${e}`));

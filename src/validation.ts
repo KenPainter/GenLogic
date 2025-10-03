@@ -1,20 +1,17 @@
 import Ajv from 'ajv';
 import { readFileSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { join } from 'path';
 import type { GenLogicSchema, ValidationResult } from './types';
+import { DataFlowGraphValidator } from './graph.js';
 
-// ES module equivalent of __dirname
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-// Load the JSON Schema we created
-const schemaPath = join(__dirname, '..', 'genlogic-schema.json');
+// Load the JSON Schema - use process.cwd() for better test compatibility
+const schemaPath = join(process.cwd(), 'genlogic-schema.json');
 const jsonSchema = JSON.parse(readFileSync(schemaPath, 'utf-8'));
 
 export class SchemaValidator {
   private ajv: Ajv;
   private validateSchema: any;
+  private graphValidator: DataFlowGraphValidator;
 
   constructor() {
     this.ajv = new Ajv({
@@ -23,15 +20,18 @@ export class SchemaValidator {
       strict: false // Allow unknown keywords in our schema
     });
     this.validateSchema = this.ajv.compile(jsonSchema);
+    this.graphValidator = new DataFlowGraphValidator();
   }
 
   /**
    * PHASE 1: Syntax validation using JSON Schema
    * This validates structure, types, and basic rules
+   * Also includes cycle detection for foreign keys and calculated columns
    */
   validateSyntax(schema: any): ValidationResult {
     const isValid = this.validateSchema(schema);
     const errors: string[] = [];
+    const warnings: string[] = [];
 
     if (!isValid && this.validateSchema.errors) {
       for (const error of this.validateSchema.errors) {
@@ -40,25 +40,58 @@ export class SchemaValidator {
       }
     }
 
+    // If basic syntax is valid, also check for cycles
+    if (isValid) {
+      const graphResult = this.graphValidator.validateDataFlowSafety(schema);
+      if (!graphResult.isValid) {
+        errors.push(...graphResult.errors);
+        warnings.push(...graphResult.warnings);
+      }
+    }
+
     return {
-      isValid,
+      isValid: errors.length === 0,
       errors,
-      warnings: []
+      warnings
     };
   }
 
   /**
-   * Complete validation: both syntax and cross-references
+   * Complete validation: syntax, cross-references, and data flow
    */
   validate(schema: any): ValidationResult {
-    // First do syntax validation
-    const syntaxResult = this.validateSyntax(schema);
-    if (!syntaxResult.isValid) {
-      return syntaxResult;
+    // First do basic syntax validation (without graph validation)
+    const isValid = this.validateSchema(schema);
+    const errors: string[] = [];
+    const warnings: string[] = [];
+
+    if (!isValid && this.validateSchema.errors) {
+      for (const error of this.validateSchema.errors) {
+        const path = error.instancePath || 'root';
+        errors.push(`${path}: ${error.message}`);
+      }
     }
 
-    // Then do cross-reference validation
-    return this.validateCrossReferences(schema);
+    if (errors.length > 0) {
+      return { isValid: false, errors, warnings };
+    }
+
+    // Then do cross-reference validation (check that referenced tables/columns exist)
+    const crossRefResult = this.validateCrossReferences(schema);
+    if (!crossRefResult.isValid) {
+      return crossRefResult;
+    }
+
+    // Finally do graph/cycle validation (requires valid cross-references)
+    const graphResult = this.graphValidator.validateDataFlowSafety(schema);
+    errors.push(...graphResult.errors);
+    warnings.push(...graphResult.warnings);
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+      warnings
+    };
   }
 
   /**
@@ -72,6 +105,19 @@ export class SchemaValidator {
     // Get available column and table names
     const reusableColumns = new Set(Object.keys(schema.columns || {}));
     const tableNames = new Set(Object.keys(schema.tables || {}));
+
+    // Validate reusable column references (columns that inherit from other columns)
+    if (schema.columns) {
+      for (const [columnName, column] of Object.entries(schema.columns)) {
+        // Check if reusable column uses $ref to inherit from another reusable column
+        if (column && typeof column === 'object' && '$ref' in column) {
+          const refName = (column as any).$ref;
+          if (!reusableColumns.has(refName)) {
+            errors.push(`Reusable column '${columnName}': $ref '${refName}' does not exist in reusable columns`);
+          }
+        }
+      }
+    }
 
     // Validate column references
     if (schema.tables) {
@@ -116,7 +162,7 @@ export class SchemaValidator {
 
                 // Validate foreign_key reference
                 // For aggregations (SUM/COUNT/MAX/MIN/LATEST): FK is in source table (child)
-                // For cascades (SNAPSHOT/FOLLOW): FK is in current table (child)
+                // For cascades/follows (SNAPSHOT/FOLLOW): FK is in current table (child)
                 const isAggregation = ['SUM', 'COUNT', 'MAX', 'MIN', 'LATEST'].includes(automation.type);
                 const isCascade = ['SNAPSHOT', 'FOLLOW'].includes(automation.type);
 

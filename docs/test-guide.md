@@ -27,46 +27,33 @@ These tests verify complete functionality with a real PostgreSQL database.
 - `tests/database/automation.test.ts` - SUM, COUNT, MAX, LATEST automation
 
 **Prerequisites:**
-- PostgreSQL database (Docker recommended)
+- PostgreSQL database
+- Test database created
 - Environment variables set for database connection
 
 **Run Commands:**
 ```bash
-# Setup test database (Docker)
-npm run test:db:setup
-
 # Run database tests
-DB_HOST=localhost DB_PORT=5433 DB_USER=genlogic DB_PASSWORD=testpassword npm run test:database
-
-# Cleanup test database
-npm run test:db:teardown
+DB_HOST=localhost DB_PORT=5432 DB_USER=postgres DB_PASSWORD=your_password npm run test:database
 ```
 
 ## Test Environment Setup
 
-### Option 1: Docker (Recommended)
-```bash
-# Start PostgreSQL test container
-npm run test:db:setup
+### PostgreSQL Setup
 
-# Verify container is running
-docker ps | grep postgres
-
-# Run all database tests
-DB_HOST=localhost DB_PORT=5433 DB_USER=genlogic DB_PASSWORD=testpassword npm run test:database
-
-# Stop and remove test container
-npm run test:db:teardown
-```
-
-### Option 2: Local PostgreSQL
-If you have PostgreSQL installed locally:
+Create a test database in your local PostgreSQL instance:
 
 ```bash
 # Create test database
 createdb genlogic_test
 
-# Set environment variables
+# Or using psql
+psql -U postgres -c "CREATE DATABASE genlogic_test;"
+```
+
+Set environment variables for database connection:
+
+```bash
 export DB_HOST=localhost
 export DB_PORT=5432
 export DB_USER=postgres
@@ -112,7 +99,7 @@ For practical schema examples, see:
 
 ## Known Issues
 
-1. **Database tests**: Require live PostgreSQL instance. Not suitable for CI/CD without proper database setup.
+1. **Database tests**: Require local PostgreSQL instance with test database created.
 
 2. **Performance tests**: Large-scale performance testing not yet implemented. Would require datasets with 100k+ records and timing measurements.
 
@@ -125,9 +112,7 @@ For practical schema examples, see:
 npm run test:validation
 
 # Run full test suite (requires database setup)
-npm run test:db:setup
-DB_HOST=localhost DB_PORT=5433 DB_USER=genlogic DB_PASSWORD=testpassword npm test
-npm run test:db:teardown
+DB_HOST=localhost DB_PORT=5432 DB_USER=postgres DB_PASSWORD=your_password npm test
 ```
 
 ## Development Workflow
@@ -142,4 +127,4 @@ npm run test:db:teardown
 - [ ] Error recovery testing
 - [ ] Concurrent modification testing
 - [ ] Database migration testing
-- [ ] CI/CD integration with automated database setup
+- [ ] CI/CD integration

@@ -15,8 +15,6 @@
     "test:coverage": "jest --coverage",
     "test:validation": "jest --testPathPattern=validation",
     "test:database": "jest --testPathPattern=database",
-    "test:db:setup": "docker-compose -f docker-compose.test.yml up -d && sleep 5",
-    "test:db:teardown": "docker-compose -f docker-compose.test.yml down -v",
     "lint": "eslint src/**/*.ts",
     "clean": "rm -rf dist"
   },

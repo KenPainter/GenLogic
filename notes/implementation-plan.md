@@ -242,7 +242,7 @@ genlogic --host localhost --port 5432 --database mydb --user postgres --password
 - [ ] **Memory Usage:** Monitor memory consumption during large operations
 
 ### 8.4 Test Infrastructure
-- [x] **Docker Test Environment:** PostgreSQL container for isolated testing
+- [x] **PostgreSQL Test Database:** Local PostgreSQL instance for testing
 - [x] **Test Data Generators:** Create realistic test datasets
 - [x] **Assertion Libraries:** Helpers for verifying automation calculations
 - [x] **Test Reporting:** Clear pass/fail reporting with execution details

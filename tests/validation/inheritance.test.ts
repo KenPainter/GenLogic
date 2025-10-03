@@ -242,7 +242,7 @@ describe('Group 1.5: Column Inheritance Edge Cases', () => {
           }
         }
       };
-      const result = validator.validateSyntax(schema);
+      const result = validator.validate(schema);
       expect(result.isValid).toBe(false);
     });
 
@@ -259,7 +259,7 @@ describe('Group 1.5: Column Inheritance Edge Cases', () => {
           }
         }
       };
-      const result = validator.validateSyntax(schema);
+      const result = validator.validate(schema);
       expect(result.isValid).toBe(false);
     });
 
@@ -279,7 +279,7 @@ describe('Group 1.5: Column Inheritance Edge Cases', () => {
           }
         }
       };
-      const result = validator.validateSyntax(schema);
+      const result = validator.validate(schema);
       expect(result.isValid).toBe(false);
     });
 

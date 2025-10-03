@@ -132,7 +132,15 @@ describe('Group 1.3: Cross-Reference Validation', () => {
           level1: {
             columns: {
               id: 'base_id',
-              name: 'base_name'
+              name: 'base_name',
+              latest_level2_name: {
+                automation: {
+                  type: 'LATEST',
+                  table: 'level2',
+                  foreign_key: 'level1_fk',
+                  column: 'name'
+                }
+              }
             }
           },
           level2: {
@@ -141,14 +149,7 @@ describe('Group 1.3: Cross-Reference Validation', () => {
             },
             columns: {
               id: 'base_id',
-              level1_name: {
-                automation: {
-                  type: 'LATEST',
-                  table: 'level1',
-                  foreign_key: 'level1_fk',
-                  column: 'name'
-                }
-              }
+              name: 'base_name'
             }
           }
         }

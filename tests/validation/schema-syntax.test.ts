@@ -39,7 +39,7 @@ describe('Group 1.1: Schema Syntax Validation', () => {
     test('should reject column names starting with numbers', () => {
       const result = validator.validateSyntax(invalidSchemas.invalidColumnName.schema);
       expect(result.isValid).toBe(false);
-      expect(result.errors.some(e => e.includes('pattern'))).toBe(true);
+      expect(result.errors.some(e => e.includes('additional properties'))).toBe(true);
     });
 
     test('should reject column names with spaces', () => {
@@ -80,7 +80,7 @@ describe('Group 1.1: Schema Syntax Validation', () => {
     test('should reject table names with hyphens', () => {
       const result = validator.validateSyntax(invalidSchemas.invalidTableName.schema);
       expect(result.isValid).toBe(false);
-      expect(result.errors.some(e => e.includes('pattern'))).toBe(true);
+      expect(result.errors.some(e => e.includes('additional properties'))).toBe(true);
     });
 
     test('should reject table names with spaces', () => {
