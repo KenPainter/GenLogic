@@ -115,7 +115,7 @@ For testing commands and setup, see [docs/test-guide.md](./docs/test-guide.md).
 ## Documentation
 
 - [docs/toc.md](./docs/toc.md) - Complete examples and documentation index
-- [docs/design.md](./docs/design.md) - Core philosophy and concepts
+- [docs/architecture/design.md](./docs/architecture/design.md) - Core philosophy and concepts
 - [docs/test-guide.md](./docs/test-guide.md) - Testing setup and instructions
 
 ## Requirements

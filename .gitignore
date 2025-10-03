@@ -66,3 +66,6 @@ postgres_test_data/
 
 # Generated schema files
 *.resolved.yaml
+
+# Debug files
+debug/

@@ -4,12 +4,16 @@ This directory contains comprehensive examples and documentation for GenLogic sc
 
 ## Table of Contents
 
-### Core Documentation
-- [Design Documentation](design.md) - Core philosophy and data flow concepts
-- [Calculated Columns](calculated-columns.md) - Expression-based column calculations
-- [Consolidated Triggers](consolidated-triggers.md) - Trigger architecture and execution order
-- [NULL Handling Guide](null-handling-guide.md) - How GenLogic handles NULL values in automation
-- [UI Notes Guide](ui-notes-guide.md) - Table-level UI guidance metadata
+### Architecture
+- [Design Documentation](architecture/design.md) - Core philosophy and data flow concepts
+- [Consolidated Triggers](architecture/consolidated-triggers.md) - Trigger architecture and execution order
+
+### Feature Guides
+- [Calculated Columns](guides/calculated-columns.md) - Expression-based column calculations
+- [NULL Handling Guide](guides/null-handling-guide.md) - How GenLogic handles NULL values in automation
+- [UI Notes Guide](guides/ui-notes-guide.md) - Table-level UI guidance metadata
+
+### Development
 - [Test Guide](test-guide.md) - Testing framework and validation
 
 ### Basic Examples

@@ -69,7 +69,7 @@ YAML files may contain:
 ### Extensions (Within Row)
 - Any supported PostgreSQL expression
 
-See [calculated-columns.md](calculated-columns.md) for detailed documentation on calculated columns, including dependency ordering, cycle detection, and best practices
+See [calculated-columns.md](../guides/calculated-columns.md) for detailed documentation on calculated columns, including dependency ordering, cycle detection, and best practices
 
 ### Multi-row Automations
 - DOMINANT - Allow only one row to have a particular value

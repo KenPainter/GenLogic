@@ -39,6 +39,23 @@ The utility [./docs/](./docs/add-navigation.mjs) will put
 previous/next links onto all documents that are linked in
 the table of contents.
 
+## Development Practices
 
+### Debug Files
 
+Debug files and scripts created during development must be placed in the `./debug` directory, not in the project root. This directory is ignored by git.
 
+Examples of debug files:
+- Test scripts for manual verification
+- SQL output dumps
+- Schema validation debugging
+- Any temporary files created while troubleshooting
+
+To use:
+```bash
+# Create debug directory if needed
+mkdir -p debug
+
+# Place debug files there
+node debug/my-test.js
+```
