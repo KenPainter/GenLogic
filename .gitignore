@@ -63,3 +63,6 @@ temp/
 
 # Docker volumes
 postgres_test_data/
+
+# Generated schema files
+*.resolved.yaml
