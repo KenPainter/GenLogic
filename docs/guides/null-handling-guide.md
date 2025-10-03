@@ -1,3 +1,5 @@
+Previous: [Calculated Columns](calculated-columns.md) | Next: [UI Notes Guide](ui-notes-guide.md)
+
 # NULL Handling in GenLogic Resolved Schemas
 
 ## Overview
@@ -231,3 +233,7 @@ balance:
 ```
 
 The new format eliminates ambiguity and provides actionable guidance for both read and write operations.
+
+---
+
+Previous: [Calculated Columns](calculated-columns.md) | Next: [UI Notes Guide](ui-notes-guide.md)

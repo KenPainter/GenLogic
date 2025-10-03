@@ -1,4 +1,4 @@
-Previous: [Multiple Foreign Keys](../foreign-keys/multiple-foreign-keys.md) | Next: [Self-Referencing](../foreign-keys/self-referencing.md)
+Previous: [Multiple Foreign Keys](multiple-foreign-keys.md) | Next: [Self-Referencing](self-referencing.md)
 
 # Composite Foreign Keys Example
 
@@ -224,4 +224,4 @@ GROUP BY s.country_code, s.state_code, s.state_name;
 
 ---
 
-Previous: [Multiple Foreign Keys](../foreign-keys/multiple-foreign-keys.md) | Next: [Self-Referencing](../foreign-keys/self-referencing.md)
+Previous: [Multiple Foreign Keys](multiple-foreign-keys.md) | Next: [Self-Referencing](self-referencing.md)

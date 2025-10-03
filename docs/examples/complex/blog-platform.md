@@ -1,4 +1,4 @@
-Previous: [Multiple Automations](../automations/multiple-automations.md) | Next: [E-commerce System](../complex/e-commerce-system.md)
+Previous: [Multiple Automations](../automations/multiple-automations.md) | Next: [E-commerce System](e-commerce-system.md)
 
 # Blog Platform Example
 
@@ -527,4 +527,4 @@ ORDER BY level, category_name;
 
 ---
 
-Previous: [Multiple Automations](../automations/multiple-automations.md) | Next: [E-commerce System](../complex/e-commerce-system.md)
+Previous: [Multiple Automations](../automations/multiple-automations.md) | Next: [E-commerce System](e-commerce-system.md)

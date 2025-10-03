@@ -1,4 +1,4 @@
-Previous: [Schema Evolution](../edge-cases/schema-evolution.md) | Next: [Type Showcase](../basic/type-showcase.md)
+Previous: [Schema Evolution](../edge-cases/schema-evolution.md) | Next: [Type Showcase](type-showcase.md)
 
 # Minimal Schema Example
 
@@ -62,4 +62,4 @@ This example shows how GenLogic eliminates repetitive column definitions and pro
 
 ---
 
-Previous: [Schema Evolution](../edge-cases/schema-evolution.md) | Next: [Type Showcase](../basic/type-showcase.md)
+Previous: [Schema Evolution](../edge-cases/schema-evolution.md) | Next: [Type Showcase](type-showcase.md)

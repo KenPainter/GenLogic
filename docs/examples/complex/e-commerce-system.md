@@ -1,4 +1,4 @@
-Previous: [Blog Platform](../complex/blog-platform.md) | Next: [Financial Tracking](../complex/financial-tracking.md)
+Previous: [Blog Platform](blog-platform.md) | Next: [Financial Tracking](financial-tracking.md)
 
 # E-commerce System Example
 
@@ -470,4 +470,4 @@ ORDER BY o.order_date DESC;
 
 ---
 
-Previous: [Blog Platform](../complex/blog-platform.md) | Next: [Financial Tracking](../complex/financial-tracking.md)
+Previous: [Blog Platform](blog-platform.md) | Next: [Financial Tracking](financial-tracking.md)

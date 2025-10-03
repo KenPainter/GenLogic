@@ -1,3 +1,5 @@
+Next: [Consolidated Triggers](consolidated-triggers.md)
+
 # GenLogic Design Documentation
 
 GenLogic creates a data flow system within PostgreSQL databases that you can access with normal table reads and writes without the need for an ORM.
@@ -124,3 +126,7 @@ Foreign keys become the schema backbone - everything else depends on them:
 - Triggers are generated per foreign key path, not per instance of automation
 
 This approach transforms database design from table-centric to relationship-centric thinking, where data flows naturally along well-defined pathways.
+
+---
+
+Next: [Consolidated Triggers](consolidated-triggers.md)

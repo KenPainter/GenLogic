@@ -1,4 +1,4 @@
-Previous: [Simple Foreign Key](../foreign-keys/simple-foreign-key.md) | Next: [Composite Foreign Keys](../foreign-keys/composite-foreign-keys.md)
+Previous: [Simple Foreign Key](simple-foreign-key.md) | Next: [Composite Foreign Keys](composite-foreign-keys.md)
 
 # Multiple Foreign Keys Example
 
@@ -178,4 +178,4 @@ GROUP BY c.customer_name, p.product_name;
 
 ---
 
-Previous: [Simple Foreign Key](../foreign-keys/simple-foreign-key.md) | Next: [Composite Foreign Keys](../foreign-keys/composite-foreign-keys.md)
+Previous: [Simple Foreign Key](simple-foreign-key.md) | Next: [Composite Foreign Keys](composite-foreign-keys.md)

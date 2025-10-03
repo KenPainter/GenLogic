@@ -1,3 +1,5 @@
+Previous: [Consolidated Triggers](../architecture/consolidated-triggers.md) | Next: [NULL Handling Guide](null-handling-guide.md)
+
 # Calculated Columns Feature
 
 ## Overview
@@ -299,3 +301,7 @@ Possible future additions:
 - Type inference: Automatically infer column type from expression
 - Cross-table calculations: Allow references to parent table columns via FK paths
 - Async calculations: Support for long-running calculations
+
+---
+
+Previous: [Consolidated Triggers](../architecture/consolidated-triggers.md) | Next: [NULL Handling Guide](null-handling-guide.md)

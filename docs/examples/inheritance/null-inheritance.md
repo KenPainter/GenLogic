@@ -1,4 +1,4 @@
-Previous: [Ref Inheritance](../inheritance/ref-inheritance.md) | Next: [Mixed Inheritance](../inheritance/mixed-inheritance.md)
+Previous: [Ref Inheritance](ref-inheritance.md) | Next: [Mixed Inheritance](mixed-inheritance.md)
 
 # Null Inheritance Pattern
 
@@ -137,4 +137,4 @@ tables:
 
 ---
 
-Previous: [Ref Inheritance](../inheritance/ref-inheritance.md) | Next: [Mixed Inheritance](../inheritance/mixed-inheritance.md)
+Previous: [Ref Inheritance](ref-inheritance.md) | Next: [Mixed Inheritance](mixed-inheritance.md)

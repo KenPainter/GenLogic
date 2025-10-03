@@ -1,4 +1,4 @@
-Previous: [Minimal Schema](../basic/minimal-schema.md) | Next: [String Inheritance](../inheritance/string-inheritance.md)
+Previous: [Minimal Schema](minimal-schema.md) | Next: [String Inheritance](../inheritance/string-inheritance.md)
 
 # PostgreSQL Type Showcase
 
@@ -178,4 +178,4 @@ This comprehensive type showcase ensures you choose the most appropriate Postgre
 
 ---
 
-Previous: [Minimal Schema](../basic/minimal-schema.md) | Next: [String Inheritance](../inheritance/string-inheritance.md)
+Previous: [Minimal Schema](minimal-schema.md) | Next: [String Inheritance](../inheritance/string-inheritance.md)

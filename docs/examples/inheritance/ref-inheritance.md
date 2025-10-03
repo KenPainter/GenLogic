@@ -1,4 +1,4 @@
-Previous: [String Inheritance](../inheritance/string-inheritance.md) | Next: [Null Inheritance](../inheritance/null-inheritance.md)
+Previous: [String Inheritance](string-inheritance.md) | Next: [Null Inheritance](null-inheritance.md)
 
 # $ref Inheritance Pattern
 
@@ -327,4 +327,4 @@ tables:
 
 ---
 
-Previous: [String Inheritance](../inheritance/string-inheritance.md) | Next: [Null Inheritance](../inheritance/null-inheritance.md)
+Previous: [String Inheritance](string-inheritance.md) | Next: [Null Inheritance](null-inheritance.md)

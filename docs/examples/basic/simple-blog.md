@@ -1,4 +1,4 @@
-Previous: [Minimal Schema](../basic/minimal-schema.md) | Next: [Type Showcase](../basic/type-showcase.md)
+Previous: [Minimal Schema](minimal-schema.md) | Next: [Type Showcase](type-showcase.md)
 
 # Simple Blog Schema
 
@@ -102,4 +102,4 @@ This example demonstrates how GenLogic makes it easy to define related tables wi
 
 ---
 
-Previous: [Minimal Schema](../basic/minimal-schema.md) | Next: [Type Showcase](../basic/type-showcase.md)
+Previous: [Minimal Schema](minimal-schema.md) | Next: [Type Showcase](type-showcase.md)

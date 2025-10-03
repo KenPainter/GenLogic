@@ -1,4 +1,4 @@
-Previous: [COUNT Automation](../automations/count-automation.md) | Next: [LATEST Automation](../automations/latest-automation.md)
+Previous: [COUNT Automation](count-automation.md) | Next: [LATEST Automation](latest-automation.md)
 
 # MAX and MIN Automation Examples
 
@@ -126,4 +126,4 @@ tables:
 
 ---
 
-Previous: [COUNT Automation](../automations/count-automation.md) | Next: [LATEST Automation](../automations/latest-automation.md)
+Previous: [COUNT Automation](count-automation.md) | Next: [LATEST Automation](latest-automation.md)

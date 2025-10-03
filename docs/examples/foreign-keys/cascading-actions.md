@@ -1,4 +1,4 @@
-Previous: [Self-Referencing](../foreign-keys/self-referencing.md) | Next: [SUM Automation](../automations/sum-automation.md)
+Previous: [Self-Referencing](self-referencing.md) | Next: [SUM Automation](../automations/sum-automation.md)
 
 # Cascading Actions Example
 
@@ -224,4 +224,4 @@ DELETE FROM departments WHERE department_id = 4;
 
 ---
 
-Previous: [Self-Referencing](../foreign-keys/self-referencing.md) | Next: [SUM Automation](../automations/sum-automation.md)
+Previous: [Self-Referencing](self-referencing.md) | Next: [SUM Automation](../automations/sum-automation.md)

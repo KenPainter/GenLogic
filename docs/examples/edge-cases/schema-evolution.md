@@ -1,4 +1,4 @@
-Previous: [Performance Considerations](../edge-cases/performance-considerations.md) | Next: [Minimal Schema](../basic/minimal-schema.md)
+Previous: [Performance Considerations](performance-considerations.md) | Next: [Minimal Schema](../basic/minimal-schema.md)
 
 # Schema Evolution Edge Cases
 
@@ -296,4 +296,4 @@ tables:
 
 ---
 
-Previous: [Performance Considerations](../edge-cases/performance-considerations.md) | Next: [Minimal Schema](../basic/minimal-schema.md)
+Previous: [Performance Considerations](performance-considerations.md) | Next: [Minimal Schema](../basic/minimal-schema.md)

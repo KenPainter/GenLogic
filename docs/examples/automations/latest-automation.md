@@ -1,4 +1,4 @@
-Previous: [MAX/MIN Automation](../automations/max-min-automation.md) | Next: [Multiple Automations](../automations/multiple-automations.md)
+Previous: [MAX/MIN Automation](max-min-automation.md) | Next: [Multiple Automations](multiple-automations.md)
 
 # LATEST Automation Example
 
@@ -220,4 +220,4 @@ VALUES (1, 'delivered', NOW());
 
 ---
 
-Previous: [MAX/MIN Automation](../automations/max-min-automation.md) | Next: [Multiple Automations](../automations/multiple-automations.md)
+Previous: [MAX/MIN Automation](max-min-automation.md) | Next: [Multiple Automations](multiple-automations.md)

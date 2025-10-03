@@ -1,4 +1,4 @@
-Previous: [SUM Automation](../automations/sum-automation.md) | Next: [MAX/MIN Automation](../automations/max-min-automation.md)
+Previous: [SUM Automation](sum-automation.md) | Next: [MAX/MIN Automation](max-min-automation.md)
 
 # COUNT Automation: Automatic Record Counting
 
@@ -332,4 +332,4 @@ This automation eliminates expensive COUNT(*) queries and provides real-time met
 
 ---
 
-Previous: [SUM Automation](../automations/sum-automation.md) | Next: [MAX/MIN Automation](../automations/max-min-automation.md)
+Previous: [SUM Automation](sum-automation.md) | Next: [MAX/MIN Automation](max-min-automation.md)

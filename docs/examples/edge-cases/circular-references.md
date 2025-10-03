@@ -1,4 +1,4 @@
-Previous: [NULL Handling](../edge-cases/null-handling.md) | Next: [Performance Considerations](../edge-cases/performance-considerations.md)
+Previous: [NULL Handling](null-handling.md) | Next: [Performance Considerations](performance-considerations.md)
 
 # Circular Reference Edge Cases
 
@@ -224,4 +224,4 @@ tables:
 
 ---
 
-Previous: [NULL Handling](../edge-cases/null-handling.md) | Next: [Performance Considerations](../edge-cases/performance-considerations.md)
+Previous: [NULL Handling](null-handling.md) | Next: [Performance Considerations](performance-considerations.md)

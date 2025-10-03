@@ -1,4 +1,4 @@
-Previous: [E-commerce System](../complex/e-commerce-system.md) | Next: [NULL Handling](../edge-cases/null-handling.md)
+Previous: [E-commerce System](e-commerce-system.md) | Next: [NULL Handling](../edge-cases/null-handling.md)
 
 # Financial Tracking System Example
 
@@ -526,4 +526,4 @@ ORDER BY month DESC;
 
 ---
 
-Previous: [E-commerce System](../complex/e-commerce-system.md) | Next: [NULL Handling](../edge-cases/null-handling.md)
+Previous: [E-commerce System](e-commerce-system.md) | Next: [NULL Handling](../edge-cases/null-handling.md)

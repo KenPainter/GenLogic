@@ -1,4 +1,4 @@
-Previous: [Financial Tracking](../complex/financial-tracking.md) | Next: [Circular References](../edge-cases/circular-references.md)
+Previous: [Financial Tracking](../complex/financial-tracking.md) | Next: [Circular References](circular-references.md)
 
 # NULL Value Handling Edge Cases
 
@@ -238,4 +238,4 @@ tables:
 
 ---
 
-Previous: [Financial Tracking](../complex/financial-tracking.md) | Next: [Circular References](../edge-cases/circular-references.md)
+Previous: [Financial Tracking](../complex/financial-tracking.md) | Next: [Circular References](circular-references.md)

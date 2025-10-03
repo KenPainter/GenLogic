@@ -1,4 +1,4 @@
-Previous: [Null Inheritance](../inheritance/null-inheritance.md) | Next: [Simple Foreign Key](../foreign-keys/simple-foreign-key.md)
+Previous: [Null Inheritance](null-inheritance.md) | Next: [Simple Foreign Key](../foreign-keys/simple-foreign-key.md)
 
 # Mixed Inheritance Patterns
 
@@ -443,4 +443,4 @@ columns:
 
 ---
 
-Previous: [Null Inheritance](../inheritance/null-inheritance.md) | Next: [Simple Foreign Key](../foreign-keys/simple-foreign-key.md)
+Previous: [Null Inheritance](null-inheritance.md) | Next: [Simple Foreign Key](../foreign-keys/simple-foreign-key.md)

@@ -1,3 +1,5 @@
+Previous: [UI Notes Guide](guides/ui-notes-guide.md) | Next: [Minimal Schema](examples/basic/minimal-schema.md)
+
 # GenLogic Testing Guide
 
 This document outlines the comprehensive testing framework for GenLogic, implementing Phase 8 of the development plan.
@@ -128,3 +130,7 @@ DB_HOST=localhost DB_PORT=5432 DB_USER=postgres DB_PASSWORD=your_password npm te
 - [ ] Concurrent modification testing
 - [ ] Database migration testing
 - [ ] CI/CD integration
+
+---
+
+Previous: [UI Notes Guide](guides/ui-notes-guide.md) | Next: [Minimal Schema](examples/basic/minimal-schema.md)

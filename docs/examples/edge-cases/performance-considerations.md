@@ -1,4 +1,4 @@
-Previous: [Circular References](../edge-cases/circular-references.md) | Next: [Schema Evolution](../edge-cases/schema-evolution.md)
+Previous: [Circular References](circular-references.md) | Next: [Schema Evolution](schema-evolution.md)
 
 # Performance Considerations and Edge Cases
 
@@ -315,4 +315,4 @@ tables:
 
 ---
 
-Previous: [Circular References](../edge-cases/circular-references.md) | Next: [Schema Evolution](../edge-cases/schema-evolution.md)
+Previous: [Circular References](circular-references.md) | Next: [Schema Evolution](schema-evolution.md)

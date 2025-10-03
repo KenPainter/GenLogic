@@ -1,4 +1,4 @@
-Previous: [LATEST Automation](../automations/latest-automation.md) | Next: [Blog Platform](../complex/blog-platform.md)
+Previous: [LATEST Automation](latest-automation.md) | Next: [Blog Platform](../complex/blog-platform.md)
 
 # Multiple Automations Example
 
@@ -128,4 +128,4 @@ tables:
 
 ---
 
-Previous: [LATEST Automation](../automations/latest-automation.md) | Next: [Blog Platform](../complex/blog-platform.md)
+Previous: [LATEST Automation](latest-automation.md) | Next: [Blog Platform](../complex/blog-platform.md)

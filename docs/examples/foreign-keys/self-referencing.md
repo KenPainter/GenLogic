@@ -1,4 +1,4 @@
-Previous: [Composite Foreign Keys](../foreign-keys/composite-foreign-keys.md) | Next: [Cascading Actions](../foreign-keys/cascading-actions.md)
+Previous: [Composite Foreign Keys](composite-foreign-keys.md) | Next: [Cascading Actions](cascading-actions.md)
 
 # Self-Referencing Foreign Key Example
 
@@ -194,4 +194,4 @@ ORDER BY direct_reports DESC;
 
 ---
 
-Previous: [Composite Foreign Keys](../foreign-keys/composite-foreign-keys.md) | Next: [Cascading Actions](../foreign-keys/cascading-actions.md)
+Previous: [Composite Foreign Keys](composite-foreign-keys.md) | Next: [Cascading Actions](cascading-actions.md)

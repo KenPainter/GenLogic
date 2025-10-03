@@ -1,3 +1,5 @@
+Previous: [NULL Handling Guide](null-handling-guide.md) | Next: [Test Guide](../test-guide.md)
+
 # UI-Notes Feature Guide
 
 ## Overview
@@ -429,3 +431,7 @@ Invalid notes will cause schema validation errors.
 ## Summary
 
 UI-notes provide a way to communicate table-level UI constraints directly in your GenLogic schema. Combined with column-level fields like `expect_null_on_read`, `can_write_null`, and `writable`, the resolved schema provides complete guidance for UI implementation.
+
+---
+
+Previous: [NULL Handling Guide](null-handling-guide.md) | Next: [Test Guide](../test-guide.md)

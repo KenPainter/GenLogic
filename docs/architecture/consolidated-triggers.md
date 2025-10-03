@@ -1,3 +1,5 @@
+Previous: [Design Documentation](design.md) | Next: [Calculated Columns](../guides/calculated-columns.md)
+
 # Consolidated Trigger Architecture
 
 ## Overview
@@ -514,3 +516,7 @@ This architecture was originally developed 20 years ago for a production account
 4. **Explicit step ordering is maintainable** - The four-step structure was easy to debug and extend
 
 GenLogic's implementation modernizes this design with TypeScript, better data structures, and comprehensive validation.
+
+---
+
+Previous: [Design Documentation](design.md) | Next: [Calculated Columns](../guides/calculated-columns.md)
