@@ -29,7 +29,10 @@ export class ResolvedSchemaGenerator {
     // Generate documentation for each table
     for (const [tableName, tableDefSrc] of Object.entries(schema.tables)) {
       const processedTable = processedSchema.tables[tableName];
-      if (!processedTable) continue;
+      if (!processedTable) {
+        console.warn(`⚠️  Warning: Table '${tableName}' not found in processed schema during resolved schema generation`);
+        continue;
+      }
 
       resolved.tables[tableName] = this.generateTableDoc(
         tableName,

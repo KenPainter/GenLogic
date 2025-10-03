@@ -216,22 +216,28 @@ export class GenLogicProcessor {
   /**
    * Test helper methods for database testing
    */
-  async testConnection(): Promise<boolean> {
+  async testConnection(): Promise<{ success: boolean; error?: string }> {
     try {
       await this.database.connect();
       await this.database.disconnect();
-      return true;
-    } catch {
-      return false;
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown connection error'
+      };
     }
   }
 
-  async ensureDatabaseExists(): Promise<boolean> {
+  async ensureDatabaseExists(): Promise<{ success: boolean; error?: string }> {
     try {
       await this.database.connect();
-      return true;
-    } catch {
-      return false;
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown database connection error'
+      };
     }
   }
 
@@ -327,8 +333,9 @@ export class GenLogicProcessor {
     try {
       await this.database.connect();
       await this.database.query(`DROP SCHEMA public CASCADE; CREATE SCHEMA public;`);
-    } catch {
-      // Ignore cleanup errors
+    } catch (error) {
+      // Cleanup is best-effort for tests - warn but don't fail
+      console.warn(`⚠️  Cleanup warning (non-fatal): ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       await this.database.disconnect();
     }

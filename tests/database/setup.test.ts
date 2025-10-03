@@ -32,13 +32,19 @@ describe('Group 2.1: Database Setup and Basic Operations', () => {
 
   describe('Database connection and setup', () => {
     test('should connect to PostgreSQL database', async () => {
-      const isConnected = await processor.testConnection();
-      expect(isConnected).toBe(true);
+      const result = await processor.testConnection();
+      expect(result.success).toBe(true);
+      if (!result.success) {
+        console.error('Connection failed:', result.error);
+      }
     });
 
     test('should create database if it does not exist', async () => {
       const result = await processor.ensureDatabaseExists();
-      expect(result).toBe(true);
+      expect(result.success).toBe(true);
+      if (!result.success) {
+        console.error('Database creation failed:', result.error);
+      }
     });
   });
 

@@ -21,7 +21,10 @@ describe('Group 2.2: Automation Testing', () => {
       dryRun: false
     });
 
-    await processor.ensureDatabaseExists();
+    const result = await processor.ensureDatabaseExists();
+    if (!result.success) {
+      throw new Error(`Failed to create test database: ${result.error}`);
+    }
   });
 
   afterAll(async () => {
