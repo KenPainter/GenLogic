@@ -372,31 +372,118 @@
       "required": ["table"]
     },
     "automationDefinition": {
-      "type": "object",
       "description": "GENLOGIC PRINCIPLE: Automations specify explicit data flow pathways",
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": ["SUM", "COUNT", "MAX", "MIN", "LATEST", "SNAPSHOT", "FOLLOW", "DOMINANT", "QUEUEPOS"],
-          "description": "Type of automation"
+      "oneOf": [
+        {
+          "type": "object",
+          "description": "Standard automation (SUM, COUNT, MAX, etc.) using foreign keys",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["SUM", "COUNT", "MAX", "MIN", "LATEST", "SNAPSHOT", "FOLLOW", "DOMINANT", "QUEUEPOS"],
+              "description": "Type of automation"
+            },
+            "table": {
+              "type": "string",
+              "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
+              "description": "Source table name for the automation - VALIDATION REQUIRED: Must exist in 'tables' section"
+            },
+            "foreign_key": {
+              "type": "string",
+              "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
+              "description": "GENLOGIC CORE: FK name within the source table - VALIDATION REQUIRED: Must exist in specified table's foreign_keys section"
+            },
+            "column": {
+              "type": "string",
+              "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
+              "description": "Source column name for the automation"
+            }
+          },
+          "required": ["type", "table", "foreign_key", "column"],
+          "additionalProperties": false
         },
-        "table": {
-          "type": "string",
-          "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
-          "description": "Source table name for the automation - VALIDATION REQUIRED: Must exist in 'tables' section"
-        },
-        "foreign_key": {
-          "type": "string",
-          "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
-          "description": "GENLOGIC CORE: FK name within the source table - VALIDATION REQUIRED: Must exist in specified table's foreign_keys section"
-        },
-        "column": {
-          "type": "string",
-          "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
-          "description": "Source column name for the automation"
+        {
+          "type": "object",
+          "description": "RULE_MATCH automation using dynamic pattern matching (generates stored procedures)",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["RULE_MATCH"],
+              "description": "Rule-based matching automation"
+            },
+            "mode": {
+              "type": "string",
+              "enum": ["stored_procedure"],
+              "description": "Automation mode - generates stored procedures for middleware control",
+              "default": "stored_procedure"
+            },
+            "source_table": {
+              "type": "string",
+              "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
+              "description": "Table containing the matching rules - VALIDATION REQUIRED: Must exist in 'tables' section"
+            },
+            "source_columns": {
+              "type": "object",
+              "description": "Column names in source table that define the matching rules",
+              "properties": {
+                "match_column": {
+                  "type": "string",
+                  "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
+                  "description": "Column in source specifying which destination column to match"
+                },
+                "operator": {
+                  "type": "string",
+                  "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
+                  "description": "Column in source specifying comparison operator"
+                },
+                "compare_value": {
+                  "type": "string",
+                  "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
+                  "description": "Column in source with the pattern to match"
+                },
+                "target_value": {
+                  "type": "string",
+                  "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
+                  "description": "Column in source with value to set in destination"
+                },
+                "priority": {
+                  "type": "string",
+                  "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
+                  "description": "Column in source for tie-breaking when multiple rules match"
+                }
+              },
+              "required": ["match_column", "operator", "compare_value", "target_value", "priority"],
+              "additionalProperties": false
+            },
+            "destination_columns": {
+              "type": "array",
+              "description": "List of columns in destination table that can be matched against - VALIDATION REQUIRED: Must exist in destination table",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$"
+              },
+              "minItems": 1
+            },
+            "operators": {
+              "type": "array",
+              "description": "Supported comparison operators for matching",
+              "items": {
+                "type": "string",
+                "enum": ["equals", "starts_with", "contains", "ends_with"]
+              },
+              "minItems": 1
+            },
+            "overwrite_policy": {
+              "type": "string",
+              "enum": ["always", "if_null", "never"],
+              "description": "Policy for overwriting existing values in destination column",
+              "default": "if_null"
+            }
+          },
+          "required": ["type", "mode", "source_table", "source_columns", "destination_columns", "operators"],
+          "additionalProperties": false
         }
-      },
-      "required": ["type", "table", "foreign_key", "column"]
+      ]
     },
     "syncDefinition": {
       "type": "object",

@@ -79,11 +79,31 @@ export interface ForeignKeyDefinition {
   delete?: 'restrict' | 'cascade';
 }
 
-export interface AutomationDefinition {
+export type AutomationDefinition =
+  | StandardAutomationDefinition
+  | RuleMatchAutomationDefinition;
+
+export interface StandardAutomationDefinition {
   type: 'SUM' | 'COUNT' | 'MAX' | 'MIN' | 'LATEST' | 'SNAPSHOT' | 'FOLLOW' | 'DOMINANT' | 'QUEUEPOS';
   table: string;      // VALIDATION REQUIRED: Must exist in 'tables' section
   foreign_key: string; // VALIDATION REQUIRED: Must exist in specified table's foreign_keys section
   column: string;
+}
+
+export interface RuleMatchAutomationDefinition {
+  type: 'RULE_MATCH';
+  mode: 'stored_procedure';  // Future: could add 'trigger' or 'hybrid'
+  source_table: string;  // VALIDATION REQUIRED: Must exist in 'tables' section
+  source_columns: {
+    match_column: string;      // Column in source that specifies which destination column to match
+    operator: string;          // Column in source that specifies comparison operator
+    compare_value: string;     // Column in source with the pattern to match
+    target_value: string;      // Column in source with value to set in destination
+    priority: string;          // Column in source for tie-breaking
+  };
+  destination_columns: string[];  // VALIDATION REQUIRED: Must exist in destination table
+  operators: ('equals' | 'starts_with' | 'contains' | 'ends_with')[];
+  overwrite_policy?: 'always' | 'if_null' | 'never';  // Default: if_null
 }
 
 // Data Flow Graph Types - for cycle detection and validation

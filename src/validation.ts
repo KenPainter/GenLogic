@@ -150,27 +150,57 @@ export class SchemaValidator {
             if (column && typeof column === 'object' && 'automation' in column) {
               const automation = (column as any).automation;
               if (automation) {
-                // Validate table reference
-                if (!tableNames.has(automation.table)) {
-                  errors.push(`Table '${tableName}', column '${columnName}': automation table '${automation.table}' does not exist`);
-                }
-
-                // Validate foreign_key reference
-                // For aggregations (SUM/COUNT/MAX/MIN/LATEST): FK is in source table (child)
-                // For cascades/follows (SNAPSHOT/FOLLOW): FK is in current table (child)
-                const isAggregation = ['SUM', 'COUNT', 'MAX', 'MIN', 'LATEST'].includes(automation.type);
-                const isCascade = ['SNAPSHOT', 'FOLLOW'].includes(automation.type);
-
-                if (isAggregation) {
-                  // FK must exist in source table (child)
-                  const sourceTable = schema.tables?.[automation.table];
-                  if (sourceTable?.foreign_keys && !sourceTable.foreign_keys[automation.foreign_key]) {
-                    errors.push(`Table '${tableName}', column '${columnName}': automation foreign_key '${automation.foreign_key}' does not exist in table '${automation.table}'`);
+                // Handle RULE_MATCH automation differently
+                if (automation.type === 'RULE_MATCH') {
+                  // Validate source_table reference
+                  if (!tableNames.has(automation.source_table)) {
+                    errors.push(`Table '${tableName}', column '${columnName}': RULE_MATCH source_table '${automation.source_table}' does not exist`);
                   }
-                } else if (isCascade) {
-                  // FK must exist in current table (child)
-                  if (table.foreign_keys && !table.foreign_keys[automation.foreign_key]) {
-                    errors.push(`Table '${tableName}', column '${columnName}': automation foreign_key '${automation.foreign_key}' does not exist in current table`);
+
+                  // Validate destination_columns exist in current table
+                  if (automation.destination_columns && Array.isArray(automation.destination_columns)) {
+                    const tableColumns = new Set(Object.keys(table.columns || {}));
+                    for (const destCol of automation.destination_columns) {
+                      if (!tableColumns.has(destCol)) {
+                        errors.push(`Table '${tableName}', column '${columnName}': RULE_MATCH destination_column '${destCol}' does not exist in table`);
+                      }
+                    }
+                  }
+
+                  // Validate source_columns exist in source table
+                  const sourceTable = schema.tables?.[automation.source_table];
+                  if (sourceTable && automation.source_columns) {
+                    const sourceTableColumns = new Set(Object.keys(sourceTable.columns || {}));
+                    for (const [key, sourceCol] of Object.entries(automation.source_columns)) {
+                      if (!sourceTableColumns.has(sourceCol as string)) {
+                        errors.push(`Table '${tableName}', column '${columnName}': RULE_MATCH source_columns.${key} '${sourceCol}' does not exist in source table '${automation.source_table}'`);
+                      }
+                    }
+                  }
+                } else {
+                  // Standard automation validation
+                  // Validate table reference
+                  if (!tableNames.has(automation.table)) {
+                    errors.push(`Table '${tableName}', column '${columnName}': automation table '${automation.table}' does not exist`);
+                  }
+
+                  // Validate foreign_key reference
+                  // For aggregations (SUM/COUNT/MAX/MIN/LATEST): FK is in source table (child)
+                  // For cascades/follows (SNAPSHOT/FOLLOW): FK is in current table (child)
+                  const isAggregation = ['SUM', 'COUNT', 'MAX', 'MIN', 'LATEST'].includes(automation.type);
+                  const isCascade = ['SNAPSHOT', 'FOLLOW'].includes(automation.type);
+
+                  if (isAggregation) {
+                    // FK must exist in source table (child)
+                    const sourceTable = schema.tables?.[automation.table];
+                    if (sourceTable?.foreign_keys && !sourceTable.foreign_keys[automation.foreign_key]) {
+                      errors.push(`Table '${tableName}', column '${columnName}': automation foreign_key '${automation.foreign_key}' does not exist in table '${automation.table}'`);
+                    }
+                  } else if (isCascade) {
+                    // FK must exist in current table (child)
+                    if (table.foreign_keys && !table.foreign_keys[automation.foreign_key]) {
+                      errors.push(`Table '${tableName}', column '${columnName}': automation foreign_key '${automation.foreign_key}' does not exist in current table`);
+                    }
                   }
                 }
               }

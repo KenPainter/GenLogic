@@ -398,10 +398,25 @@ export class ResolvedSchemaGenerator {
       const managedBy = this.generateManagedByInfo(
         columnDef.automation,
         tableName,
+        columnName,
         _schema,
         _processedSchema
       );
 
+      // RULE_MATCH is different - middleware controls updates via stored procedures
+      if ((columnDef.automation as any).type === 'RULE_MATCH') {
+        return {
+          writable: 'hybrid',
+          reason: 'rule_match_automation',
+          managed_by: managedBy,
+          insert_behavior: 'optional',
+          update_behavior: 'allowed',
+          query_note: 'Middleware uses preview functions and performs updates after user approval',
+          note: 'This column uses RULE_MATCH automation. Middleware should preview matches and apply updates.'
+        };
+      }
+
+      // Standard automations (SUM, COUNT, etc.)
       return {
         writable: 'never',
         reason: 'database_automation',
@@ -453,31 +468,88 @@ export class ResolvedSchemaGenerator {
   private generateManagedByInfo(
     automation: AutomationDefinition,
     tableName: string,
+    columnName: string,
     _schema: GenLogicSchema,
     _processedSchema: ProcessedSchema
   ): any {
+    // Handle RULE_MATCH automation
+    if ((automation as any).type === 'RULE_MATCH') {
+      const ruleMatch = automation as any;
+      const sprocBaseName = `${tableName}_${columnName}_rule_match`;
+
+      return {
+        type: 'stored_procedure',
+        automation_type: 'RULE_MATCH',
+        source_table: ruleMatch.source_table,
+        mode: ruleMatch.mode || 'stored_procedure',
+
+        stored_procedures: {
+          rule_preview: {
+            name: `${tableName}_${columnName}_rule_preview`,
+            signature: '(rule_id INTEGER)',
+            returns: 'TABLE(transaction_id INTEGER, description VARCHAR, payee VARCHAR, current_offset_account VARCHAR, would_match BOOLEAN)',
+            description: 'Preview what a specific rule would match. Use when creating/editing rules.',
+            usage: `-- Preview what rule #42 would match\nSELECT * FROM ${tableName}_${columnName}_rule_preview(42);\n\n-- Returns all uncategorized transactions and whether they match this rule`
+          },
+          categorize_preview: {
+            name: `${tableName}_${columnName}_categorize_preview`,
+            signature: '(transaction_ids INTEGER[] DEFAULT NULL)',
+            returns: 'TABLE(transaction_id INTEGER, description VARCHAR, current_offset_account VARCHAR, proposed_offset_account VARCHAR, matched_rule_id INTEGER, rule_priority INTEGER)',
+            description: 'Preview categorization for transactions (NULL = all uncategorized). Use after bulk imports.',
+            usage: `-- Preview categorization for newly imported transactions\nSELECT * FROM ${tableName}_${columnName}_categorize_preview(ARRAY[1001, 1002, 1003]);\n\n-- Preview all uncategorized transactions\nSELECT * FROM ${tableName}_${columnName}_categorize_preview(NULL);`
+          },
+          categorize_apply: {
+            name: `${tableName}_${columnName}_categorize_apply`,
+            signature: '(transaction_ids INTEGER[] DEFAULT NULL)',
+            returns: 'TABLE(transaction_id INTEGER, offset_account VARCHAR, rule_id INTEGER)',
+            description: 'Apply categorization to transactions (NULL = all uncategorized). Actually performs UPDATEs.',
+            usage: `-- Apply categorization to newly imported transactions\nSELECT * FROM ${tableName}_${columnName}_categorize_apply(ARRAY[1001, 1002, 1003]);\n\n-- Apply to all uncategorized transactions\nSELECT * FROM ${tableName}_${columnName}_categorize_apply(NULL);`
+          }
+        },
+
+        match_rules: {
+          source_columns: ruleMatch.source_columns,
+          destination_columns: ruleMatch.destination_columns,
+          supported_operators: ruleMatch.operators,
+          overwrite_policy: ruleMatch.overwrite_policy || 'if_null'
+        },
+
+        ui_guidance: {
+          workflow_new_rule: `1. User creates a new categorization rule\n2. Call rule_preview to show what it matches\n3. Display: "This rule matches N transactions. Apply?"\n4. If approved, middleware does simple UPDATE`,
+
+          workflow_bulk_import: `1. Import transactions with ${columnName} = NULL\n2. Call categorize_preview to see what rules match\n3. Display matches grouped by rule for user approval\n4. Call categorize_apply to perform UPDATEs`,
+
+          example_new_rule: `-- User creates rule #42: "NETFLIX → Entertainment"\n-- Preview what it matches:\nSELECT \n  t.transaction_id,\n  t.description,\n  t.amount\nFROM ${tableName}_${columnName}_rule_preview(42) p\nJOIN ${tableName} t ON t.transaction_id = p.transaction_id\nWHERE p.would_match = true;\n\n-- Show user: "This rule matches 47 transactions. Apply?"\n-- If approved, middleware does:\nUPDATE ${tableName}\nSET ${columnName} = (SELECT target_value FROM ${ruleMatch.source_table} WHERE rule_id = 42)\nWHERE transaction_id IN (SELECT transaction_id FROM ${tableName}_${columnName}_rule_preview(42) WHERE would_match = true);`,
+
+          example_bulk_import: `-- Import 100 new transactions (IDs 1001-1100)\n-- Preview categorization:\nSELECT \n  proposed_offset_account,\n  COUNT(*) as match_count,\n  ARRAY_AGG(transaction_id) as transactions\nFROM ${tableName}_${columnName}_categorize_preview(ARRAY[1001, 1002, ...1100])\nWHERE proposed_offset_account IS NOT NULL\nGROUP BY proposed_offset_account\nORDER BY match_count DESC;\n\n-- Show user: "75 of 100 transactions matched rules. Apply?"\n-- If approved:\nSELECT * FROM ${tableName}_${columnName}_categorize_apply(ARRAY[1001, 1002, ...1100]);`
+        }
+      };
+    }
+
+    // Standard automation handling
+    const stdAutomation = automation as any;
     const info: any = {
       type: 'trigger_aggregation',
-      automation_type: automation.type,
-      source_table: automation.table,
-      source_column: automation.column
+      automation_type: stdAutomation.type,
+      source_table: stdAutomation.table,
+      source_column: stdAutomation.column
     };
 
     // Determine which table has the trigger
-    if (['SUM', 'COUNT', 'MAX', 'MIN', 'LATEST'].includes(automation.type)) {
+    if (['SUM', 'COUNT', 'MAX', 'MIN', 'LATEST'].includes(stdAutomation.type)) {
       // Aggregations: trigger is on the source (child) table
-      info.trigger_name = `${automation.table}_before_insert_genlogic`;
-      info.aggregation_path = `${automation.table}.${automation.foreign_key} -> ${tableName}`;
+      info.trigger_name = `${stdAutomation.table}_before_insert_genlogic`;
+      info.aggregation_path = `${stdAutomation.table}.${stdAutomation.foreign_key} -> ${tableName}`;
       info.update_strategy = 'incremental';
-      info.note = `Aggregates ${automation.type} from ${automation.table}.${automation.column}`;
-    } else if (['SNAPSHOT', 'FOLLOW'].includes(automation.type)) {
+      info.note = `Aggregates ${stdAutomation.type} from ${stdAutomation.table}.${stdAutomation.column}`;
+    } else if (['SNAPSHOT', 'FOLLOW'].includes(stdAutomation.type)) {
       // SNAPSHOT/FOLLOW: trigger is on the parent table
-      info.trigger_name = `${automation.table}_before_update_genlogic`;
-      info.cascade_path = `${automation.table} -> ${tableName}.${automation.foreign_key}`;
-      info.update_strategy = automation.type === 'FOLLOW' ? 'on_parent_change' : 'on_insert_only';
-      info.note = automation.type === 'SNAPSHOT'
-        ? `Snapshot from ${automation.table}.${automation.column} (captured on INSERT only)`
-        : `Follows ${automation.table}.${automation.column} (synchronized on parent UPDATE)`;
+      info.trigger_name = `${stdAutomation.table}_before_update_genlogic`;
+      info.cascade_path = `${stdAutomation.table} -> ${tableName}.${stdAutomation.foreign_key}`;
+      info.update_strategy = stdAutomation.type === 'FOLLOW' ? 'on_parent_change' : 'on_insert_only';
+      info.note = stdAutomation.type === 'SNAPSHOT'
+        ? `Snapshot from ${stdAutomation.table}.${stdAutomation.column} (captured on INSERT only)`
+        : `Follows ${stdAutomation.table}.${stdAutomation.column} (synchronized on parent UPDATE)`;
     }
 
     return info;
