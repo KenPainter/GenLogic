@@ -22,17 +22,20 @@ interface TableAutomations {
 
   // SPREAD to other tables: generate multiple rows based on date range + interval
   spreadTargets: Array<{
-    targetTable: string;
-    spreadName: string;  // Name from spread: { transactions: {...} }
+    targetTable: string;   // Child table to create rows in
+    parentTable: string;   // Parent table (for getting PK value)
+    spreadName: string;  // Name from FK: { plan_fk: {...} }
     operations: ('insert' | 'update' | 'delete')[];
     generate: {
-      startDate: string;   // Column name
-      endDate: string;     // Column name
-      interval: string;    // Column name
+      startDate: string;   // Column name in parent table
+      endDate: string;     // Column name in parent table
+      interval: string;    // Column name in parent table
     };
-    columnMap?: Record<string, string>;  // Data columns to copy
-    literals?: Record<string, string>;  // Constants
-    trackingColumn: string;  // FK in target pointing back to source
+    generatedColumn: string;  // Column in child table to populate with generated dates
+    columnMap?: Record<string, string>;  // Data columns to copy (parent: child)
+    literals?: Record<string, string>;  // Constants for child columns
+    matchConditions?: string[];  // Optional WHERE filter
+    trackingColumn: string;  // FK in child pointing back to parent
   }>;
 
   // PUSH to children: this table is parent, cascade to children on UPDATE
@@ -251,59 +254,69 @@ export class TriggerGenerator {
       }
     }
 
-    // Collect sync definitions for each table
-    for (const [tableName, table] of Object.entries(schema.tables)) {
-      if (!table.sync) continue;
+    // Collect auto_create (sync/spread) from foreign keys
+    // Key insight: auto_create is on child table's FK, but triggers go on PARENT table
+    for (const [childTableName, table] of Object.entries(schema.tables)) {
+      if (!table.foreign_keys) continue;
 
-      for (const [syncName, syncDef] of Object.entries(table.sync)) {
-        const direction = syncDef.direction || 'push';
-        const operations = syncDef.operations || ['insert', 'update', 'delete'];
+      for (const [fkName, fk] of Object.entries(table.foreign_keys)) {
+        if (!fk.auto_create) continue;
 
-        const syncTarget: any = {
-          targetTable: syncName,
-          syncName,
-          direction,
-          operations,
-          matchColumns: syncDef.match_columns
-        };
-        if (syncDef.match_conditions) {
-          syncTarget.matchConditions = syncDef.match_conditions;
-        }
-        if (syncDef.column_map) {
-          syncTarget.columnMap = syncDef.column_map;
-        }
-        if (syncDef.literals) {
-          syncTarget.literals = syncDef.literals;
-        }
-        tableAutomations[tableName].syncTargets.push(syncTarget);
-      }
-    }
+        const ac = fk.auto_create;
+        const parentTableName = fk.table;
 
-    // Collect spread definitions for each table
-    for (const [tableName, table] of Object.entries(schema.tables)) {
-      if (!table.spread) continue;
+        if (ac.spread) {
+          // SPREAD: Generate multiple rows in child table from parent table date range
+          const spreadTarget: any = {
+            targetTable: childTableName,  // Child table gets the generated rows
+            parentTable: parentTableName,  // Parent table (for getting PK)
+            spreadName: fkName,  // Use FK name instead of target table name
+            operations: ac.on,
+            generate: {
+              startDate: ac.spread.start,
+              endDate: ac.spread.end,
+              interval: ac.spread.interval
+            },
+            trackingColumn: this.getFKColumnNames(childTableName, parentTableName, fkName, processedSchema)[0],  // FK column in child
+            generatedColumn: ac.spread.generated_column  // NEW: column to populate with generated dates
+          };
+          if (ac.copy_columns) {
+            spreadTarget.columnMap = ac.copy_columns;
+          }
+          if (ac.literals) {
+            spreadTarget.literals = ac.literals;
+          }
+          if (ac.filter) {
+            spreadTarget.matchConditions = [ac.filter];
+          }
+          // Trigger goes on PARENT table
+          tableAutomations[parentTableName].spreadTargets.push(spreadTarget);
 
-      for (const [spreadName, spreadDef] of Object.entries(table.spread)) {
-        const operations = spreadDef.operations || ['insert', 'update', 'delete'];
-
-        const spreadTarget: any = {
-          targetTable: spreadName,
-          spreadName,
-          operations,
-          generate: {
-            startDate: spreadDef.generate.start_date,
-            endDate: spreadDef.generate.end_date,
-            interval: spreadDef.generate.interval
-          },
-          trackingColumn: spreadDef.tracking_column
-        };
-        if (spreadDef.column_map) {
-          spreadTarget.columnMap = spreadDef.column_map;
+        } else {
+          // SYNC: Simple 1:1 row copy from parent to child
+          const syncTarget: any = {
+            targetTable: childTableName,  // Child table gets the copied row
+            syncName: fkName,  // Use FK name instead of target table name
+            direction: 'push',  // Always push from parent to child
+            operations: ac.on,
+            matchColumns: {
+              // The FK columns in child = parent PK
+              [this.getTablePrimaryKeys(parentTableName, processedSchema)[0]]:
+                this.getFKColumnNames(childTableName, parentTableName, fkName, processedSchema)[0]
+            }
+          };
+          if (ac.copy_columns) {
+            syncTarget.columnMap = ac.copy_columns;
+          }
+          if (ac.literals) {
+            syncTarget.literals = ac.literals;
+          }
+          if (ac.filter) {
+            syncTarget.matchConditions = [ac.filter];
+          }
+          // Trigger goes on PARENT table
+          tableAutomations[parentTableName].syncTargets.push(syncTarget);
         }
-        if (spreadDef.literals) {
-          spreadTarget.literals = spreadDef.literals;
-        }
-        tableAutomations[tableName].spreadTargets.push(spreadTarget);
       }
     }
 
@@ -422,7 +435,7 @@ export class TriggerGenerator {
     if (syncs) sections.push(syncs);
 
     // Step 6: SPREAD to other tables (generate multiple rows)
-    const spreads = this.generateSpreadOperations(automations, 'INSERT');
+    const spreads = this.generateSpreadOperations(automations, 'INSERT', tableName, processedSchema);
     if (spreads) sections.push(spreads);
 
     const functionBody = sections.length > 0 ? sections.join('\n\n') : '  -- No automations for INSERT';
@@ -473,7 +486,7 @@ CREATE TRIGGER ${triggerName}
     if (syncs) sections.push(syncs);
 
     // Step 6: SPREAD to other tables (regenerate if dates changed)
-    const spreads = this.generateSpreadOperations(automations, 'UPDATE');
+    const spreads = this.generateSpreadOperations(automations, 'UPDATE', tableName, processedSchema);
     if (spreads) sections.push(spreads);
 
     const functionBody = sections.length > 0 ? sections.join('\n\n') : '  -- No automations for UPDATE';
@@ -512,7 +525,7 @@ CREATE TRIGGER ${triggerName}
     if (syncs) sections.push(syncs);
 
     // Step 3: SPREAD to other tables (delete all generated rows)
-    const spreads = this.generateSpreadOperations(automations, 'DELETE');
+    const spreads = this.generateSpreadOperations(automations, 'DELETE', tableName, processedSchema);
     if (spreads) sections.push(spreads);
 
     const functionBody = sections.length > 0 ? sections.join('\n\n') : '  -- No automations for DELETE';
@@ -855,12 +868,21 @@ CREATE TRIGGER ${triggerName}
     if (sync.literals) {
       for (const [targetCol, literal] of Object.entries(sync.literals)) {
         columns.push(targetCol);
-        values.push(`'${literal}'`);
+        values.push(literal);  // Already a SQL literal value
       }
     }
 
-    return `  INSERT INTO ${sync.targetTable} (${columns.join(', ')})
+    const insertSQL = `  INSERT INTO ${sync.targetTable} (${columns.join(', ')})
   VALUES (${values.join(', ')});`;
+
+    // Wrap in IF statement if there's a filter condition
+    if (sync.matchConditions && sync.matchConditions.length > 0) {
+      return `  IF ${sync.matchConditions.join(' AND ')} THEN
+${insertSQL}
+  END IF;`;
+    }
+
+    return insertSQL;
   }
 
   /**
@@ -920,7 +942,7 @@ CREATE TRIGGER ${triggerName}
   /**
    * Generate SPREAD operations (generate multiple rows based on date range)
    */
-  private generateSpreadOperations(automations: TableAutomations, operation: 'INSERT' | 'UPDATE' | 'DELETE'): string | null {
+  private generateSpreadOperations(automations: TableAutomations, operation: 'INSERT' | 'UPDATE' | 'DELETE', parentTableName: string, processedSchema: ProcessedSchema): string | null {
     const spreads = automations.spreadTargets.filter(s => s.operations.includes(operation.toLowerCase() as any));
     if (spreads.length === 0) return null;
 
@@ -929,11 +951,11 @@ CREATE TRIGGER ${triggerName}
 
     for (const spread of spreads) {
       if (operation === 'INSERT') {
-        sections.push(this.generateSpreadInsert(spread));
+        sections.push(this.generateSpreadInsert(spread, parentTableName, processedSchema));
       } else if (operation === 'UPDATE') {
-        sections.push(this.generateSpreadUpdate(spread));
+        sections.push(this.generateSpreadUpdate(spread, parentTableName, processedSchema));
       } else if (operation === 'DELETE') {
-        sections.push(this.generateSpreadDelete(spread));
+        sections.push(this.generateSpreadDelete(spread, parentTableName, processedSchema));
       }
     }
 
@@ -942,54 +964,61 @@ CREATE TRIGGER ${triggerName}
 
   /**
    * Generate SPREAD INSERT: Loop through date range and insert rows
+   * NOTE: This runs in parent table's AFTER INSERT trigger, so NEW refers to parent row
    */
-  private generateSpreadInsert(spread: any): string {
-    const { targetTable, generate, columnMap, literals, trackingColumn } = spread;
+  private generateSpreadInsert(spread: any, parentTableName: string, processedSchema: ProcessedSchema): string {
+    const { targetTable, generate, columnMap, literals, trackingColumn, generatedColumn } = spread;
 
-    // Build column list and value list
-    const columns: string[] = [trackingColumn, 'date'];  // Always include tracking FK and date
-    const values: string[] = ['NEW.' + generate.startDate.replace('_id', '_id'), 'current_date'];  // Will be replaced in loop
+    // Get parent table's primary key column
+    const parentPKColumns = this.getTablePrimaryKeys(parentTableName, processedSchema);
+    const parentPKCol = parentPKColumns[0];  // Assume single-column PK for now
 
-    // Add column_map columns
+    // Build column list - trackingColumn (FK) and generated date column
+    const columns: string[] = [trackingColumn, generatedColumn];
+    const valueRefs: string[] = [];
+
+    // Add column_map columns (parent column -> child column)
     if (columnMap) {
-      for (const [sourceCol, targetCol] of Object.entries(columnMap)) {
-        columns.push(targetCol as string);
-        values.push(`NEW.${sourceCol}`);
+      for (const [parentCol, childCol] of Object.entries(columnMap)) {
+        columns.push(childCol as string);
+        valueRefs.push(`NEW.${parentCol}`);
       }
     }
 
     // Add literals
     if (literals) {
-      for (const [targetCol, literal] of Object.entries(literals)) {
-        columns.push(targetCol);
-        values.push(`'${literal}'`);
+      for (const [childCol, literal] of Object.entries(literals)) {
+        columns.push(childCol);
+        valueRefs.push(literal);  // Already a literal SQL value
       }
     }
 
-    // Note: We need to get the parent PK to use as tracking value
-    // For simplicity, assuming source table has a PK that matches the pattern
-    const sourcePKRef = this.guessPrimaryKeyReference(trackingColumn);
+    // Build optional WHERE filter
+    const filterCheck = spread.matchConditions ? `  IF ${spread.matchConditions.join(' AND ')} THEN\n` : '';
+    const filterEnd = spread.matchConditions ? `  END IF;\n` : '';
 
-    return `  -- SPREAD: Generate rows from ${generate.startDate} to ${generate.endDate} with interval ${generate.interval}
-  DECLARE
-    current_date DATE;
+    return `  -- SPREAD: Generate rows from ${generate.startDate} to ${generate.endDate} with interval ${generate.interval}${spread.matchConditions ? ' (filtered)' : ''}
+${filterCheck}  DECLARE
+    v_current_date DATE;
   BEGIN
-    current_date := NEW.${generate.startDate};
-    WHILE current_date <= NEW.${generate.endDate} LOOP
+    v_current_date := NEW.${generate.startDate};
+    WHILE v_current_date <= NEW.${generate.endDate} LOOP
       INSERT INTO ${targetTable} (${columns.join(', ')})
-      VALUES (NEW.${sourcePKRef}, current_date, ${values.slice(2).join(', ')});
+      VALUES (NEW.${parentPKCol}, v_current_date${valueRefs.length > 0 ? ', ' + valueRefs.join(', ') : ''});
 
-      current_date := current_date + NEW.${generate.interval};
+      v_current_date := v_current_date + (NEW.${generate.interval})::INTERVAL;
     END LOOP;
-  END;`;
+  END;
+${filterEnd}`;
   }
 
   /**
    * Generate SPREAD UPDATE: Delete and regenerate if dates changed
    */
-  private generateSpreadUpdate(spread: any): string {
+  private generateSpreadUpdate(spread: any, parentTableName: string, processedSchema: ProcessedSchema): string {
     const { targetTable, generate, trackingColumn } = spread;
-    const sourcePKRef = this.guessPrimaryKeyReference(trackingColumn);
+    const parentPKColumns = this.getTablePrimaryKeys(parentTableName, processedSchema);
+    const parentPKCol = parentPKColumns[0];
 
     // Check if any of the generate fields changed
     const changeDetection = `(OLD.${generate.startDate} IS DISTINCT FROM NEW.${generate.startDate} OR ` +
@@ -998,20 +1027,21 @@ CREATE TRIGGER ${triggerName}
 
     return `  -- SPREAD UPDATE: Regenerate if dates/interval changed
   IF ${changeDetection} THEN
-    DELETE FROM ${targetTable} WHERE ${trackingColumn} = OLD.${sourcePKRef};
-    ${this.generateSpreadInsert(spread).replace('  --', '   --').replace(/^/gm, '  ')}
+    DELETE FROM ${targetTable} WHERE ${trackingColumn} = OLD.${parentPKCol};
+    ${this.generateSpreadInsert(spread, parentTableName, processedSchema).replace(/^/gm, '  ')}
   END IF;`;
   }
 
   /**
    * Generate SPREAD DELETE: Delete all generated rows
    */
-  private generateSpreadDelete(spread: any): string {
+  private generateSpreadDelete(spread: any, parentTableName: string, processedSchema: ProcessedSchema): string {
     const { targetTable, trackingColumn } = spread;
-    const sourcePKRef = this.guessPrimaryKeyReference(trackingColumn);
+    const parentPKColumns = this.getTablePrimaryKeys(parentTableName, processedSchema);
+    const parentPKCol = parentPKColumns[0];
 
     return `  -- SPREAD DELETE: Remove all generated rows
-  DELETE FROM ${targetTable} WHERE ${trackingColumn} = OLD.${sourcePKRef};`;
+  DELETE FROM ${targetTable} WHERE ${trackingColumn} = OLD.${parentPKCol};`;
   }
 
   /**

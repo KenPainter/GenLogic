@@ -208,20 +208,46 @@ export class SchemaValidator {
           }
         }
 
-        // Validate foreign key table references
+        // Validate foreign key table references and auto_create basic structure
         if (table.foreign_keys) {
           for (const [fkName, fk] of Object.entries(table.foreign_keys)) {
             if (!tableNames.has(fk.table)) {
               errors.push(`Table '${tableName}', foreign_key '${fkName}': target table '${fk.table}' does not exist`);
             }
+
+            // Basic auto_create validation (detailed column validation happens after processing)
+            if (fk.auto_create) {
+              const ac = fk.auto_create;
+
+              // Validate 'on' array is not empty
+              if (!ac.on || ac.on.length === 0) {
+                errors.push(`Table '${tableName}', foreign_key '${fkName}': auto_create.on must not be empty`);
+              }
+            }
           }
         }
 
-        // Validate sync target table references (but NOT column names yet - they may be FK-derived)
-        if (table.sync) {
-          for (const targetTableName of Object.keys(table.sync)) {
-            if (!tableNames.has(targetTableName)) {
-              errors.push(`Table '${tableName}', sync target '${targetTableName}': target table does not exist`);
+        // Validate matching definitions
+        if (table.matching) {
+          const matching = table.matching;
+          const tableColumns = new Set(Object.keys(table.columns || {}));
+
+          // Validate pattern_column exists
+          if (!tableColumns.has(matching.pattern_column)) {
+            errors.push(`Table '${tableName}', matching: pattern_column '${matching.pattern_column}' does not exist in table`);
+          }
+
+          // Validate result_column exists
+          if (!tableColumns.has(matching.result_column)) {
+            errors.push(`Table '${tableName}', matching: result_column '${matching.result_column}' does not exist in table`);
+          }
+
+          // Validate match_columns
+          if (matching.match_columns) {
+            for (const matchCol of matching.match_columns) {
+              if (!tableColumns.has(matchCol.column)) {
+                errors.push(`Table '${tableName}', matching: match_column '${matchCol.column}' does not exist in table`);
+              }
             }
           }
         }
@@ -236,7 +262,7 @@ export class SchemaValidator {
   }
 
   /**
-   * PHASE 2.5: Validate sync and spread definitions against processed schema
+   * PHASE 2.5: Validate auto_create definitions against processed schema
    * This must run AFTER schema processing, when FK columns are expanded
    */
   validateSyncDefinitions(schema: GenLogicSchema, processedSchema: any): ValidationResult {
@@ -264,91 +290,51 @@ export class SchemaValidator {
       return allColumns;
     };
 
-    for (const [sourceTableName, table] of Object.entries(schema.tables)) {
-      if (!table.sync) continue;
+    // Validate auto_create on foreign keys
+    for (const [childTableName, table] of Object.entries(schema.tables)) {
+      if (!table.foreign_keys) continue;
 
-      const sourceColumns = getAllColumns(sourceTableName);
+      for (const [fkName, fk] of Object.entries(table.foreign_keys)) {
+        if (!fk.auto_create) continue;
 
-      for (const [targetTableName, syncDef] of Object.entries(table.sync)) {
-        const targetColumns = getAllColumns(targetTableName);
+        const ac = fk.auto_create;
+        const parentTableName = fk.table;
+        const parentColumns = getAllColumns(parentTableName);
+        const childColumns = getAllColumns(childTableName);
 
-        // Validate match_columns - both source and target must exist
-        if (syncDef.match_columns) {
-          for (const [sourceCol, targetCol] of Object.entries(syncDef.match_columns)) {
-            if (!sourceColumns.has(sourceCol)) {
-              errors.push(`Table '${sourceTableName}', sync to '${targetTableName}': match_columns source column '${sourceCol}' does not exist (after FK expansion)`);
+        // Validate spread columns (if present)
+        if (ac.spread) {
+          if (!parentColumns.has(ac.spread.start)) {
+            errors.push(`Table '${childTableName}', foreign_key '${fkName}': auto_create.spread.start '${ac.spread.start}' does not exist in parent table '${parentTableName}'`);
+          }
+          if (!parentColumns.has(ac.spread.end)) {
+            errors.push(`Table '${childTableName}', foreign_key '${fkName}': auto_create.spread.end '${ac.spread.end}' does not exist in parent table '${parentTableName}'`);
+          }
+          if (!parentColumns.has(ac.spread.interval)) {
+            errors.push(`Table '${childTableName}', foreign_key '${fkName}': auto_create.spread.interval '${ac.spread.interval}' does not exist in parent table '${parentTableName}'`);
+          }
+          if (!childColumns.has(ac.spread.generated_column)) {
+            errors.push(`Table '${childTableName}', foreign_key '${fkName}': auto_create.spread.generated_column '${ac.spread.generated_column}' does not exist in child table`);
+          }
+        }
+
+        // Validate copy_columns - both parent and child must exist
+        if (ac.copy_columns) {
+          for (const [parentCol, childCol] of Object.entries(ac.copy_columns)) {
+            if (!parentColumns.has(parentCol)) {
+              errors.push(`Table '${childTableName}', foreign_key '${fkName}': auto_create.copy_columns parent column '${parentCol}' does not exist in parent table '${parentTableName}'`);
             }
-            if (!targetColumns.has(targetCol)) {
-              errors.push(`Table '${sourceTableName}', sync to '${targetTableName}': match_columns target column '${targetCol}' does not exist in target table`);
+            if (!childColumns.has(childCol)) {
+              errors.push(`Table '${childTableName}', foreign_key '${fkName}': auto_create.copy_columns child column '${childCol}' does not exist in child table`);
             }
           }
         }
 
-        // Validate column_map - both source and target must exist
-        if (syncDef.column_map) {
-          for (const [sourceCol, targetCol] of Object.entries(syncDef.column_map)) {
-            if (!sourceColumns.has(sourceCol)) {
-              errors.push(`Table '${sourceTableName}', sync to '${targetTableName}': column_map source column '${sourceCol}' does not exist (after FK expansion)`);
-            }
-            if (!targetColumns.has(targetCol)) {
-              errors.push(`Table '${sourceTableName}', sync to '${targetTableName}': column_map target column '${targetCol}' does not exist in target table`);
-            }
-          }
-        }
-
-        // Validate literals - target columns must exist
-        if (syncDef.literals) {
-          for (const targetCol of Object.keys(syncDef.literals)) {
-            if (!targetColumns.has(targetCol)) {
-              errors.push(`Table '${sourceTableName}', sync to '${targetTableName}': literals target column '${targetCol}' does not exist in target table`);
-            }
-          }
-        }
-      }
-    }
-
-    // Validate spread definitions
-    for (const [sourceTableName, table] of Object.entries(schema.tables)) {
-      if (!table.spread) continue;
-
-      const sourceColumns = getAllColumns(sourceTableName);
-
-      for (const [targetTableName, spreadDef] of Object.entries(table.spread)) {
-        const targetColumns = getAllColumns(targetTableName);
-
-        // Validate generate columns exist in source
-        if (!sourceColumns.has(spreadDef.generate.start_date)) {
-          errors.push(`Table '${sourceTableName}', spread to '${targetTableName}': generate.start_date '${spreadDef.generate.start_date}' does not exist in source table`);
-        }
-        if (!sourceColumns.has(spreadDef.generate.end_date)) {
-          errors.push(`Table '${sourceTableName}', spread to '${targetTableName}': generate.end_date '${spreadDef.generate.end_date}' does not exist in source table`);
-        }
-        if (!sourceColumns.has(spreadDef.generate.interval)) {
-          errors.push(`Table '${sourceTableName}', spread to '${targetTableName}': generate.interval '${spreadDef.generate.interval}' does not exist in source table`);
-        }
-
-        // Validate tracking_column exists in target
-        if (!targetColumns.has(spreadDef.tracking_column)) {
-          errors.push(`Table '${sourceTableName}', spread to '${targetTableName}': tracking_column '${spreadDef.tracking_column}' does not exist in target table`);
-        }
-
-        // Validate column_map
-        if (spreadDef.column_map) {
-          for (const [sourceCol, targetCol] of Object.entries(spreadDef.column_map)) {
-            if (!sourceColumns.has(sourceCol)) {
-              errors.push(`Table '${sourceTableName}', spread to '${targetTableName}': column_map source column '${sourceCol}' does not exist in source table`);
-            }
-            if (!targetColumns.has(targetCol)) {
-              errors.push(`Table '${sourceTableName}', spread to '${targetTableName}': column_map target column '${targetCol}' does not exist in target table`);
-            }
-          }
-        }
-
-        // Validate literals
-        if (spreadDef.literals) {
-          for (const targetCol of Object.keys(spreadDef.literals)) {
-            if (!targetColumns.has(targetCol)) {
-              errors.push(`Table '${sourceTableName}', spread to '${targetTableName}': literals target column '${targetCol}' does not exist in target table`);
+        // Validate literals - child columns must exist
+        if (ac.literals) {
+          for (const childCol of Object.keys(ac.literals)) {
+            if (!childColumns.has(childCol)) {
+              errors.push(`Table '${childTableName}', foreign_key '${fkName}': auto_create.literals child column '${childCol}' does not exist in child table`);
             }
           }
         }

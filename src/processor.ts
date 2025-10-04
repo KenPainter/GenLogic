@@ -8,6 +8,7 @@ import { DatabaseManager } from './database.js';
 import { DiffEngine } from './diff-engine.js';
 import { SQLGenerator } from './sql-generator.js';
 import { TriggerGenerator } from './trigger-generator.js';
+import { MatchingGenerator } from './matching-generator.js';
 import { ContentManager } from './content-manager.js';
 import { ResolvedSchemaGenerator } from './resolved-schema-generator.js';
 
@@ -26,6 +27,7 @@ export class GenLogicProcessor {
   private diffEngine: DiffEngine;
   private sqlGenerator: SQLGenerator;
   private triggerGenerator: TriggerGenerator;
+  private matchingGenerator: MatchingGenerator;
   private contentManager: ContentManager;
   private resolvedSchemaGenerator: ResolvedSchemaGenerator;
 
@@ -38,6 +40,7 @@ export class GenLogicProcessor {
     this.diffEngine = new DiffEngine();
     this.sqlGenerator = new SQLGenerator();
     this.triggerGenerator = new TriggerGenerator();
+    this.matchingGenerator = new MatchingGenerator();
     this.contentManager = new ContentManager();
     this.resolvedSchemaGenerator = new ResolvedSchemaGenerator();
   }
@@ -117,9 +120,10 @@ export class GenLogicProcessor {
         };
 
         const triggerStatements = this.triggerGenerator.generateTriggers(schema, processedSchema);
+        const matchingStatements = this.matchingGenerator.generateMatchingFunctions(schema, processedSchema);
         const contentStatements = this.contentManager.generateContentInserts(schema, processedSchema);
 
-        const allStatements = [...triggerStatements, ...contentStatements];
+        const allStatements = [...triggerStatements, ...matchingStatements, ...contentStatements];
 
         console.log('📋 TEST MODE - Schema validation completed successfully!');
         this.reportPlannedChanges(mockDiff, allStatements);
@@ -139,13 +143,15 @@ export class GenLogicProcessor {
           console.log('📝 Generating SQL statements...');
           const ddlStatements = this.sqlGenerator.generateSQL(diff);
           const triggerStatements = this.triggerGenerator.generateTriggers(schema, processedSchema);
+          const matchingStatements = this.matchingGenerator.generateMatchingFunctions(schema, processedSchema);
           const contentStatements = this.contentManager.generateContentInserts(schema, processedSchema);
 
           // ROBUST EXECUTION ORDER:
           // 1. Drop ALL GenLogic triggers (clean slate)
           // 2. Run all DDL (tables, columns, constraints)
           // 3. Create ALL triggers (fresh from schema)
-          // 4. Insert content (with complete schema and active triggers)
+          // 4. Create matching functions (pattern matching utilities)
+          // 5. Insert content (with complete schema and active triggers)
           const allStatements = [
             ...dropAllTriggersSQL,
             ...ddlStatements.createTables,
@@ -153,6 +159,7 @@ export class GenLogicProcessor {
             ...ddlStatements.addForeignKeys,
             ...ddlStatements.createIndexes,
             ...triggerStatements,
+            ...matchingStatements,
             ...contentStatements
           ].filter(sql => sql.trim().length > 0 && !sql.startsWith('--'));
 

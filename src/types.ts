@@ -31,8 +31,7 @@ export interface ColumnDefinition {
 
 export interface TableDefinition {
   'ui-notes'?: UINote[];
-  sync?: Record<string, SyncDefinition>;
-  spread?: Record<string, SpreadDefinition>;
+  matching?: MatchingDefinition;
   columns?: Record<string, TableColumnDefinition>;
   foreign_keys?: Record<string, ForeignKeyDefinition>;
   content?: Record<string, any>[];
@@ -40,25 +39,14 @@ export interface TableDefinition {
 
 export type UINote = 'singleton' | 'no-insert' | 'no-update' | 'no-delete';
 
-export interface SyncDefinition {
-  direction?: 'push' | 'pull' | 'bidirectional';
-  operations?: ('insert' | 'update' | 'delete')[];
-  match_columns: Record<string, string>;  // source_col: target_col - always propagated
-  match_conditions?: string[];  // Extra WHERE conditions (not propagated)
-  column_map?: Record<string, string>;  // Data columns to sync
-  literals?: Record<string, string>;  // Constants (INSERT only)
-}
-
-export interface SpreadDefinition {
-  operations?: ('insert' | 'update' | 'delete')[];
-  generate: {
-    start_date: string;  // Column name for start date
-    end_date: string;    // Column name for end date
-    interval: string;    // Column name for interval (e.g., '1 month', '14 days')
-  };
-  column_map?: Record<string, string>;  // Data columns to spread
-  literals?: Record<string, string>;  // Constants for generated rows
-  tracking_column: string;  // FK column in target that points back to source
+export interface MatchingDefinition {
+  pattern_column: string;
+  result_column: string;
+  match_columns?: Array<{
+    column: string;
+    input_field: string;
+    operator: '>=' | '<=' | '>' | '<' | '=';
+  }>;
 }
 
 // Mixed inheritance syntax for table columns
@@ -77,6 +65,20 @@ export interface ForeignKeyDefinition {
   prefix?: string;
   suffix?: string;
   delete?: 'restrict' | 'cascade';
+  auto_create?: AutoCreateDefinition;  // FK-following auto-creation (sync/spread)
+}
+
+export interface AutoCreateDefinition {
+  on: ('insert' | 'update' | 'delete')[];  // Which operations trigger auto-creation
+  spread?: {
+    start: string;              // Column name in parent table
+    end: string;                // Column name in parent table
+    interval: string;           // Column name in parent table
+    generated_column: string;   // Column name in this (child) table
+  };
+  copy_columns?: Record<string, string>;  // parent_col: child_col
+  literals?: Record<string, string>;      // child_col: 'literal value'
+  filter?: string;  // Optional SQL WHERE condition
 }
 
 export type AutomationDefinition =
