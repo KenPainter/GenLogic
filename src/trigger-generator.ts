@@ -75,7 +75,7 @@ interface TableAutomations {
     fkColumns: string[];  // The FK columns that point to parent
     aggregations: Array<{
       parentColumn: string;      // Column in parent to update
-      aggregationType: string;   // SUM, COUNT, MAX, MIN, LATEST
+      aggregationType: string;   // SUM, COUNT, MAX, MIN, LAST_VALUE
       childColumn: string;       // Column in this table to aggregate
     }>;
   }>;
@@ -179,7 +179,7 @@ export class TriggerGenerator {
         const fkName = automation.foreign_key;
         const sourceColumn = automation.column;
 
-        if (['SUM', 'COUNT', 'MAX', 'MIN', 'LATEST'].includes(automation.type)) {
+        if (['SUM', 'COUNT', 'MAX', 'MIN', 'LAST_VALUE'].includes(automation.type)) {
           // Aggregation: sourceTable (child) aggregates to targetTable (parent)
           // Automation is DEFINED on targetTable (parent) but TRIGGER goes on sourceTable (child)
           // FK is FROM sourceTable (child) TO targetTable (parent)
@@ -672,23 +672,62 @@ CREATE TRIGGER ${triggerName}
       'SUM', 'COUNT', 'AVG', 'MAX', 'MIN', 'ABS', 'ROUND', 'CEIL', 'FLOOR'
     ]);
 
-    // Replace identifiers that are not keywords or already qualified
-    return expression.replace(/\b([a-zA-Z_][a-zA-Z0-9_]*)\b/g, (match, identifier) => {
-      // Don't qualify if it's a SQL keyword
-      if (sqlKeywords.has(identifier.toUpperCase())) {
-        return match;
+    // Split by quotes to preserve string literals
+    const parts: string[] = [];
+    let inString = false;
+    let currentPart = '';
+    let quoteChar = '';
+
+    for (let i = 0; i < expression.length; i++) {
+      const char = expression[i];
+      if ((char === "'" || char === '"') && (i === 0 || expression[i - 1] !== '\\')) {
+        if (!inString) {
+          // Entering a string
+          parts.push(currentPart);
+          currentPart = char;
+          inString = true;
+          quoteChar = char;
+        } else if (char === quoteChar) {
+          // Exiting a string
+          currentPart += char;
+          parts.push(currentPart);
+          currentPart = '';
+          inString = false;
+          quoteChar = '';
+        } else {
+          currentPart += char;
+        }
+      } else {
+        currentPart += char;
+      }
+    }
+    if (currentPart) parts.push(currentPart);
+
+    // Process each part - only qualify identifiers outside of strings
+    return parts.map((part, index) => {
+      // If this part is a quoted string, don't process it
+      if (part.startsWith("'") || part.startsWith('"')) {
+        return part;
       }
 
-      // Don't qualify if already qualified with NEW., OLD., or table prefix
-      if (expression.includes(`NEW.${identifier}`) ||
-          expression.includes(`OLD.${identifier}`) ||
-          expression.includes(`${tableName}.${identifier}`)) {
-        return match;
-      }
+      // Replace identifiers that are not keywords or already qualified
+      return part.replace(/\b([a-zA-Z_][a-zA-Z0-9_]*)\b/g, (match, identifier) => {
+        // Don't qualify if it's a SQL keyword
+        if (sqlKeywords.has(identifier.toUpperCase())) {
+          return match;
+        }
 
-      // Qualify with NEW.
-      return `NEW.${identifier}`;
-    });
+        // Don't qualify if already qualified with NEW., OLD., or table prefix
+        if (expression.includes(`NEW.${identifier}`) ||
+            expression.includes(`OLD.${identifier}`) ||
+            expression.includes(`${tableName}.${identifier}`)) {
+          return match;
+        }
+
+        // Qualify with NEW.
+        return `NEW.${identifier}`;
+      });
+    }).join('');
   }
 
   /**
@@ -762,7 +801,7 @@ CREATE TRIGGER ${triggerName}
         return `    UPDATE ${push.parentTable} SET ${agg.parentColumn} = GREATEST(${agg.parentColumn}, COALESCE(${row}.${agg.childColumn}, ${agg.parentColumn})) WHERE ${parentPK} = ${row}.${fkCol};`;
       case 'MIN':
         return `    UPDATE ${push.parentTable} SET ${agg.parentColumn} = LEAST(${agg.parentColumn}, COALESCE(${row}.${agg.childColumn}, ${agg.parentColumn})) WHERE ${parentPK} = ${row}.${fkCol};`;
-      case 'LATEST':
+      case 'LAST_VALUE':
         return `    UPDATE ${push.parentTable} SET ${agg.parentColumn} = ${row}.${agg.childColumn} WHERE ${parentPK} = ${row}.${fkCol};`;
       default:
         return `    -- Unsupported aggregation type: ${agg.aggregationType}`;
@@ -787,7 +826,7 @@ CREATE TRIGGER ${triggerName}
         return `    -- MAX: recalculate if needed (full scan fallback)`;
       case 'MIN':
         return `    -- MIN: recalculate if needed (full scan fallback)`;
-      case 'LATEST':
+      case 'LAST_VALUE':
         return `    UPDATE ${push.parentTable} SET ${agg.parentColumn} = NEW.${agg.childColumn} WHERE ${parentPK} = NEW.${fkCol};`;
       default:
         return `    -- Unsupported aggregation type: ${agg.aggregationType}`;
@@ -812,8 +851,8 @@ CREATE TRIGGER ${triggerName}
         return `  -- MAX: recalculate (full scan fallback)`;
       case 'MIN':
         return `  -- MIN: recalculate (full scan fallback)`;
-      case 'LATEST':
-        return `  -- LATEST: get next most recent (full scan fallback)`;
+      case 'LAST_VALUE':
+        return `  -- LAST_VALUE: get next most recent (full scan fallback)`;
       default:
         return `  -- Unsupported aggregation type: ${agg.aggregationType}`;
     }

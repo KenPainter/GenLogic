@@ -57,8 +57,8 @@ CREATE OR REPLACE FUNCTION ${functionName}(p_inputs JSONB)
 RETURNS TABLE (
   input_id INTEGER,
   matched_id INTEGER,
-  string_match TEXT,
-  result_value TEXT,
+  string_match VARCHAR(200),
+  result_value VARCHAR(100),
   matched_column_count INTEGER,
   pattern_length INTEGER
 ) AS $$
@@ -84,7 +84,7 @@ BEGIN
       LENGTH(r.string_match) AS pattern_length
     FROM input_data i
     CROSS JOIN ${tableName} r
-    WHERE i.description LIKE r.string_match
+    WHERE i.description ILIKE r.string_match
       AND (r.range_low_bound IS NULL OR i.amount >= r.range_low_bound)
       AND (r.range_high_bound IS NULL OR i.amount <= r.range_high_bound)
   ),
@@ -92,22 +92,22 @@ BEGIN
     SELECT
       *,
       ROW_NUMBER() OVER (
-        PARTITION BY id
+        PARTITION BY matches.id
         ORDER BY
-          matched_column_count DESC,
-          pattern_length DESC
+          matches.matched_column_count DESC,
+          matches.pattern_length DESC
       ) AS rank
     FROM matches
   )
   SELECT
-    id,
-    rule_id,
-    string_match,
-    result_value,
-    matched_column_count,
-    pattern_length
+    ranked.id AS input_id,
+    ranked.rule_id AS matched_id,
+    ranked.string_match AS string_match,
+    ranked.result_value AS result_value,
+    ranked.matched_column_count AS matched_column_count,
+    ranked.pattern_length AS pattern_length
   FROM ranked
-  WHERE rank = 1;
+  WHERE ranked.rank = 1;
 END;
 $$ LANGUAGE plpgsql STABLE;`;
   }
@@ -126,8 +126,8 @@ CREATE OR REPLACE FUNCTION ${functionName}(p_inputs JSONB)
 RETURNS TABLE (
   input_id INTEGER,
   matched_id INTEGER,
-  string_match TEXT,
-  result_value TEXT,
+  string_match VARCHAR(200),
+  result_value VARCHAR(100),
   matched_column_count INTEGER,
   pattern_length INTEGER,
   match_rank INTEGER
@@ -154,22 +154,22 @@ BEGIN
       LENGTH(r.string_match) AS pattern_length
     FROM input_data i
     CROSS JOIN ${tableName} r
-    WHERE i.description LIKE r.string_match
+    WHERE i.description ILIKE r.string_match
       AND (r.range_low_bound IS NULL OR i.amount >= r.range_low_bound)
       AND (r.range_high_bound IS NULL OR i.amount <= r.range_high_bound)
   )
   SELECT
-    id,
-    rule_id,
-    string_match,
-    result_value,
-    matched_column_count,
-    pattern_length,
+    matches.id AS input_id,
+    matches.rule_id AS matched_id,
+    matches.string_match AS string_match,
+    matches.result_value AS result_value,
+    matches.matched_column_count AS matched_column_count,
+    matches.pattern_length AS pattern_length,
     ROW_NUMBER() OVER (
-      PARTITION BY id
+      PARTITION BY matches.id
       ORDER BY
-        matched_column_count DESC,
-        pattern_length DESC
+        matches.matched_column_count DESC,
+        matches.pattern_length DESC
     )::INTEGER AS match_rank
   FROM matches;
 END;

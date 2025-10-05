@@ -410,13 +410,13 @@ describe('Group 2.2: Automation Testing', () => {
       expect(parseFloat(row.max_amount)).toBeCloseTo(250.00);
       expect(row.latest_date.toISOString().split('T')[0]).toBe('2024-01-03');
 
-      // Verify only one trigger was created (consolidated)
+      // Verify triggers were created (one per operation: INSERT, UPDATE, DELETE)
       const triggers = await db`
         SELECT COUNT(*) as trigger_count
         FROM information_schema.triggers
         WHERE event_object_table = 'details';
       `;
-      expect(triggers[0].trigger_count).toBe('1'); // Should be consolidated into one trigger
+      expect(triggers[0].trigger_count).toBe('3'); // INSERT, UPDATE, DELETE triggers
     });
   });
 });

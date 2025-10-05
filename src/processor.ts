@@ -272,6 +272,7 @@ export class GenLogicProcessor {
 
         const ddlStatements = this.sqlGenerator.generateSQL(diff);
         const triggerStatements = this.triggerGenerator.generateTriggers(schema, processedSchema);
+        const matchingStatements = this.matchingGenerator.generateMatchingSQL(schema, processedSchema);
 
         const allStatements = [
           ...dropAllTriggersSQL,
@@ -280,7 +281,8 @@ export class GenLogicProcessor {
           ...ddlStatements.addForeignKeys,
           ...ddlStatements.createIndexes,
           ...ddlStatements.addComments,
-          ...triggerStatements
+          ...triggerStatements,
+          ...matchingStatements
         ].filter(sql => sql.trim().length > 0 && !sql.startsWith('--'));
 
         if (allStatements.length > 0) {
@@ -416,7 +418,7 @@ export class GenLogicProcessor {
 
     console.log(`\\n📝 Total SQL statements: ${sqlStatements.length}`);
 
-    if (process.env.DEBUG_SQL) {
+    if (this.config.dryRun || process.env.DEBUG_SQL) {
       console.log('\\n🔍 SQL STATEMENTS:');
       console.log('===================');
       for (let i = 0; i < sqlStatements.length; i++) {

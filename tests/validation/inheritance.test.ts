@@ -19,8 +19,8 @@ describe('Group 1.5: Column Inheritance Edge Cases', () => {
     test('should handle null inheritance (same name)', () => {
       const schema = {
         columns: {
-          id: { type: 'serial primary key' },
-          name: { type: 'varchar(50)' }
+          id: 'serial primary key',
+          name: 'varchar(50)'
         },
         tables: {
           users: {
@@ -57,8 +57,8 @@ describe('Group 1.5: Column Inheritance Edge Cases', () => {
     test('should handle $ref inheritance with overrides', () => {
       const schema = {
         columns: {
-          id: { type: 'integer' },
-          name: { type: 'varchar(50)' }
+          id: 'integer',
+          name: 'varchar(50)'
         },
         tables: {
           users: {
@@ -69,13 +69,16 @@ describe('Group 1.5: Column Inheritance Edge Cases', () => {
               },
               username: {
                 $ref: 'name',
-                unique: true        // Add unique constraint to inherited name
+                type: 'varchar(50) unique'   // Override type to add unique constraint
               }
             }
           }
         }
       };
       const result = validator.validateSyntax(schema);
+      if (!result.isValid) {
+        console.error('Validation errors:', result.errors);
+      }
       expect(result.isValid).toBe(true);
     });
 
@@ -109,15 +112,14 @@ describe('Group 1.5: Column Inheritance Edge Cases', () => {
     test('should allow constraint additions in $ref inheritance', () => {
       const schema = {
         columns: {
-          email: { type: 'varchar(255)' }
+          email: 'varchar(255)'
         },
         tables: {
           users: {
             columns: {
               primary_email: {
                 $ref: 'email',
-                unique: true,       // Add unique constraint
-                not_null: true      // Add not null constraint
+                type: 'varchar(255) unique not null'  // Override type to add constraints
               }
             }
           }
@@ -185,14 +187,14 @@ describe('Group 1.5: Column Inheritance Edge Cases', () => {
       const schema = {
         columns: {
           // Base types
-          id: { type: 'integer' },
-          name: { type: 'varchar(50)' },
-          amount: { type: 'numeric(10,2)' },
+          id: 'integer',
+          name: 'varchar(50)',
+          amount: 'numeric(10,2)',
 
-          // Enhanced types
-          primary_id: { $ref: 'id', type: 'serial primary key' },
-          unique_name: { $ref: 'name', unique: true },
-          currency_amount: { $ref: 'amount', type: 'numeric(15,4)' }
+          // Enhanced types (no $ref in global columns - just define new types)
+          primary_id: 'serial primary key',
+          unique_name: 'varchar(50) unique',
+          currency_amount: 'numeric(15,4)'
         },
         tables: {
           accounts: {

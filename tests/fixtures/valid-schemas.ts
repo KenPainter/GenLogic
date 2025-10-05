@@ -8,15 +8,9 @@
 export const validSchemas = {
   simpleAccountLedger: {
     columns: {
-      account_name: {
-        type: 'varchar(50)'
-      },
-      amount: {
-        type: 'numeric(10,2)'
-      },
-      balance: {
-        type: 'numeric(15,2)'
-      }
+      account_name: 'varchar(50)',
+      amount: 'numeric(10,2)',
+      balance: 'numeric(15,2)'
     },
     tables: {
       accounts: {
@@ -56,10 +50,10 @@ export const validSchemas = {
 
   multipleAggregations: {
     columns: {
-      amount: { type: 'numeric(10,2)' },
-      count: { type: 'integer' },
-      max_amount: { type: 'numeric(10,2)' },
-      latest_date: { type: 'date' }
+      amount: 'numeric(10,2)',
+      count: 'integer',
+      max_amount: 'numeric(10,2)',
+      latest_date: 'date'
     },
     tables: {
       accounts: {
@@ -118,25 +112,25 @@ export const validSchemas = {
 
   complexSchema: {
     columns: {
-      id: { type: 'serial primary key' },
-      name: { type: 'varchar(100)' },
-      email: { type: 'varchar(255)' },
-      amount: { type: 'numeric(10,2)' },
-      created_at: { type: 'timestamp' }
+      id: 'serial primary key',
+      name: 'varchar(100)',
+      email: 'varchar(255)',
+      amount: 'numeric(10,2)',
+      created_at: 'timestamp'
     },
     tables: {
       users: {
         columns: {
           user_id: {
-            $ref: 'id'  // Reference with override
+            $ref: 'id'  // Reference without override
           },
           username: {
             $ref: 'name',
-            unique: true  // Add unique constraint
+            type: 'varchar(100) unique'  // Override type to add unique constraint
           },
           email: {
             $ref: 'email',
-            unique: true
+            type: 'varchar(255) unique'  // Override type to add unique constraint
           },
           created_at: null  // Simple inheritance
         }
@@ -168,7 +162,7 @@ export const validSchemas = {
 
 export const minimalValidSchema = {
   columns: {
-    id: { type: 'integer' }
+    id: 'integer'
   }
 };
 

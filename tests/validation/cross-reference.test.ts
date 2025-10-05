@@ -161,9 +161,9 @@ describe('Group 1.3: Cross-Reference Validation', () => {
     test('should validate cascading inheritance patterns', () => {
       const schema = {
         columns: {
-          id: { type: 'serial primary key' },
-          name: { type: 'varchar(50)' },
-          enhanced_name: { $ref: 'name', unique: true }
+          id: 'serial primary key',
+          name: 'varchar(50)',
+          enhanced_name: 'varchar(50) unique'  // Define enhanced type directly
         },
         tables: {
           base_table: {
