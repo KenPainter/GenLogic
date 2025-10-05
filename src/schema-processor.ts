@@ -25,9 +25,12 @@ export class SchemaProcessor {
 
     if (!schema.tables) return processed;
 
+    // Preprocess global columns section to parse SQL type strings
+    const processedReusableColumns = this.processReusableColumns(schema.columns || {});
+
     // First pass: resolve column inheritance for all tables
     for (const [tableName, table] of Object.entries(schema.tables)) {
-      processed.tables[tableName] = this.processTable(tableName, table, schema);
+      processed.tables[tableName] = this.processTable(tableName, table, schema, processedReusableColumns);
     }
 
     // Second pass: generate foreign key columns
@@ -46,9 +49,32 @@ export class SchemaProcessor {
   }
 
   /**
+   * Preprocess reusable columns section to parse SQL type strings
+   */
+  private processReusableColumns(reusableColumns: Record<string, ColumnDefinition | string>): Record<string, ColumnDefinition> {
+    const processed: Record<string, ColumnDefinition> = {};
+
+    for (const [columnName, column] of Object.entries(reusableColumns)) {
+      if (typeof column === 'string') {
+        // Parse SQL type string
+        try {
+          processed[columnName] = parseSQLType(column);
+        } catch (error) {
+          throw new Error(`Invalid SQL type string for reusable column '${columnName}': ${error instanceof Error ? error.message : String(error)}`);
+        }
+      } else {
+        // Already a ColumnDefinition object
+        processed[columnName] = column;
+      }
+    }
+
+    return processed;
+  }
+
+  /**
    * Process a single table, resolving column inheritance
    */
-  private processTable(_tableName: string, table: TableDefinition, schema: GenLogicSchema): ProcessedTable {
+  private processTable(_tableName: string, table: TableDefinition, _schema: GenLogicSchema, reusableColumns: Record<string, ColumnDefinition>): ProcessedTable {
     const processedColumns: Record<string, ColumnDefinition> = {};
 
     if (table.columns) {
@@ -56,7 +82,7 @@ export class SchemaProcessor {
         processedColumns[columnName] = this.resolveColumnInheritance(
           columnName,
           column,
-          schema.columns || {}
+          reusableColumns
         );
       }
     }

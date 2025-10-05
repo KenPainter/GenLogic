@@ -15,6 +15,8 @@ const TEST_DB_CONFIG = {
 const TEST_DATABASES = [
   'genlogic_test_calc',
   'genlogic_test_matching',
+  'genlogic_test_setup',
+  'genlogic_test_automation',
 ];
 
 async function ensureTestDatabases() {

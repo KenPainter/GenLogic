@@ -20,7 +20,7 @@ describe('CLI Integration Tests', () => {
 
   describe('Help and Version', () => {
     test('should display help', async () => {
-      const result = await $`bun run ${CLI_PATH} --help`.quiet();
+      const result = await $`bun run ${CLI_PATH} --help`.quiet().nothrow();
       expect(result.exitCode).toBe(0);
       expect(result.stdout.toString()).toContain('GenLogic');
       expect(result.stdout.toString()).toContain('--database');
@@ -28,7 +28,7 @@ describe('CLI Integration Tests', () => {
     });
 
     test('should display version', async () => {
-      const result = await $`bun run ${CLI_PATH} --version`.quiet();
+      const result = await $`bun run ${CLI_PATH} --version`.quiet().nothrow();
       expect(result.exitCode).toBe(0);
       expect(result.stdout.toString()).toMatch(/\d+\.\d+\.\d+/);
     });
@@ -39,8 +39,8 @@ describe('CLI Integration Tests', () => {
       const schemaPath = join(TEST_DIR, 'simple.yaml');
       const schema = `
 columns:
-  id: { type: integer, primary_key: true, sequence: true }
-  name: { type: varchar, size: 100 }
+  id: serial primary key
+  name: varchar(100)
 
 tables:
   users:
@@ -50,7 +50,7 @@ tables:
 `;
       writeFileSync(schemaPath, schema);
 
-      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} --test-mode`.quiet();
+      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} --test-mode`.quiet().nothrow();
       expect(result.exitCode).toBe(0);
 
       unlinkSync(schemaPath);
@@ -60,7 +60,7 @@ tables:
       const schemaPath = join(TEST_DIR, 'invalid.yaml');
       const schema = `
 columns:
-  id: { type: integer, primary_key: true }
+  id: integer primary key
 
 tables:
   users:
@@ -70,7 +70,7 @@ tables:
 `;
       writeFileSync(schemaPath, schema);
 
-      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} --test-mode`.quiet();
+      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} --test-mode`.quiet().nothrow();
       expect(result.exitCode).toBe(1);
       expect(result.stderr.toString()).toContain('nonexistent');
 
@@ -83,21 +83,21 @@ tables:
 tables:
   a:
     columns:
-      id: { type: integer, primary_key: true }
-      b_id: { type: integer }
+      id: integer primary key
+      b_id: integer
     foreign_keys:
       b: { table: b }
 
   b:
     columns:
-      id: { type: integer, primary_key: true }
-      a_id: { type: integer }
+      id: integer primary key
+      a_id: integer
     foreign_keys:
       a: { table: a }
 `;
       writeFileSync(schemaPath, schema);
 
-      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} --test-mode`.quiet();
+      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} --test-mode`.quiet().nothrow();
       // Should detect cycle
       expect(result.exitCode).toBe(1);
 
@@ -112,13 +112,13 @@ tables:
 tables:
   products:
     columns:
-      id: { type: integer, primary_key: true, sequence: true }
-      name: { type: varchar, size: 100 }
-      price: { type: numeric, size: 10, decimal: 2 }
+      id: serial primary key
+      name: varchar(100)
+      price: numeric(10,2)
 `;
       writeFileSync(schemaPath, schema);
 
-      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} -d testdb -u testuser -w testpass --dry-run`.quiet();
+      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} -d genlogic_test_calc -u ken -w password123 --dry-run`.quiet().nothrow();
 
       const output = result.stdout.toString();
       expect(output).toContain('CREATE TABLE');
@@ -133,7 +133,7 @@ tables:
       const schemaPath = join(TEST_DIR, 'test.yaml');
       writeFileSync(schemaPath, 'tables: {}');
 
-      const result = await $`bun run ${CLI_PATH} -s ${schemaPath}`.quiet();
+      const result = await $`bun run ${CLI_PATH} -s ${schemaPath}`.quiet().nothrow();
       expect(result.exitCode).toBe(1);
       expect(result.stderr.toString()).toContain('Database name is required');
 
@@ -144,7 +144,7 @@ tables:
       const schemaPath = join(TEST_DIR, 'test.yaml');
       writeFileSync(schemaPath, 'tables: {}');
 
-      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} -d testdb`.quiet();
+      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} -d testdb`.quiet().nothrow();
       expect(result.exitCode).toBe(1);
       expect(result.stderr.toString()).toContain('Username is required');
 
@@ -155,7 +155,7 @@ tables:
       const schemaPath = join(TEST_DIR, 'test.yaml');
       writeFileSync(schemaPath, 'tables: {}');
 
-      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} -d testdb -u testuser`.quiet();
+      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} -d testdb -u testuser`.quiet().nothrow();
       expect(result.exitCode).toBe(1);
       expect(result.stderr.toString()).toContain('Password is required');
 
@@ -163,7 +163,7 @@ tables:
     });
 
     test('should handle missing schema file', async () => {
-      const result = await $`bun run ${CLI_PATH} -s nonexistent.yaml --test-mode`.quiet();
+      const result = await $`bun run ${CLI_PATH} -s nonexistent.yaml --test-mode`.quiet().nothrow();
       expect(result.exitCode).toBe(1);
     });
 
@@ -171,7 +171,7 @@ tables:
       const schemaPath = join(TEST_DIR, 'invalid-yaml.yaml');
       writeFileSync(schemaPath, 'tables:\n  invalid: [unclosed');
 
-      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} --test-mode`.quiet();
+      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} --test-mode`.quiet().nothrow();
       expect(result.exitCode).toBe(1);
 
       unlinkSync(schemaPath);
@@ -185,17 +185,15 @@ tables:
 tables:
   orders:
     columns:
-      price: { type: numeric, size: 10, decimal: 2 }
-      quantity: { type: integer }
+      price: numeric(10,2)
+      quantity: integer
       total:
-        type: numeric
-        size: 10
-        decimal: 2
-        calculated: "price * quantity"
+        type: numeric(10,2)
+        generated: price * quantity
 `;
       writeFileSync(schemaPath, schema);
 
-      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} --test-mode`.quiet();
+      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} --test-mode`.quiet().nothrow();
       expect(result.exitCode).toBe(0);
 
       unlinkSync(schemaPath);
@@ -210,7 +208,7 @@ matching_tables:
 `;
       writeFileSync(schemaPath, schema);
 
-      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} --test-mode`.quiet();
+      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} --test-mode`.quiet().nothrow();
       expect(result.exitCode).toBe(0);
 
       unlinkSync(schemaPath);
@@ -222,19 +220,19 @@ matching_tables:
 tables:
   users:
     columns:
-      id: { type: integer, primary_key: true }
+      id: integer primary key
 
   posts:
     columns:
-      id: { type: integer, primary_key: true }
-      user_id: { type: integer }
+      id: integer primary key
+      user_id: integer
     foreign_keys:
       user:
         table: users
 `;
       writeFileSync(schemaPath, schema);
 
-      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} --test-mode`.quiet();
+      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} --test-mode`.quiet().nothrow();
       expect(result.exitCode).toBe(0);
 
       unlinkSync(schemaPath);
@@ -244,19 +242,19 @@ tables:
       const schemaPath = join(TEST_DIR, 'inheritance.yaml');
       const schema = `
 columns:
-  id: { type: integer, primary_key: true, sequence: true }
-  created_at: { type: timestamp }
+  id: serial primary key
+  created_at: timestamp
 
 tables:
   users:
     columns:
       id: null  # Inherit from columns
-      name: { type: varchar, size: 100 }
+      name: varchar(100)
       created_at: null  # Inherit from columns
 `;
       writeFileSync(schemaPath, schema);
 
-      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} --test-mode`.quiet();
+      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} --test-mode`.quiet().nothrow();
       expect(result.exitCode).toBe(0);
 
       unlinkSync(schemaPath);
@@ -268,7 +266,7 @@ tables:
       const schemaPath = join(TEST_DIR, 'test.yaml');
       writeFileSync(schemaPath, 'tables: {}');
 
-      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} -h db.example.com -p 5433 --test-mode`.quiet();
+      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} -h db.example.com -p 5433 --test-mode`.quiet().nothrow();
       expect(result.exitCode).toBe(0);
 
       unlinkSync(schemaPath);
@@ -280,11 +278,11 @@ tables:
 tables:
   test:
     columns:
-      id: { type: integer, primary_key: true }
+      id: integer primary key
 `;
       writeFileSync(defaultSchemaPath, schema);
 
-      const result = await $`bun run ${CLI_PATH} --test-mode`.quiet();
+      const result = await $`bun run ${CLI_PATH} --test-mode`.quiet().nothrow();
       expect(result.exitCode).toBe(0);
 
       unlinkSync(defaultSchemaPath);

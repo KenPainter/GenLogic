@@ -6,10 +6,12 @@
  */
 
 import { GenLogicProcessor } from '../../src/processor';
+import { SQL } from 'bun';
 
 describe('Group 2.1: Database Setup and Basic Operations', () => {
   let processor: GenLogicProcessor;
-  const testDbName = 'genlogic_test_' + Date.now();
+  let db: SQL;
+  const testDbName = 'genlogic_test_setup';
 
   beforeAll(async () => {
     // Create processor with test database
@@ -21,6 +23,13 @@ describe('Group 2.1: Database Setup and Basic Operations', () => {
       database: testDbName,
       dryRun: false
     });
+    db = processor.getDatabase().getSQL();
+  });
+
+  beforeEach(async () => {
+    // Clean database before each test
+    await db`DROP SCHEMA public CASCADE`;
+    await db`CREATE SCHEMA public`;
   });
 
   afterAll(async () => {
@@ -52,8 +61,8 @@ describe('Group 2.1: Database Setup and Basic Operations', () => {
     test('should process simple schema without errors', async () => {
       const schema = {
         columns: {
-          id: { type: 'integer', sequence: true, primary_key: true },
-          name: { type: 'varchar', size: 50 }
+          id: 'serial primary key',
+          name: 'varchar(50)'
         },
         tables: {
           simple_table: {
@@ -66,6 +75,9 @@ describe('Group 2.1: Database Setup and Basic Operations', () => {
       };
 
       const result = await processor.processSchema(schema);
+      if (!result.success) {
+        console.error('Schema processing failed:', result.errors);
+      }
       expect(result.success).toBe(true);
       expect(result.errors).toEqual([]);
     });
@@ -73,8 +85,8 @@ describe('Group 2.1: Database Setup and Basic Operations', () => {
     test('should create tables in correct order', async () => {
       const schema = {
         columns: {
-          id: { type: 'integer', sequence: true, primary_key: true },
-          name: { type: 'varchar', size: 100 }
+          id: 'serial primary key',
+          name: 'varchar(100)'
         },
         tables: {
           users: {
@@ -109,8 +121,8 @@ describe('Group 2.1: Database Setup and Basic Operations', () => {
     test('should process null inheritance correctly', async () => {
       const schema = {
         columns: {
-          timestamp_col: { type: 'timestamp' },
-          id_col: { type: 'integer', sequence: true, primary_key: true }
+          timestamp_col: 'timestamp',
+          id_col: 'serial primary key'
         },
         tables: {
           events: {
@@ -134,8 +146,8 @@ describe('Group 2.1: Database Setup and Basic Operations', () => {
     test('should process string inheritance correctly', async () => {
       const schema = {
         columns: {
-          base_id: { type: 'integer', sequence: true, primary_key: true },
-          base_name: { type: 'varchar', size: 50 }
+          base_id: 'serial primary key',
+          base_name: 'varchar(50)'
         },
         tables: {
           renamed_table: {
@@ -159,15 +171,14 @@ describe('Group 2.1: Database Setup and Basic Operations', () => {
     test('should process $ref inheritance with overrides correctly', async () => {
       const schema = {
         columns: {
-          base_amount: { type: 'numeric', size: 10, decimal: 2 }
+          base_amount: 'numeric(10,2)'
         },
         tables: {
           enhanced_table: {
             columns: {
               large_amount: {
                 $ref: 'base_amount',
-                size: 15,           // Override size
-                decimal: 4          // Override decimal
+                type: 'numeric(15,4)'  // Override type with new SQL string
               }
             }
           }
@@ -175,6 +186,9 @@ describe('Group 2.1: Database Setup and Basic Operations', () => {
       };
 
       const result = await processor.processSchema(schema);
+      if (!result.success) {
+        console.error('Schema processing failed:', result.errors);
+      }
       expect(result.success).toBe(true);
 
       // Verify column has overridden properties

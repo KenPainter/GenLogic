@@ -302,13 +302,14 @@ export class GenLogicProcessor {
   async listTables(): Promise<string[]> {
     await this.database.connect();
     try {
-      const result = await this.database.query(`
+      const db = this.database.getSQL();
+      const result = await db`
         SELECT table_name
         FROM information_schema.tables
         WHERE table_schema = 'public'
         ORDER BY table_name;
-      `);
-      return result.rows.map((row: any) => row.table_name);
+      `;
+      return result.map((row: any) => row.table_name);
     } finally {
       await this.database.disconnect();
     }
@@ -317,15 +318,16 @@ export class GenLogicProcessor {
   async getTableColumns(tableName: string): Promise<Array<{ name: string; type: string }>> {
     await this.database.connect();
     try {
-      const result = await this.database.query(`
+      const db = this.database.getSQL();
+      const result = await db`
         SELECT column_name, data_type,
                character_maximum_length, numeric_precision, numeric_scale
         FROM information_schema.columns
-        WHERE table_name = $1 AND table_schema = 'public'
+        WHERE table_name = ${tableName} AND table_schema = 'public'
         ORDER BY ordinal_position;
-      `, [tableName]);
+      `;
 
-      return result.rows.map((row: any) => ({
+      return result.map((row: any) => ({
         name: row.column_name,
         type: this.formatColumnType(row)
       }));

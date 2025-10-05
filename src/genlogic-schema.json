@@ -43,8 +43,12 @@
   },
   "definitions": {
     "reusableColumnDefinition": {
-      "description": "Reusable column definition - can be a full definition or can inherit from another reusable column",
+      "description": "Reusable column definition - can be SQL type string, full definition, or inherit from another reusable column",
       "oneOf": [
+        {
+          "type": "string",
+          "description": "SQL type string (e.g., 'serial primary key', 'varchar(100) unique')"
+        },
         {
           "$ref": "#/definitions/columnDefinition",
           "description": "Full column definition"
