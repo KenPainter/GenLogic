@@ -196,8 +196,10 @@ export class GenLogicProcessor {
   }
 
   /**
-   * Get database manager for direct access
-   * Used by test helper for database operations
+   * @internal
+   * Get database manager - for test infrastructure only
+   * DO NOT use in production code or tests directly
+   * Use TestHelper from tests/test-helper.ts instead
    */
   getDatabase() {
     return this.database;
