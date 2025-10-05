@@ -1,0 +1,295 @@
+// Pattern Matching Database Tests
+import { describe, test, expect, beforeEach, afterEach } from 'bun:test';
+import { GenLogicSchema } from '../../src/types.js';
+import { Processor } from '../../src/processor.js';
+import { MatchingGenerator } from '../../src/matching-generator.js';
+
+describe('Pattern Matching Database Operations', () => {
+  let processor: Processor;
+  let generator: MatchingGenerator;
+  const testDbConfig = {
+    host: 'localhost',
+    port: 5432,
+    database: 'genlogic_test_matching',
+    user: process.env.DB_USER || 'postgres',
+    password: process.env.DB_PASSWORD || 'postgres',
+    dryRun: false,
+    testMode: true
+  };
+
+  beforeEach(async () => {
+    processor = new Processor(testDbConfig);
+    generator = new MatchingGenerator();
+
+    // Ensure test database exists
+    await processor.ensureDatabaseExists();
+  });
+
+  afterEach(async () => {
+    // Clean up test database
+    if (processor) {
+      await processor.cleanup();
+    }
+  });
+
+  describe('Matching table creation', () => {
+    test('should create matching table with correct structure', async () => {
+      const schema: GenLogicSchema = {
+        matching_tables: {
+          expense_rules: {
+            result_column_name: 'category'
+          }
+        }
+      };
+
+      const result = await processor.processSchema(schema);
+      expect(result.success).toBe(true);
+
+      // Verify table structure
+      const tableCheck = await processor.query(`
+        SELECT column_name, data_type
+        FROM information_schema.columns
+        WHERE table_name = 'expense_rules'
+        ORDER BY ordinal_position
+      `);
+
+      expect(tableCheck.rows).toContainEqual(
+        expect.objectContaining({
+          column_name: 'id',
+          data_type: 'integer'
+        })
+      );
+      expect(tableCheck.rows).toContainEqual(
+        expect.objectContaining({
+          column_name: 'string_match',
+          data_type: 'character varying'
+        })
+      );
+      expect(tableCheck.rows).toContainEqual(
+        expect.objectContaining({
+          column_name: 'category',  // result_column_name
+          data_type: 'character varying'
+        })
+      );
+      expect(tableCheck.rows).toContainEqual(
+        expect.objectContaining({
+          column_name: 'range_low_bound',
+          data_type: 'numeric'
+        })
+      );
+      expect(tableCheck.rows).toContainEqual(
+        expect.objectContaining({
+          column_name: 'range_high_bound',
+          data_type: 'numeric'
+        })
+      );
+    });
+
+    test('should create match_best function', async () => {
+      const schema: GenLogicSchema = {
+        matching_tables: {
+          expense_rules: {
+            result_column_name: 'category'
+          }
+        }
+      };
+
+      const result = await processor.processSchema(schema);
+      expect(result.success).toBe(true);
+
+      // Check function exists
+      const functionCheck = await processor.query(`
+        SELECT routine_name
+        FROM information_schema.routines
+        WHERE routine_name = 'expense_rules_match_best'
+          AND routine_type = 'FUNCTION'
+      `);
+
+      expect(functionCheck.rows).toHaveLength(1);
+    });
+
+    test('should create match_all function', async () => {
+      const schema: GenLogicSchema = {
+        matching_tables: {
+          expense_rules: {
+            result_column_name: 'category'
+          }
+        }
+      };
+
+      const result = await processor.processSchema(schema);
+      expect(result.success).toBe(true);
+
+      // Check function exists
+      const functionCheck = await processor.query(`
+        SELECT routine_name
+        FROM information_schema.routines
+        WHERE routine_name = 'expense_rules_match_all'
+          AND routine_type = 'FUNCTION'
+      `);
+
+      expect(functionCheck.rows).toHaveLength(1);
+    });
+  });
+
+  describe('Pattern matching functionality', () => {
+    test('should match patterns correctly with match_best', async () => {
+      const schema: GenLogicSchema = {
+        matching_tables: {
+          expense_rules: {
+            result_column_name: 'category'
+          }
+        }
+      };
+
+      const result = await processor.processSchema(schema);
+      expect(result.success).toBe(true);
+
+      // Insert test data
+      await processor.query(`
+        INSERT INTO expense_rules (string_match, category, range_low_bound, range_high_bound)
+        VALUES
+          ('%coffee%', 'Food & Drink', NULL, 50),
+          ('%starbucks%', 'Coffee', NULL, 20),
+          ('%office%', 'Office Supplies', 50, NULL),
+          ('%supplies%', 'General Supplies', NULL, NULL)
+      `);
+
+      // Test matching
+      const matches = await processor.query(`
+        SELECT * FROM expense_rules_match_best(
+          '[{"id": 1, "description": "Starbucks coffee", "amount": 15},
+            {"id": 2, "description": "Office supplies from Staples", "amount": 75},
+            {"id": 3, "description": "Coffee beans", "amount": 60}]'::jsonb
+        )
+      `);
+
+      expect(matches.rows).toHaveLength(3);
+
+      // Check specific matches
+      const starbucksMatch = matches.rows.find(r => r.input_id === 1);
+      expect(starbucksMatch?.result_value).toBe('Coffee'); // More specific match
+
+      const officeMatch = matches.rows.find(r => r.input_id === 2);
+      expect(officeMatch?.result_value).toBe('Office Supplies'); // Amount >= 50
+
+      const coffeeMatch = matches.rows.find(r => r.input_id === 3);
+      expect(coffeeMatch?.result_value).toBe('Food & Drink'); // Amount > 50, doesn't match coffee rule
+    });
+
+    test('should rank matches by specificity', async () => {
+      const schema: GenLogicSchema = {
+        matching_tables: {
+          priority_rules: {
+            result_column_name: 'priority'
+          }
+        }
+      };
+
+      const result = await processor.processSchema(schema);
+      expect(result.success).toBe(true);
+
+      // Insert rules with varying specificity
+      await processor.query(`
+        INSERT INTO priority_rules (string_match, priority, range_low_bound, range_high_bound)
+        VALUES
+          ('%urgent%', 'High', NULL, NULL),
+          ('%urgent%critical%', 'Critical', NULL, NULL),
+          ('%', 'Low', NULL, NULL)  -- Catch-all
+      `);
+
+      // Test specificity ranking
+      const matches = await processor.query(`
+        SELECT * FROM priority_rules_match_all(
+          '[{"id": 1, "description": "urgent critical issue", "amount": 0}]'::jsonb
+        )
+        ORDER BY match_rank
+      `);
+
+      expect(matches.rows.length).toBeGreaterThan(0);
+      // Most specific pattern should rank first
+      expect(matches.rows[0].result_value).toBe('Critical');
+    });
+
+    test('should handle numeric ranges correctly', async () => {
+      const schema: GenLogicSchema = {
+        matching_tables: {
+          discount_rules: {
+            result_column_name: 'discount_rate'
+          }
+        }
+      };
+
+      const result = await processor.processSchema(schema);
+      expect(result.success).toBe(true);
+
+      // Insert range-based rules
+      await processor.query(`
+        INSERT INTO discount_rules (string_match, discount_rate, range_low_bound, range_high_bound)
+        VALUES
+          ('%customer%', '5%', 0, 100),
+          ('%customer%', '10%', 100, 500),
+          ('%customer%', '15%', 500, NULL),
+          ('%vip%', '20%', NULL, NULL)
+      `);
+
+      // Test range matching
+      const matches = await processor.query(`
+        SELECT * FROM discount_rules_match_best(
+          '[{"id": 1, "description": "Regular customer", "amount": 50},
+            {"id": 2, "description": "Regular customer", "amount": 250},
+            {"id": 3, "description": "Regular customer", "amount": 1000},
+            {"id": 4, "description": "VIP customer", "amount": 50}]'::jsonb
+        )
+        ORDER BY input_id
+      `);
+
+      expect(matches.rows).toHaveLength(4);
+      expect(matches.rows[0].result_value).toBe('5%');   // 0-100 range
+      expect(matches.rows[1].result_value).toBe('10%');  // 100-500 range
+      expect(matches.rows[2].result_value).toBe('15%');  // 500+ range
+      expect(matches.rows[3].result_value).toBe('20%');  // VIP match
+    });
+  });
+
+  describe('Multiple matching tables', () => {
+    test('should handle multiple matching tables independently', async () => {
+      const schema: GenLogicSchema = {
+        matching_tables: {
+          expense_rules: {
+            result_column_name: 'category'
+          },
+          vendor_rules: {
+            result_column_name: 'vendor_type'
+          }
+        }
+      };
+
+      const result = await processor.processSchema(schema);
+      expect(result.success).toBe(true);
+
+      // Verify both tables exist
+      const tableCheck = await processor.query(`
+        SELECT table_name
+        FROM information_schema.tables
+        WHERE table_name IN ('expense_rules', 'vendor_rules')
+        AND table_type = 'BASE TABLE'
+      `);
+
+      expect(tableCheck.rows).toHaveLength(2);
+
+      // Verify both sets of functions exist
+      const functionCheck = await processor.query(`
+        SELECT routine_name
+        FROM information_schema.routines
+        WHERE routine_name IN (
+          'expense_rules_match_best', 'expense_rules_match_all',
+          'vendor_rules_match_best', 'vendor_rules_match_all'
+        )
+        AND routine_type = 'FUNCTION'
+      `);
+
+      expect(functionCheck.rows).toHaveLength(4);
+    });
+  });
+});

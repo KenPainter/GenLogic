@@ -27,6 +27,18 @@
         }
       },
       "additionalProperties": false
+    },
+    "matching_tables": {
+      "type": "object",
+      "description": "Pattern matching tables with fixed structure (id, string_match, result, range_low_bound, range_high_bound)",
+      "patternProperties": {
+        "^[a-zA-Z_][a-zA-Z0-9_]*$": {
+          "$ref": "#/definitions/matchingTableDefinition",
+          "title": "Valid PostgreSQL table name",
+          "description": "Matching table with automatic structure and stored procedures"
+        }
+      },
+      "additionalProperties": false
     }
   },
   "definitions": {
@@ -297,10 +309,6 @@
             "description": "UI behavior hints: singleton (expect 1 row), no-insert/update/delete (disable CRUD operations)"
           }
         },
-        "matching": {
-          "$ref": "#/definitions/matchingDefinition",
-          "description": "GENLOGIC: Generate pattern matching stored procedures for this table"
-        },
         "columns": {
           "type": "object",
           "description": "Column definitions - can inherit from reusable columns or define inline",
@@ -545,47 +553,17 @@
         }
       ]
     },
-    "matchingDefinition": {
+    "matchingTableDefinition": {
       "type": "object",
-      "description": "GENLOGIC: Pattern matching configuration - generates stored procedures for matching strings against patterns",
+      "description": "Pattern matching table with fixed structure and automatic stored procedures",
       "properties": {
-        "pattern_column": {
+        "result_column_name": {
           "type": "string",
           "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
-          "description": "Column containing the LIKE pattern (e.g., '%NETFLIX%')"
-        },
-        "result_column": {
-          "type": "string",
-          "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
-          "description": "Column containing the result value to return on match"
-        },
-        "match_columns": {
-          "type": "array",
-          "description": "Additional columns for matching constraints (e.g., min_amount, max_amount)",
-          "items": {
-            "type": "object",
-            "properties": {
-              "column": {
-                "type": "string",
-                "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
-                "description": "Column name in this table"
-              },
-              "input_field": {
-                "type": "string",
-                "description": "Field name in JSON input to compare against"
-              },
-              "operator": {
-                "type": "string",
-                "enum": [">=", "<=", ">", "<", "="],
-                "description": "Comparison operator"
-              }
-            },
-            "required": ["column", "input_field", "operator"],
-            "additionalProperties": false
-          }
+          "description": "Name for the result column (e.g., 'category', 'department', 'inbox')"
         }
       },
-      "required": ["pattern_column", "result_column"],
+      "required": ["result_column_name"],
       "additionalProperties": false
     }
   }

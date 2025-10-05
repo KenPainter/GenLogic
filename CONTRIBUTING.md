@@ -1,20 +1,45 @@
 # Contributing to GenLogic
 
-This file is intended to be useful to people and AI assistants
-who are making changes to this project.  As such it contains instructions
-that may seem obvious, but need to be stated clearly so that the
-more capable AI LLM Models stay within the guardrails.
+## Use of AI Assistants
 
+Use of AI assistants is neither encouraged nor discouraged,
+but it is sorta-kinda expected.  We try to keep GenLogic optimized for
+AI assistants when developing it and when using it.
+
+Because LLM models vary greatly in quality, consider the quality
+of your model before making the investment.  Poor quality models
+will load up the codebase with ad-hockery
+that will be rejected.  
+
+## Pull Requests
+
+There are really only two requirements for a PR:
+- if it was worth doing, it is worth documenting
+- if it was worth doing, it is worth testing
+
+For documentation changes:
+- Add new files to docs/toc.md in the appropriate section
+- Run `bun add-navigation.mjs` from the docs directory
+- Commit the navigation changes with your documentation
 
 ## Documentation
 
+This section, sadly, is written for AI assistants that
+tend to fill the docs with **exciting bolded items**
+and breathless declarations of amazing-ness.  Tell your
+AI assistant that these instructions are **critical**
+and **super-important** and **must not be ignored**.
+
 All documentation should be written in a neutral tone that
-provides facts and instructions.  In particular
-- avoid qualitative descriptions such as "...a high quality
-  solution for..."
-- avoid statements that assert fit-for-purpose, such as
+provides facts and instructions.  In particular:
+- Avoid qualitative descriptions such as "...a high quality
+  solution for...".
+- Avoid even single adjectives like "powerful", "intelligent".
+  Stick to the neutral tone and provide facts and instrucitons.
+- Avoid statements that assert fit-for-purpose, such as
   "production-ready", "enterprise scale" and so forth.
-- avoid **bold items** in bullet lists.
+- Avoid **bold items** entirely.  They are annoying to
+  human readers who are just reading the markdown text.
 - Do not use icons anywhere in the documentation
 - Simulated checkboxes like "[ ] - not complete" and
   "[x] - complete" must be used for task lists.
@@ -33,52 +58,8 @@ and belong in the [./docs](./docs/) folder.
 ### Docs Directory
 
 The top level file [./docs/toc.md](./docs/toc.md) must always
-list each file in [./docs/examples](./docs/examples/)
+list every other file in the [./docs](./docs) foler.
 
 The utility [./docs/](./docs/add-navigation.mjs) will put
 previous/next links onto all documents that are linked in
 the table of contents.
-
-## Development Practices
-
-### Runtime
-
-GenLogic uses Bun as its runtime. Bun provides:
-- Native TypeScript execution
-- Built-in PostgreSQL client
-- Built-in test runner
-- Fast package management
-
-Development workflow:
-```bash
-# Install dependencies
-bun install
-
-# Run in development
-bun run dev
-
-# Run tests
-bun test
-
-# Run specific test file
-bun test tests/validation/schema-syntax.test.ts
-```
-
-### Debug Files
-
-Debug files and scripts created during development must be placed in the `./debug` directory, not in the project root. This directory is ignored by git.
-
-Examples of debug files:
-- Test scripts for manual verification
-- SQL output dumps
-- Schema validation debugging
-- Any temporary files created while troubleshooting
-
-To use:
-```bash
-# Create debug directory if needed
-mkdir -p debug
-
-# Place debug files there
-bun run debug/my-test.ts
-```

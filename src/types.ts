@@ -15,6 +15,11 @@ export interface DatabaseConfig {
 export interface GenLogicSchema {
   columns?: Record<string, ColumnDefinition>;
   tables?: Record<string, TableDefinition>;
+  matching_tables?: Record<string, MatchingTableDefinition>;
+}
+
+export interface MatchingTableDefinition {
+  result_column_name: string;
 }
 
 export interface ColumnDefinition {
@@ -31,23 +36,12 @@ export interface ColumnDefinition {
 
 export interface TableDefinition {
   'ui-notes'?: UINote[];
-  matching?: MatchingDefinition;
   columns?: Record<string, TableColumnDefinition>;
   foreign_keys?: Record<string, ForeignKeyDefinition>;
   content?: Record<string, any>[];
 }
 
 export type UINote = 'singleton' | 'no-insert' | 'no-update' | 'no-delete';
-
-export interface MatchingDefinition {
-  pattern_column: string;
-  result_column: string;
-  match_columns?: Array<{
-    column: string;
-    input_field: string;
-    operator: '>=' | '<=' | '>' | '<' | '=';
-  }>;
-}
 
 // Mixed inheritance syntax for table columns
 export type TableColumnDefinition =

@@ -1,156 +1,56 @@
 # GenLogic
 
-**Augmented Normalization for PostgreSQL with foreign keys as data pipelines**
+GenLogic is a tool for creating Postgres databases that implement business
+logic.  This business logic exploits data paths that are inherently present
+in a normalized database, namely the foreign key.  By adding the ability to
+derive values within a row (such as final = price * qty), and moving
+values up and down foreign key paths, you get what the author
+calls "Augmented Normalization" - a normalized foundation for external
+values that automatically generates the denormalized calculated values.
 
-GenLogic is a TypeScript CLI tool that creates powerful, self-maintaining PostgreSQL databases where foreign keys serve as both relationships and automation pathways. Write normalized data, get computed aggregations automatically.
+This produces two major simplifications for application development:
+* Declarative business logic
+* No ORM in the stack - Middleware and UI can be destructered to views
+  and actions on single tables.
 
-## Philosophy
+There is one category of solution that GenLogic cannot provide,
+which is the state-dependent allocation problem.  This is old-fashioned stuff like
+MRP and ERP, basically anything where there is sequential processing
+and resource consumption based on priority logic.  More simply, it cannot
+work when there is no pure set-oriented one pass solution.
 
-Traditional databases treat foreign keys as constraints. GenLogic treats them as data pipelines that:
-- Create column structure (automatic FK columns)
-- Define relationships (standard constraints)
-- Power automations (SUM, COUNT, MAX, LATEST flow along FK paths)
-
-The result: business logic runs in the database with maximum efficiency and minimal middleware complexity.
-
-## Using AI
-
-### Hacking GenLogic
-
-AI-written code is accepted.  We judge the code, not the source.
-
-Point the AI to [CONTRIBUTING.md](./CONTRIBUTING.md) at the start of a
-session.
-
-### Using GenLogic
-
-TO-DO: Context files for AI assistants to write schemas.  Ideally we
-just point them to the user documentation.
-
-DONE: GenLogic generates a schema description intended for use by AI agents
-when coding up middleware and UI's that access a GenLogic database.
-
-
-## Short History
-
-This product is the spiritual descendant of [Andromeda](https://github.com/Andromeda-Project/andromeda),
+This project is the spiritual descendant of [Andromeda](https://github.com/Andromeda-Project/andromeda),
 originally written by [Ken Downs](https://github.com/KenPainter) 
-in 2002 in PHP, and most recently maintained 
-by [Donald Organ](https://github.com/dorgan/).
+in 2002 in PHP, and then maintained 
+by [Donald Organ](https://github.com/dorgan/) up until about 2012. GenLogic is
+a complete rewrite in Typescript.
 
-GenLogic is a complete rewrite in Typescript.
+## Simple Notes on How it Works
 
-## Quick Start
+GenLogic uses foreign keys to allow most automations, which involve copying
+values from parent to child, creating extended values within a row, and
+aggregating values from child to parent.
 
-### Installation
-```bash
-# Install Bun (if not already installed)
-curl -fsSL https://bun.sh/install | bash
+GenLogic validates for cycles in foreign key declarations, and for 
+cycles in the calculations within a row.  Once a schema passes validation,
+it diffs the schema against the current database and generates DDL to
+update the database.  It then writes triggers to apply the business 
+logic.  Finally, it writes a "resolved" schema loaded with notes
+for an AI assistant to code SQL and generate UI's against the
+database.
 
-# Install GenLogic
-bun install -g genlogic
+## Using GenLogic
 
-# Or clone and run locally
-git clone <repository>
-cd genlogic
-bun install
-```
+All documentation is in the [Table of Contents](./docs/toc.md).
 
-### Basic Usage
-```bash
-# Apply schema to database
-bun run genlogic --host localhost --port 5432 --database mydb --user postgres --password secret --schema ./schema.yaml
+## Hacking GenLogic
 
-# Dry run (show planned changes without executing)
-bun run genlogic --schema ./schema.yaml --dry-run
+In addition to the docs linked to above, you need [Contributing](./CONTRIBUTING.md).
 
-# Test mode (validate schema without database connection)
-bun run genlogic --schema ./schema.yaml --test-mode
-```
-### Example Schema
+## Major TO-DO Items
 
-[docs/toc.md](./docs/toc.md) - Complete examples and documentation index
-
-```yaml
-columns:
-  amount: { type: numeric, size: 10, decimal: 2 }
-
-tables:
-  accounts:
-    columns:
-      account_id: { type: integer, sequence: true, primary_key: true }
-      balance:
-        $ref: amount
-        automation:
-          type: SUM
-          table: transactions
-          foreign_key: account_fk
-          column: amount
-
-  transactions:
-    foreign_keys:
-      account_fk: { table: accounts }
-    columns:
-      transaction_id: { type: integer, sequence: true, primary_key: true }
-      amount: null  # inherits from reusable column
-```
-
-This creates an `accounts` table where `balance` automatically maintains the SUM of all related `transactions.amount` values via efficient PostgreSQL triggers.
-
-## Key Features
-
-- Safety-First: Bulletproof cycle detection prevents infinite loops
-- Incremental Updates: O(1) trigger performance using OLD/NEW values
-- Schema Evolution: Add-only operations never break existing data
-- Multiple Inheritance: Flexible column reuse with null, string, and $ref patterns
-- Consolidated Triggers: Groups multiple automations for maximum efficiency
-- Transaction Safety: All operations wrapped in atomic transactions
-
-## Available Commands
-
-```bash
-bun run dev      # Run in development mode
-bun test         # Run all tests
-```
-
-For testing commands and setup, see [docs/test-guide.md](./docs/test-guide.md).
-
-## Documentation
-
-- [docs/toc.md](./docs/toc.md) - Complete examples and documentation index
-- [docs/architecture/design.md](./docs/architecture/design.md) - Core philosophy and concepts
-- [docs/test-guide.md](./docs/test-guide.md) - Testing setup and instructions
-
-## Requirements
-
-- Bun 1.2+
-- PostgreSQL database
-
-## Automation Types
-
-- SUM/COUNT/MAX/MIN - Aggregate child values to parent
-- LATEST - Copy most recent child value to parent
-- FETCH - Copy parent value to child on INSERT
-- FETCH_UPDATES - Copy parent value to child on UPDATE
-
-## Safety Features
-
-- Cycle Detection - Prevents infinite loops in FK relationships and automations
-- Add-Only Schema - Never deletes existing columns or tables
-- Validation-First - Comprehensive checks before any database changes
-- Transaction Rollback - Automatic rollback on any error
-
-## Performance
-
-- Efficient Triggers - Groups multiple automations into single triggers per FK path
-- Incremental Updates - O(1) calculations using OLD/NEW values instead of table scans
-- Optimized SQL - Generates minimal, targeted PostgreSQL statements
-
-## Contributing
-
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines. Test your changes using the test suite described in [docs/test-guide.md](./docs/test-guide.md).
-
-## License
-
-Affero GPL v3, see [LICENSE.md](./LICENSE.md) for more details.
-
+- Implement SNAPSHOT - parent to child only once on insert to child
+- Rework Database Architecture docs - they are a mess
+- Rework Code Architecture docs - they are a mess
+- Better solution for AI assisants to write schema files.
+- Implement subversion protection

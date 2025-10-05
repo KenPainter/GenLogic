@@ -227,29 +227,15 @@ export class SchemaValidator {
           }
         }
 
-        // Validate matching definitions
-        if (table.matching) {
-          const matching = table.matching;
-          const tableColumns = new Set(Object.keys(table.columns || {}));
+      }
+    }
 
-          // Validate pattern_column exists
-          if (!tableColumns.has(matching.pattern_column)) {
-            errors.push(`Table '${tableName}', matching: pattern_column '${matching.pattern_column}' does not exist in table`);
-          }
-
-          // Validate result_column exists
-          if (!tableColumns.has(matching.result_column)) {
-            errors.push(`Table '${tableName}', matching: result_column '${matching.result_column}' does not exist in table`);
-          }
-
-          // Validate match_columns
-          if (matching.match_columns) {
-            for (const matchCol of matching.match_columns) {
-              if (!tableColumns.has(matchCol.column)) {
-                errors.push(`Table '${tableName}', matching: match_column '${matchCol.column}' does not exist in table`);
-              }
-            }
-          }
+    // Validate matching_tables
+    if (schema.matching_tables) {
+      for (const [tableName, definition] of Object.entries(schema.matching_tables)) {
+        // Validate result_column_name is a valid identifier
+        if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(definition.result_column_name)) {
+          errors.push(`Matching table '${tableName}': result_column_name '${definition.result_column_name}' is not a valid identifier`);
         }
       }
     }

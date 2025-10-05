@@ -2,23 +2,21 @@ Next: [Consolidated Triggers](consolidated-triggers.md)
 
 # GenLogic Design Documentation
 
-GenLogic creates a data flow system within PostgreSQL databases that you can access with normal table reads and writes without the need for an ORM.
+GenLogic creates a data flow system within PostgreSQL databases accessible through normal table reads and writes.
 
-GenLogic processes YAML files containing database schemas with automations. It diffs the schema against a live database to determine changes to make. GenLogic adds new tables, columns, indexes and constraints. GenLogic never deletes columns or tables.
+GenLogic processes YAML files containing database schemas with automations. It diffs the schema against a live database to determine changes. GenLogic adds new tables, columns, indexes and constraints. GenLogic never deletes columns or tables.
 
 ## Core Philosophy: Foreign Keys as Data Pipelines
 
-**Traditional Approach:** Foreign keys are constraints
-**GenLogic Approach:** Foreign keys are the backbone of the data flow system
+Traditional Approach: Foreign keys are constraints
+GenLogic Approach: Foreign keys are the backbone of the data flow system
 
 Foreign keys in GenLogic serve three purposes:
-1. **Column structure** (automatic foreign key column creation)
-2. **Data relationships** (standard constraints)
-3. **Automation pathways** (SUM/COUNT/MAX/LATEST flow along these edges)
+1. Column structure (automatic foreign key column creation)
+2. Data relationships (standard constraints)
+3. Automation pathways (SUM/COUNT/MAX/LATEST flow along these edges)
 
-Using cycle detection and validation, GenLogic ensures that only valid data flows are built, enabling trigger-based automation without fear of conflicts, cycles, or unintended consequences.
-
-The result is the most efficient application of business logic with reduced complexity in middleware and user interfaces.
+Cycle detection and validation ensure that only valid data flows are built.
 
 ## Augmented Normalization
 
@@ -34,13 +32,13 @@ For this to work effectively:
 
 ### Tech Stack
 - CLI utility written in TypeScript
-- Compatible with Node.js 18+
-- PostgreSQL driver (`pg`)
+- Runs on Bun runtime
+- Native PostgreSQL client
 - YAML parsing and JSON Schema validation
 
 ### Command Line Interface
 ```bash
-genlogic --host localhost --port 5432 --database mydb --user postgres --password secret --schema ./schema.yaml [--dry-run] [--test-mode]
+bun run src/cli.ts -h localhost -p 5432 -d mydb -u postgres -w password -s schema.yaml [--dry-run] [--test-mode]
 ```
 
 ### Schema Structure
@@ -65,32 +63,28 @@ YAML files may contain:
 - LATEST - Most recent value from most recently updated child
 
 ### Cascades (Parent → Child)
-- FETCH - Copy value once on row INSERT
-- FETCH_UPDATES - Copy from parent to child on parent UPDATE
+- SNAPSHOT - Copy value once on row INSERT
+- FOLLOW - Copy from parent to child and keep synchronized on parent UPDATE
 
-### Extensions (Within Row)
-- Any supported PostgreSQL expression
+### Within Row
+- Calculated columns using PostgreSQL expressions
 
-See [calculated-columns.md](../guides/calculated-columns.md) for detailed documentation on calculated columns, including dependency ordering, cycle detection, and best practices
-
-### Multi-row Automations
-- DOMINANT - Allow only one row to have a particular value
-- QUEUEPOS - Preserve order when values change
+See [calculated columns](../schema-syntax/05-calculated-columns.md) for expression syntax and dependency ordering.
 
 ## Implementation Principles
 
 ### Safety-First Design
-- Cycle Detection: Bulletproof algorithms prevent infinite loops in FK relationships and automation dependencies
-- Validation-First: Comprehensive schema validation before any database operations
+- Cycle Detection: Algorithms prevent infinite loops in FK relationships and calculated column dependencies
+- Validation-First: Comprehensive schema validation before database operations
 - Add-Only: Never delete existing columns or tables
 - Transaction Safety: All operations wrapped in atomic transactions with rollback
 
 ### Performance Optimization
-- Consolidated Triggers: Group multiple instances of automation by foreign key path for efficiency
+- Consolidated Triggers: Group multiple instances of automation by foreign key path
 - Incremental Updates: Use OLD/NEW values for O(1) performance instead of table scans
 - Dependency Ordering: Ensure automation executes in correct sequence
 
-See [consolidated-triggers.md](consolidated-triggers.md) for complete details on the consolidated trigger architecture, including the four-step execution order and infinite loop prevention
+See [consolidated triggers](consolidated-triggers.md) for four-step execution order and infinite loop prevention.
 
 ### Schema Evolution
 - Diff Engine: Compare desired vs current state to determine minimal changes
@@ -115,7 +109,7 @@ The heart of GenLogic's safety system:
 3. **Path Validation:** Ensure automation paths are reachable via valid foreign key connections
 4. **Dependency Ordering:** Sequence operations to respect dependencies
 
-This validation makes trigger-based automation safe and predictable, differentiating GenLogic from dangerous ad-hoc trigger approaches.
+This validation makes trigger-based automation safe and predictable.
 
 ## Philosophy Implications
 

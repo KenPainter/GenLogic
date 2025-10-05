@@ -1,0 +1,293 @@
+// CLI Integration Tests
+import { describe, test, expect, beforeAll, afterAll } from 'bun:test';
+import { $ } from 'bun';
+import { writeFileSync, unlinkSync, mkdirSync, rmSync } from 'fs';
+import { join } from 'path';
+
+const TEST_DIR = join(process.cwd(), 'debug', 'cli-test');
+const CLI_PATH = join(process.cwd(), 'src', 'cli.ts');
+
+describe('CLI Integration Tests', () => {
+  beforeAll(() => {
+    // Create test directory
+    mkdirSync(TEST_DIR, { recursive: true });
+  });
+
+  afterAll(() => {
+    // Clean up test directory
+    rmSync(TEST_DIR, { recursive: true, force: true });
+  });
+
+  describe('Help and Version', () => {
+    test('should display help', async () => {
+      const result = await $`bun run ${CLI_PATH} --help`.quiet();
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout.toString()).toContain('GenLogic');
+      expect(result.stdout.toString()).toContain('--database');
+      expect(result.stdout.toString()).toContain('--schema');
+    });
+
+    test('should display version', async () => {
+      const result = await $`bun run ${CLI_PATH} --version`.quiet();
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout.toString()).toMatch(/\d+\.\d+\.\d+/);
+    });
+  });
+
+  describe('Validation Mode', () => {
+    test('should validate a simple schema in test mode', async () => {
+      const schemaPath = join(TEST_DIR, 'simple.yaml');
+      const schema = `
+columns:
+  id: { type: integer, primary_key: true, sequence: true }
+  name: { type: varchar, size: 100 }
+
+tables:
+  users:
+    columns:
+      id: null
+      name: null
+`;
+      writeFileSync(schemaPath, schema);
+
+      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} --test-mode`.quiet();
+      expect(result.exitCode).toBe(0);
+
+      unlinkSync(schemaPath);
+    });
+
+    test('should detect invalid column reference', async () => {
+      const schemaPath = join(TEST_DIR, 'invalid.yaml');
+      const schema = `
+columns:
+  id: { type: integer, primary_key: true }
+
+tables:
+  users:
+    columns:
+      id: null
+      nonexistent: null  # This column doesn't exist
+`;
+      writeFileSync(schemaPath, schema);
+
+      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} --test-mode`.quiet();
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr.toString()).toContain('nonexistent');
+
+      unlinkSync(schemaPath);
+    });
+
+    test('should detect circular foreign key references', async () => {
+      const schemaPath = join(TEST_DIR, 'circular.yaml');
+      const schema = `
+tables:
+  a:
+    columns:
+      id: { type: integer, primary_key: true }
+      b_id: { type: integer }
+    foreign_keys:
+      b: { table: b }
+
+  b:
+    columns:
+      id: { type: integer, primary_key: true }
+      a_id: { type: integer }
+    foreign_keys:
+      a: { table: a }
+`;
+      writeFileSync(schemaPath, schema);
+
+      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} --test-mode`.quiet();
+      // Should detect cycle
+      expect(result.exitCode).toBe(1);
+
+      unlinkSync(schemaPath);
+    });
+  });
+
+  describe('Dry Run Mode', () => {
+    test('should show SQL without executing in dry run mode', async () => {
+      const schemaPath = join(TEST_DIR, 'dryrun.yaml');
+      const schema = `
+tables:
+  products:
+    columns:
+      id: { type: integer, primary_key: true, sequence: true }
+      name: { type: varchar, size: 100 }
+      price: { type: numeric, size: 10, decimal: 2 }
+`;
+      writeFileSync(schemaPath, schema);
+
+      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} -d testdb -u testuser -w testpass --dry-run`.quiet();
+
+      const output = result.stdout.toString();
+      expect(output).toContain('CREATE TABLE');
+      expect(output).toContain('products');
+
+      unlinkSync(schemaPath);
+    });
+  });
+
+  describe('Error Handling', () => {
+    test('should require database name', async () => {
+      const schemaPath = join(TEST_DIR, 'test.yaml');
+      writeFileSync(schemaPath, 'tables: {}');
+
+      const result = await $`bun run ${CLI_PATH} -s ${schemaPath}`.quiet();
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr.toString()).toContain('Database name is required');
+
+      unlinkSync(schemaPath);
+    });
+
+    test('should require username', async () => {
+      const schemaPath = join(TEST_DIR, 'test.yaml');
+      writeFileSync(schemaPath, 'tables: {}');
+
+      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} -d testdb`.quiet();
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr.toString()).toContain('Username is required');
+
+      unlinkSync(schemaPath);
+    });
+
+    test('should require password', async () => {
+      const schemaPath = join(TEST_DIR, 'test.yaml');
+      writeFileSync(schemaPath, 'tables: {}');
+
+      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} -d testdb -u testuser`.quiet();
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr.toString()).toContain('Password is required');
+
+      unlinkSync(schemaPath);
+    });
+
+    test('should handle missing schema file', async () => {
+      const result = await $`bun run ${CLI_PATH} -s nonexistent.yaml --test-mode`.quiet();
+      expect(result.exitCode).toBe(1);
+    });
+
+    test('should handle invalid YAML', async () => {
+      const schemaPath = join(TEST_DIR, 'invalid-yaml.yaml');
+      writeFileSync(schemaPath, 'tables:\n  invalid: [unclosed');
+
+      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} --test-mode`.quiet();
+      expect(result.exitCode).toBe(1);
+
+      unlinkSync(schemaPath);
+    });
+  });
+
+  describe('Schema Features', () => {
+    test('should validate calculated columns', async () => {
+      const schemaPath = join(TEST_DIR, 'calculated.yaml');
+      const schema = `
+tables:
+  orders:
+    columns:
+      price: { type: numeric, size: 10, decimal: 2 }
+      quantity: { type: integer }
+      total:
+        type: numeric
+        size: 10
+        decimal: 2
+        calculated: "price * quantity"
+`;
+      writeFileSync(schemaPath, schema);
+
+      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} --test-mode`.quiet();
+      expect(result.exitCode).toBe(0);
+
+      unlinkSync(schemaPath);
+    });
+
+    test('should validate pattern matching tables', async () => {
+      const schemaPath = join(TEST_DIR, 'matching.yaml');
+      const schema = `
+matching_tables:
+  expense_rules:
+    result_column_name: category
+`;
+      writeFileSync(schemaPath, schema);
+
+      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} --test-mode`.quiet();
+      expect(result.exitCode).toBe(0);
+
+      unlinkSync(schemaPath);
+    });
+
+    test('should validate foreign keys', async () => {
+      const schemaPath = join(TEST_DIR, 'fks.yaml');
+      const schema = `
+tables:
+  users:
+    columns:
+      id: { type: integer, primary_key: true }
+
+  posts:
+    columns:
+      id: { type: integer, primary_key: true }
+      user_id: { type: integer }
+    foreign_keys:
+      user:
+        table: users
+`;
+      writeFileSync(schemaPath, schema);
+
+      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} --test-mode`.quiet();
+      expect(result.exitCode).toBe(0);
+
+      unlinkSync(schemaPath);
+    });
+
+    test('should validate inheritance', async () => {
+      const schemaPath = join(TEST_DIR, 'inheritance.yaml');
+      const schema = `
+columns:
+  id: { type: integer, primary_key: true, sequence: true }
+  created_at: { type: timestamp }
+
+tables:
+  users:
+    columns:
+      id: null  # Inherit from columns
+      name: { type: varchar, size: 100 }
+      created_at: null  # Inherit from columns
+`;
+      writeFileSync(schemaPath, schema);
+
+      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} --test-mode`.quiet();
+      expect(result.exitCode).toBe(0);
+
+      unlinkSync(schemaPath);
+    });
+  });
+
+  describe('Command Line Options', () => {
+    test('should accept custom host and port', async () => {
+      const schemaPath = join(TEST_DIR, 'test.yaml');
+      writeFileSync(schemaPath, 'tables: {}');
+
+      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} -h db.example.com -p 5433 --test-mode`.quiet();
+      expect(result.exitCode).toBe(0);
+
+      unlinkSync(schemaPath);
+    });
+
+    test('should use default schema path', async () => {
+      const defaultSchemaPath = join(process.cwd(), 'schema.yaml');
+      const schema = `
+tables:
+  test:
+    columns:
+      id: { type: integer, primary_key: true }
+`;
+      writeFileSync(defaultSchemaPath, schema);
+
+      const result = await $`bun run ${CLI_PATH} --test-mode`.quiet();
+      expect(result.exitCode).toBe(0);
+
+      unlinkSync(defaultSchemaPath);
+    });
+  });
+});

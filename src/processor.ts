@@ -120,7 +120,7 @@ export class GenLogicProcessor {
         };
 
         const triggerStatements = this.triggerGenerator.generateTriggers(schema, processedSchema);
-        const matchingStatements = this.matchingGenerator.generateMatchingFunctions(schema, processedSchema);
+        const matchingStatements = this.matchingGenerator.generateMatchingSQL(schema, processedSchema);
         const contentStatements = this.contentManager.generateContentInserts(schema, processedSchema);
 
         const allStatements = [...triggerStatements, ...matchingStatements, ...contentStatements];
@@ -143,7 +143,7 @@ export class GenLogicProcessor {
           console.log('📝 Generating SQL statements...');
           const ddlStatements = this.sqlGenerator.generateSQL(diff);
           const triggerStatements = this.triggerGenerator.generateTriggers(schema, processedSchema);
-          const matchingStatements = this.matchingGenerator.generateMatchingFunctions(schema, processedSchema);
+          const matchingStatements = this.matchingGenerator.generateMatchingSQL(schema, processedSchema);
           const contentStatements = this.contentManager.generateContentInserts(schema, processedSchema);
 
           // ROBUST EXECUTION ORDER:
