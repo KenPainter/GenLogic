@@ -2,6 +2,7 @@ import { describe, test, expect, beforeAll, beforeEach, afterAll } from 'bun:tes
 import { SQL } from 'bun';
 import yaml from 'yaml';
 import { GenLogicProcessor } from '../../src/processor.js';
+import { createTestHelper, TestHelper } from '../test-helper';
 
 const DB_CONFIG = {
   host: '127.0.0.1',  // TCP connection (use password auth)
@@ -9,18 +10,18 @@ const DB_CONFIG = {
   database: 'genlogic_test_calc',
   user: 'ken',
   password: 'password123',
-  dryRun: false,
-  testMode: true
+  dryRun: false
 };
 
 describe('Calculated Columns Database Tests', () => {
   let processor: GenLogicProcessor;
+  let helper: TestHelper;
   let db: SQL;
 
   beforeAll(async () => {
     processor = new GenLogicProcessor(DB_CONFIG);
-    // Use the processor's database connection instead of creating a new one
-    db = processor.getDatabase().getSQL();
+    helper = createTestHelper(processor);
+    db = helper.getSQL();
   });
 
   beforeEach(async () => {
@@ -51,7 +52,7 @@ tables:
 `;
 
       const schema = yaml.parse(schemaYaml);
-      const result = await processor.processSchema(schema);
+      const result = await helper.processSchema(schema);
 
       expect(result.success).toBe(true);
 
@@ -84,7 +85,7 @@ tables:
 `;
 
       const schema = yaml.parse(schemaYaml);
-      const result = await processor.processSchema(schema);
+      const result = await helper.processSchema(schema);
 
       expect(result.success).toBe(true);
 
@@ -136,7 +137,7 @@ tables:
 `;
 
       const schema = yaml.parse(schemaYaml);
-      const result = await processor.processSchema(schema);
+      const result = await helper.processSchema(schema);
 
       expect(result.success).toBe(true);
 
@@ -181,7 +182,7 @@ tables:
 `;
 
       const schema = yaml.parse(schemaYaml);
-      const result = await processor.processSchema(schema);
+      const result = await helper.processSchema(schema);
 
       expect(result.success).toBe(true);
 
@@ -241,7 +242,7 @@ tables:
 `;
 
       const schema = yaml.parse(schemaYaml);
-      const result = await processor.processSchema(schema);
+      const result = await helper.processSchema(schema);
 
       expect(result.success).toBe(true);
 
@@ -284,7 +285,7 @@ tables:
 `;
 
       const schema = yaml.parse(schemaYaml);
-      const result = await processor.processSchema(schema);
+      const result = await helper.processSchema(schema);
 
       expect(result.success).toBe(true);
 

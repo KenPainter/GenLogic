@@ -6,10 +6,12 @@
  */
 
 import { GenLogicProcessor } from '../../src/processor';
+import { createTestHelper, TestHelper } from '../test-helper';
 import { SQL } from 'bun';
 
 describe('Group 2.1: Database Setup and Basic Operations', () => {
   let processor: GenLogicProcessor;
+  let helper: TestHelper;
   let db: SQL;
   const testDbName = 'genlogic_test_setup';
 
@@ -23,7 +25,8 @@ describe('Group 2.1: Database Setup and Basic Operations', () => {
       database: testDbName,
       dryRun: false
     });
-    db = processor.getDatabase().getSQL();
+    helper = createTestHelper(processor);
+    db = helper.getSQL();
   });
 
   beforeEach(async () => {
@@ -34,14 +37,14 @@ describe('Group 2.1: Database Setup and Basic Operations', () => {
 
   afterAll(async () => {
     // Clean up test database
-    if (processor) {
-      await processor.cleanup();
+    if (helper) {
+      await helper.cleanup();
     }
   });
 
   describe('Database connection and setup', () => {
     test('should connect to PostgreSQL database', async () => {
-      const result = await processor.testConnection();
+      const result = await helper.testConnection();
       expect(result.success).toBe(true);
       if (!result.success) {
         console.error('Connection failed:', result.error);
@@ -49,7 +52,7 @@ describe('Group 2.1: Database Setup and Basic Operations', () => {
     });
 
     test('should create database if it does not exist', async () => {
-      const result = await processor.ensureDatabaseExists();
+      const result = await helper.ensureDatabaseExists();
       expect(result.success).toBe(true);
       if (!result.success) {
         console.error('Database creation failed:', result.error);
@@ -74,7 +77,7 @@ describe('Group 2.1: Database Setup and Basic Operations', () => {
         }
       };
 
-      const result = await processor.processSchema(schema);
+      const result = await helper.processSchema(schema);
       if (!result.success) {
         console.error('Schema processing failed:', result.errors);
       }
@@ -107,11 +110,11 @@ describe('Group 2.1: Database Setup and Basic Operations', () => {
         }
       };
 
-      const result = await processor.processSchema(schema);
+      const result = await helper.processSchema(schema);
       expect(result.success).toBe(true);
 
       // Verify tables exist in database
-      const tables = await processor.listTables();
+      const tables = await helper.listTables();
       expect(tables).toContain('users');
       expect(tables).toContain('accounts');
     });
@@ -134,11 +137,11 @@ describe('Group 2.1: Database Setup and Basic Operations', () => {
         }
       };
 
-      const result = await processor.processSchema(schema);
+      const result = await helper.processSchema(schema);
       expect(result.success).toBe(true);
 
       // Verify column types are correct
-      const columns = await processor.getTableColumns('events');
+      const columns = await helper.getTableColumns('events');
       expect(columns.find(c => c.name === 'timestamp_col')?.type).toContain('timestamp');
       expect(columns.find(c => c.name === 'id_col')?.type).toContain('integer');
     });
@@ -159,11 +162,11 @@ describe('Group 2.1: Database Setup and Basic Operations', () => {
         }
       };
 
-      const result = await processor.processSchema(schema);
+      const result = await helper.processSchema(schema);
       expect(result.success).toBe(true);
 
       // Verify renamed columns exist
-      const columns = await processor.getTableColumns('renamed_table');
+      const columns = await helper.getTableColumns('renamed_table');
       expect(columns.find(c => c.name === 'renamed_id')).toBeDefined();
       expect(columns.find(c => c.name === 'renamed_name')).toBeDefined();
     });
@@ -185,14 +188,14 @@ describe('Group 2.1: Database Setup and Basic Operations', () => {
         }
       };
 
-      const result = await processor.processSchema(schema);
+      const result = await helper.processSchema(schema);
       if (!result.success) {
         console.error('Schema processing failed:', result.errors);
       }
       expect(result.success).toBe(true);
 
       // Verify column has overridden properties
-      const columns = await processor.getTableColumns('enhanced_table');
+      const columns = await helper.getTableColumns('enhanced_table');
       const amountCol = columns.find(c => c.name === 'large_amount');
       expect(amountCol?.type).toContain('numeric(15,4)');
     });

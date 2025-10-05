@@ -3,9 +3,11 @@ import { describe, test, expect, beforeEach, afterEach } from 'bun:test';
 import { GenLogicSchema } from '../../src/types.js';
 import { GenLogicProcessor } from '../../src/processor';
 import { MatchingGenerator } from '../../src/matching-generator.js';
+import { createTestHelper, TestHelper } from '../test-helper';
 
 describe('Pattern Matching Database Operations', () => {
   let processor: GenLogicProcessor;
+  let helper: TestHelper;
   let db: any;
   let generator: MatchingGenerator;
   const testDbConfig = {
@@ -19,7 +21,8 @@ describe('Pattern Matching Database Operations', () => {
 
   beforeEach(async () => {
     processor = new GenLogicProcessor(testDbConfig);
-    db = processor.getDatabase().getSQL();
+    helper = createTestHelper(processor);
+    db = helper.getSQL();
     await db`DROP SCHEMA public CASCADE`;
     await db`CREATE SCHEMA public`;
     generator = new MatchingGenerator();
@@ -27,8 +30,8 @@ describe('Pattern Matching Database Operations', () => {
 
   afterEach(async () => {
     // Clean up test database
-    if (processor) {
-      await processor.cleanup();
+    if (helper) {
+      await helper.cleanup();
     }
   });
 
@@ -42,7 +45,7 @@ describe('Pattern Matching Database Operations', () => {
         }
       };
 
-      const result = await processor.processSchema(schema);
+      const result = await helper.processSchema(schema);
       expect(result.success).toBe(true);
 
       // Verify table structure
@@ -94,7 +97,7 @@ describe('Pattern Matching Database Operations', () => {
         }
       };
 
-      const result = await processor.processSchema(schema);
+      const result = await helper.processSchema(schema);
       expect(result.success).toBe(true);
 
       // Check function exists
@@ -117,7 +120,7 @@ describe('Pattern Matching Database Operations', () => {
         }
       };
 
-      const result = await processor.processSchema(schema);
+      const result = await helper.processSchema(schema);
       expect(result.success).toBe(true);
 
       // Check function exists
@@ -142,7 +145,7 @@ describe('Pattern Matching Database Operations', () => {
         }
       };
 
-      const result = await processor.processSchema(schema);
+      const result = await helper.processSchema(schema);
       expect(result.success).toBe(true);
 
       // Insert test data
@@ -186,7 +189,7 @@ describe('Pattern Matching Database Operations', () => {
         }
       };
 
-      const result = await processor.processSchema(schema);
+      const result = await helper.processSchema(schema);
       expect(result.success).toBe(true);
 
       // Insert rules with varying specificity
@@ -220,7 +223,7 @@ describe('Pattern Matching Database Operations', () => {
         }
       };
 
-      const result = await processor.processSchema(schema);
+      const result = await helper.processSchema(schema);
       expect(result.success).toBe(true);
 
       // Insert range-based rules
@@ -265,7 +268,7 @@ describe('Pattern Matching Database Operations', () => {
         }
       };
 
-      const result = await processor.processSchema(schema);
+      const result = await helper.processSchema(schema);
       expect(result.success).toBe(true);
 
       // Verify both tables exist

@@ -6,9 +6,11 @@
  */
 
 import { GenLogicProcessor } from '../../src/processor';
+import { createTestHelper, TestHelper } from '../test-helper';
 
 describe('Group 2.2: Automation Testing', () => {
   let processor: GenLogicProcessor;
+  let helper: TestHelper;
   let db: any;
   const testDbName = 'genlogic_test_automation';
 
@@ -21,7 +23,8 @@ describe('Group 2.2: Automation Testing', () => {
       database: testDbName,
       dryRun: false
     });
-    db = processor.getDatabase().getSQL();
+    helper = createTestHelper(processor);
+    db = helper.getSQL();
   });
 
   beforeEach(async () => {
@@ -31,8 +34,8 @@ describe('Group 2.2: Automation Testing', () => {
   });
 
   afterAll(async () => {
-    if (processor) {
-      await processor.cleanup();
+    if (helper) {
+      await helper.cleanup();
     }
   });
 
@@ -70,7 +73,7 @@ describe('Group 2.2: Automation Testing', () => {
       };
 
       // Process schema
-      const result = await processor.processSchema(schema);
+      const result = await helper.processSchema(schema);
       expect(result.success).toBe(true);
 
       // Insert test data
@@ -144,7 +147,7 @@ describe('Group 2.2: Automation Testing', () => {
         }
       };
 
-      const result = await processor.processSchema(schema);
+      const result = await helper.processSchema(schema);
       expect(result.success).toBe(true);
 
       // Insert test data
@@ -216,7 +219,7 @@ describe('Group 2.2: Automation Testing', () => {
         }
       };
 
-      const result = await processor.processSchema(schema);
+      const result = await helper.processSchema(schema);
       expect(result.success).toBe(true);
 
       // Insert test data
@@ -287,7 +290,7 @@ describe('Group 2.2: Automation Testing', () => {
         }
       };
 
-      const result = await processor.processSchema(schema);
+      const result = await helper.processSchema(schema);
       expect(result.success).toBe(true);
 
       // Insert test data
@@ -383,7 +386,7 @@ describe('Group 2.2: Automation Testing', () => {
         }
       };
 
-      const result = await processor.processSchema(schema);
+      const result = await helper.processSchema(schema);
       expect(result.success).toBe(true);
 
       // Insert test data
