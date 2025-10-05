@@ -8,11 +8,11 @@ describe('Pattern Matching Database Operations', () => {
   let processor: Processor;
   let generator: MatchingGenerator;
   const testDbConfig = {
-    host: 'localhost',
+    host: '127.0.0.1',  // TCP connection
     port: 5432,
     database: 'genlogic_test_matching',
-    user: process.env.DB_USER || 'postgres',
-    password: process.env.DB_PASSWORD || 'postgres',
+    user: 'ken',
+    password: 'password123',
     dryRun: false,
     testMode: true
   };
@@ -20,9 +20,6 @@ describe('Pattern Matching Database Operations', () => {
   beforeEach(async () => {
     processor = new Processor(testDbConfig);
     generator = new MatchingGenerator();
-
-    // Ensure test database exists
-    await processor.ensureDatabaseExists();
   });
 
   afterEach(async () => {

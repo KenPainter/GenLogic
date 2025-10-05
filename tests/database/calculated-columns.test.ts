@@ -1,14 +1,14 @@
-import { describe, test, expect, beforeAll, afterAll } from 'bun:test';
+import { describe, test, expect, beforeAll, beforeEach, afterAll } from 'bun:test';
 import { SQL } from 'bun';
 import yaml from 'yaml';
 import { GenLogicProcessor } from '../../src/processor.js';
 
 const DB_CONFIG = {
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432'),
+  host: '127.0.0.1',  // TCP connection (use password auth)
+  port: 5432,
   database: 'genlogic_test_calc',
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'postgres',
+  user: 'ken',
+  password: 'password123',
   dryRun: false,
   testMode: true
 };
@@ -19,16 +19,14 @@ describe('Calculated Columns Database Tests', () => {
 
   beforeAll(async () => {
     processor = new GenLogicProcessor(DB_CONFIG);
-    db = new SQL({
-      hostname: DB_CONFIG.host,
-      port: DB_CONFIG.port,
-      database: DB_CONFIG.database,
-      username: DB_CONFIG.user,
-      password: DB_CONFIG.password,
-    });
+    // Use the processor's database connection instead of creating a new one
+    db = processor.getDatabase().getSQL();
+  });
 
-    // Ensure test database exists
-    await processor.ensureDatabaseExists();
+  beforeEach(async () => {
+    // Clean database before each test
+    await db`DROP SCHEMA public CASCADE`;
+    await db`CREATE SCHEMA public`;
   });
 
   afterAll(async () => {
@@ -44,14 +42,12 @@ describe('Calculated Columns Database Tests', () => {
 tables:
   orders:
     columns:
-      order_id: { type: integer, primary_key: true, sequence: true }
-      price: { type: numeric, size: 10, decimal: 2 }
-      quantity: { type: integer }
+      order_id: serial primary key
+      price: numeric(10,2)
+      quantity: integer
       total:
-        type: numeric
-        size: 10
-        decimal: 2
-        calculated: "price * quantity"
+        type: numeric(10,2)
+        generated: price * quantity
 `;
 
       const schema = yaml.parse(schemaYaml);
@@ -72,7 +68,6 @@ tables:
       expect(parseFloat(queryResult[0].total)).toBe(31.50);
 
       // Cleanup
-      await db`DROP TABLE IF EXISTS orders CASCADE`;
     });
 
     test('should recalculate on UPDATE', async () => {
@@ -80,14 +75,12 @@ tables:
 tables:
   products:
     columns:
-      product_id: { type: integer, primary_key: true, sequence: true }
-      base_price: { type: numeric, size: 10, decimal: 2 }
-      markup_percent: { type: numeric, size: 5, decimal: 2 }
+      product_id: serial primary key
+      base_price: numeric(10,2)
+      markup_percent: numeric(5,2)
       selling_price:
-        type: numeric
-        size: 10
-        decimal: 2
-        calculated: "base_price * (1 + markup_percent / 100)"
+        type: numeric(10,2)
+        generated: base_price * (1 + markup_percent / 100)
 `;
 
       const schema = yaml.parse(schemaYaml);
@@ -126,7 +119,6 @@ tables:
       expect(parseFloat(queryResult[0].selling_price)).toBe(130.00);
 
       // Cleanup
-      await db`DROP TABLE IF EXISTS products CASCADE`;
     });
   });
 
@@ -136,11 +128,11 @@ tables:
 tables:
   invoices:
     columns:
-      invoice_id: { type: integer, primary_key: true, sequence: true }
-      amount: { type: numeric, size: 10, decimal: 2 }
+      invoice_id: serial primary key
+      amount: numeric(10,2)
       status:
         type: text
-        calculated: "case when amount > 0 then 'positive' when amount < 0 then 'negative' else 'zero' end"
+        generated: case when amount > 0 then 'positive' when amount < 0 then 'negative' else 'zero' end
 `;
 
       const schema = yaml.parse(schemaYaml);
@@ -165,7 +157,6 @@ tables:
       expect(queryResult[2].status).toBe('negative');
 
       // Cleanup
-      await db`DROP TABLE IF EXISTS invoices CASCADE`;
     });
   });
 
@@ -175,24 +166,18 @@ tables:
 tables:
   sales:
     columns:
-      sale_id: { type: integer, primary_key: true, sequence: true }
-      price: { type: numeric, size: 10, decimal: 2 }
-      quantity: { type: integer }
+      sale_id: serial primary key
+      price: numeric(10,2)
+      quantity: integer
       subtotal:
-        type: numeric
-        size: 10
-        decimal: 2
-        calculated: "price * quantity"
+        type: numeric(10,2)
+        generated: price * quantity
       tax:
-        type: numeric
-        size: 10
-        decimal: 2
-        calculated: "subtotal * 0.1"
+        type: numeric(10,2)
+        generated: subtotal * 0.1
       total:
-        type: numeric
-        size: 10
-        decimal: 2
-        calculated: "subtotal + tax"
+        type: numeric(10,2)
+        generated: subtotal + tax
 `;
 
       const schema = yaml.parse(schemaYaml);
@@ -238,7 +223,6 @@ tables:
       expect(parseFloat(updatedRow.total)).toBe(165.00);
 
       // Cleanup
-      await db`DROP TABLE IF EXISTS sales CASCADE`;
     });
   });
 
@@ -248,14 +232,12 @@ tables:
 tables:
   measurements:
     columns:
-      measurement_id: { type: integer, primary_key: true, sequence: true }
-      value1: { type: numeric, size: 10, decimal: 2 }
-      value2: { type: numeric, size: 10, decimal: 2 }
+      measurement_id: serial primary key
+      value1: numeric(10,2)
+      value2: numeric(10,2)
       sum_result:
-        type: numeric
-        size: 10
-        decimal: 2
-        calculated: "COALESCE(value1, 0) + COALESCE(value2, 0)"
+        type: numeric(10,2)
+        generated: COALESCE(value1, 0) + COALESCE(value2, 0)
 `;
 
       const schema = yaml.parse(schemaYaml);
@@ -279,7 +261,6 @@ tables:
       expect(parseFloat(queryResult[0].sum_result)).toBe(10.00);
 
       // Cleanup
-      await db`DROP TABLE IF EXISTS measurements CASCADE`;
     });
   });
 
@@ -289,19 +270,17 @@ tables:
 tables:
   employees:
     columns:
-      employee_id: { type: integer, primary_key: true, sequence: true }
-      first_name: { type: text }
-      last_name: { type: text }
+      employee_id: serial primary key
+      first_name: text
+      last_name: text
       full_name:
         type: text
-        calculated: "first_name || ' ' || last_name"
-      hourly_rate: { type: numeric, size: 10, decimal: 2 }
-      hours_worked: { type: numeric, size: 10, decimal: 2 }
+        generated: first_name || ' ' || last_name
+      hourly_rate: numeric(10,2)
+      hours_worked: numeric(10,2)
       total_pay:
-        type: numeric
-        size: 10
-        decimal: 2
-        calculated: "hourly_rate * hours_worked"
+        type: numeric(10,2)
+        generated: hourly_rate * hours_worked
 `;
 
       const schema = yaml.parse(schemaYaml);
@@ -328,7 +307,6 @@ tables:
       expect(parseFloat(row.total_pay)).toBe(1000.00);
 
       // Cleanup
-      await db`DROP TABLE IF EXISTS employees CASCADE`;
     });
   });
 });

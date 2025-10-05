@@ -13,18 +13,13 @@ describe('Group 2.2: Automation Testing', () => {
 
   beforeAll(async () => {
     processor = new GenLogicProcessor({
-      host: process.env.DB_HOST || 'localhost',
-      port: parseInt(process.env.DB_PORT || '5432'),
-      user: process.env.DB_USER || 'postgres',
-      password: process.env.DB_PASSWORD || 'postgres',
+      host: '127.0.0.1',  // TCP connection
+      port: 5432,
+      user: 'ken',
+      password: 'password123',
       database: testDbName,
       dryRun: false
     });
-
-    const result = await processor.ensureDatabaseExists();
-    if (!result.success) {
-      throw new Error(`Failed to create test database: ${result.error}`);
-    }
   });
 
   afterAll(async () => {

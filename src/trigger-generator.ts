@@ -142,10 +142,10 @@ export class TriggerGenerator {
       // Collect calculated columns
       const calculatedCols: Array<{ name: string; expression: string }> = [];
       for (const [columnName, column] of Object.entries(table.columns)) {
-        if (column && typeof column === 'object' && 'calculated' in column) {
+        if (column && typeof column === 'object' && 'generated' in column) {
           calculatedCols.push({
             name: columnName,
-            expression: (column as any).calculated
+            expression: (column as any).generated
           });
         }
       }

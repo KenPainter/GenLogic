@@ -264,6 +264,9 @@ export class GenLogicProcessor {
       // Connect and execute
       await this.database.connect();
       try {
+        // Drop all existing GenLogic triggers first for clean slate
+        const dropAllTriggersSQL = await this.database.generateDropAllGenLogicTriggersSQL();
+
         const currentSchema = await this.database.analyzeCurrentSchema();
         const diff = this.diffEngine.generateDiff(processedSchema, currentSchema);
 
@@ -271,6 +274,7 @@ export class GenLogicProcessor {
         const triggerStatements = this.triggerGenerator.generateTriggers(schema, processedSchema);
 
         const allStatements = [
+          ...dropAllTriggersSQL,
           ...ddlStatements.createTables,
           ...ddlStatements.addColumns,
           ...ddlStatements.addForeignKeys,
@@ -337,6 +341,13 @@ export class GenLogicProcessor {
     } finally {
       await this.database.disconnect();
     }
+  }
+
+  /**
+   * Get database manager for direct access (mainly for tests)
+   */
+  getDatabase() {
+    return this.database;
   }
 
   async cleanup(): Promise<void> {

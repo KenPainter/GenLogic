@@ -18,13 +18,21 @@ export class DatabaseManager {
   private db: SQL;
 
   constructor(config: DatabaseConfig) {
-    this.db = new SQL({
+    // For peer authentication (Unix socket), omit password entirely
+    const connectionConfig: any = {
       hostname: config.host,
       port: config.port,
       database: config.database,
       username: config.user,
-      password: config.password,
-    });
+    };
+
+    // Only include password if it's provided (needed for password auth)
+    // Omit for peer authentication (empty string means use peer auth)
+    if (config.password) {
+      connectionConfig.password = config.password;
+    }
+
+    this.db = new SQL(connectionConfig);
   }
 
   /**
@@ -271,14 +279,13 @@ export class DatabaseManager {
    * Execute SQL within a transaction
    */
   async executeInTransaction(sqlStatements: string[]): Promise<void> {
-    await this.db`BEGIN`;
-
-    try {
+    // Use Bun's transaction API
+    await this.db.begin(async (tx) => {
       for (let i = 0; i < sqlStatements.length; i++) {
         const sql = sqlStatements[i];
         try {
-          // Execute raw SQL using Bun.sql
-          await this.db.unsafe(sql);
+          // Execute raw SQL using Bun.sql transaction
+          await tx.unsafe(sql);
         } catch (sqlError: any) {
           // Add context about which statement failed
           throw new Error(
@@ -287,11 +294,7 @@ export class DatabaseManager {
           );
         }
       }
-      await this.db`COMMIT`;
-    } catch (error) {
-      await this.db`ROLLBACK`;
-      throw error;
-    }
+    });
   }
 
   /**
@@ -311,5 +314,13 @@ export class DatabaseManager {
       throw new Error('Use tagged template literals instead of parameterized queries with Bun.sql');
     }
     return await this.db.unsafe(sql);
+  }
+
+  /**
+   * Get the underlying SQL object for direct tagged template literal queries
+   * Mainly for tests that need to run queries
+   */
+  getSQL(): SQL {
+    return this.db;
   }
 }
