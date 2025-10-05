@@ -1,3 +1,5 @@
+Next: [Reusable Columns](02-reusable-columns.md)
+
 # Single Table Definition
 
 A GenLogic schema defines one or more tables with their columns and data types.
@@ -130,3 +132,7 @@ Adds UNIQUE constraint. Default: false
 - bit(n) - Fixed-length bit string, size required
 - json - JSON data
 - jsonb - Binary JSON data (indexable)
+
+---
+
+Next: [Reusable Columns](02-reusable-columns.md)

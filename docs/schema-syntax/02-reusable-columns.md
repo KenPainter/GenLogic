@@ -1,3 +1,5 @@
+Previous: [Single Table Basics](01-single-table.md) | Next: [Foreign Keys](03-foreign-keys.md)
+
 # Reusable Column Definitions
 
 Column definitions can be declared once and reused across multiple tables.
@@ -233,3 +235,7 @@ columns:
   flag:
     type: boolean
 ```
+
+---
+
+Previous: [Single Table Basics](01-single-table.md) | Next: [Foreign Keys](03-foreign-keys.md)

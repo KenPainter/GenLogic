@@ -1,4 +1,4 @@
-Previous: [Type Showcase](../basic/type-showcase.md) | Next: [SUM Automation](../automations/sum-automation.md)
+Previous: [Type Showcase](../basic/type-showcase.md) | Next: [Ref Inheritance](ref-inheritance.md)
 
 # String Inheritance Pattern
 
@@ -207,4 +207,4 @@ tables:
 
 ---
 
-Previous: [Type Showcase](../basic/type-showcase.md) | Next: [SUM Automation](../automations/sum-automation.md)
+Previous: [Type Showcase](../basic/type-showcase.md) | Next: [Ref Inheritance](ref-inheritance.md)

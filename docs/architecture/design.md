@@ -1,4 +1,4 @@
-Next: [Consolidated Triggers](consolidated-triggers.md)
+Previous: [Test Coverage Matrix](../development/03-test-coverage-matrix.md) | Next: [Consolidated Triggers](consolidated-triggers.md)
 
 # GenLogic Design Documentation
 
@@ -123,4 +123,4 @@ This approach transforms database design from table-centric to relationship-cent
 
 ---
 
-Next: [Consolidated Triggers](consolidated-triggers.md)
+Previous: [Test Coverage Matrix](../development/03-test-coverage-matrix.md) | Next: [Consolidated Triggers](consolidated-triggers.md)

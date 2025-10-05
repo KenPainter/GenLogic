@@ -1,3 +1,5 @@
+Previous: [Reusable Columns](02-reusable-columns.md) | Next: [Moving Values from Parent to Child](04-parent-to-child.md)
+
 # Foreign Keys
 
 Foreign keys establish relationships between tables.
@@ -255,3 +257,7 @@ ALTER TABLE orders
 Delete actions:
 - cascade: Delete child rows when parent is deleted
 - restrict: Prevent parent deletion if child rows exist (default)
+
+---
+
+Previous: [Reusable Columns](02-reusable-columns.md) | Next: [Moving Values from Parent to Child](04-parent-to-child.md)

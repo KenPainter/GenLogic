@@ -1,3 +1,5 @@
+Previous: [Calculating Values Within a Row](05-calculated-columns.md) | Next: [Pattern Matching Tables](07-matching-tables.md)
+
 # Moving Values from Child to Parent
 
 Parent tables can automatically maintain aggregate values from child tables.
@@ -272,3 +274,7 @@ Aggregations are automatically updated when:
 3. Child row is deleted
 
 The parent row value is always current.
+
+---
+
+Previous: [Calculating Values Within a Row](05-calculated-columns.md) | Next: [Pattern Matching Tables](07-matching-tables.md)

@@ -1,3 +1,5 @@
+Previous: [NULL Handling](../architecture/null-handling.md) | Next: [Minimal Schema](../examples/basic/minimal-schema.md)
+
 # Trigger Generator Deep Dive
 
 The Trigger Generator is a core component of GenLogic that creates PostgreSQL triggers to implement data automation patterns. It uses a consolidated approach where one trigger per table handles all automations efficiently.
@@ -349,3 +351,7 @@ tables:
 2. Check for missing indexes
 3. Review automation complexity
 4. Consider async processing for heavy operations
+
+---
+
+Previous: [NULL Handling](../architecture/null-handling.md) | Next: [Minimal Schema](../examples/basic/minimal-schema.md)

@@ -51,7 +51,7 @@ This directory contains comprehensive documentation for GenLogic schema definiti
 - [Blog Platform](examples/complex/blog-platform.md) - Full-featured blog
 - [E-commerce System](examples/complex/e-commerce-system.md) - Comprehensive e-commerce
 - [Financial Tracking](examples/complex/financial-tracking.md) - Financial system
-- [NULL Handling](examples/edge-cases/null-handling.md) - NULL value automation
+- [NULL Handling](architecture/null-handling.md) - NULL value automation
 - [Circular References](examples/edge-cases/circular-references.md) - Circular dependencies and validation
 - [Performance Considerations](examples/edge-cases/performance-considerations.md) - Performance scenarios
 - [Schema Evolution](examples/edge-cases/schema-evolution.md) - Schema changes and migrations

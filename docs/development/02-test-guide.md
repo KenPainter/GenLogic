@@ -1,4 +1,4 @@
-Previous: [UI Notes Guide](guides/ui-notes-guide.md) | Next: [Minimal Schema](examples/basic/minimal-schema.md)
+Previous: [Documentation Navigation Links](01-navigation-links.md) | Next: [Test Coverage Matrix](03-test-coverage-matrix.md)
 
 # GenLogic Testing Guide
 
@@ -133,4 +133,4 @@ DB_HOST=localhost DB_PORT=5432 DB_USER=postgres DB_PASSWORD=your_password bun te
 
 ---
 
-Previous: [UI Notes Guide](guides/ui-notes-guide.md) | Next: [Minimal Schema](examples/basic/minimal-schema.md)
+Previous: [Documentation Navigation Links](01-navigation-links.md) | Next: [Test Coverage Matrix](03-test-coverage-matrix.md)

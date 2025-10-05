@@ -1,4 +1,4 @@
-Previous: [Design Documentation](design.md) | Next: [Calculated Columns](../guides/calculated-columns.md)
+Previous: [Design Documentation](design.md) | Next: [NULL Handling](null-handling.md)
 
 # Consolidated Trigger Architecture
 
@@ -474,8 +474,6 @@ When you have parent ↔ child automation (SUM + FOLLOW), test updates in both d
 
 ### 5. Understand the Four Steps
 When debugging trigger issues, trace through the four steps sequentially. Most issues are ordering problems (e.g., calculating before pulling from parent).
-
-
 
 ---
 

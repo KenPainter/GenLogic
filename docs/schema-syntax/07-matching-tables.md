@@ -1,3 +1,5 @@
+Previous: [Moving Values from Child to Parent](06-child-to-parent.md) | Next: [CLI Usage](../building-database/01-cli-usage.md)
+
 # Pattern Matching Tables
 
 Matching tables provide pattern-based categorization with specificity ranking.
@@ -270,3 +272,7 @@ Pattern matching tables are useful for:
 - Priority assignment
 - Automated classification
 - Pattern-based defaults
+
+---
+
+Previous: [Moving Values from Child to Parent](06-child-to-parent.md) | Next: [CLI Usage](../building-database/01-cli-usage.md)

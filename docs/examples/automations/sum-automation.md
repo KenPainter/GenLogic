@@ -1,4 +1,4 @@
-Previous: [String Inheritance](../inheritance/string-inheritance.md) | Next: [Simple Foreign Key](../foreign-keys/simple-foreign-key.md)
+Previous: [Cascading Actions](../foreign-keys/cascading-actions.md) | Next: [COUNT Automation](count-automation.md)
 
 # SUM Automation: Automatic Balance Calculation
 
@@ -249,4 +249,4 @@ This automation eliminates the need for manual balance calculations and prevents
 
 ---
 
-Previous: [String Inheritance](../inheritance/string-inheritance.md) | Next: [Simple Foreign Key](../foreign-keys/simple-foreign-key.md)
+Previous: [Cascading Actions](../foreign-keys/cascading-actions.md) | Next: [COUNT Automation](count-automation.md)

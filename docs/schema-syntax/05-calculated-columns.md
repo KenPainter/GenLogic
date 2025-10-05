@@ -1,3 +1,5 @@
+Previous: [Moving Values from Parent to Child](04-parent-to-child.md) | Next: [Moving Values from Child to Parent](06-child-to-parent.md)
+
 # Calculating Values Within a Row
 
 Columns can automatically compute their values from other columns in the same row.
@@ -210,3 +212,7 @@ FROM employees;
 -- ----------|-----------|------------|----------
 -- John Doe  | 1000.00   | 150.00     | 850.00
 ```
+
+---
+
+Previous: [Moving Values from Parent to Child](04-parent-to-child.md) | Next: [Moving Values from Child to Parent](06-child-to-parent.md)

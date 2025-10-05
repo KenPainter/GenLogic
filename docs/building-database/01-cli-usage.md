@@ -1,3 +1,5 @@
+Previous: [Pattern Matching Tables](../schema-syntax/07-matching-tables.md) | Next: [Seed Data](02-seed-data.md)
+
 # CLI Usage
 
 GenLogic provides a command-line interface for processing schema definitions and applying them to PostgreSQL databases.
@@ -230,3 +232,7 @@ For slow schema processing:
 2. Consider breaking large schemas into smaller files
 3. Review generated SQL with `DEBUG_SQL=1`
 4. Check PostgreSQL logs for slow queries
+
+---
+
+Previous: [Pattern Matching Tables](../schema-syntax/07-matching-tables.md) | Next: [Seed Data](02-seed-data.md)

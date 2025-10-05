@@ -1,3 +1,5 @@
+Previous: [Test Guide](02-test-guide.md) | Next: [Design Documentation](../architecture/design.md)
+
 # Test Coverage Matrix
 
 This document maps source files to their corresponding tests and documentation to ensure comprehensive coverage.
@@ -112,3 +114,7 @@ tests/
 └── performance/       # Performance benchmarks
     └── large-schema.test.ts
 ```
+
+---
+
+Previous: [Test Guide](02-test-guide.md) | Next: [Design Documentation](../architecture/design.md)

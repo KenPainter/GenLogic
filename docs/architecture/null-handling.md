@@ -1,4 +1,4 @@
-Previous: [Consolidated Triggers](consolidated-triggers.md)
+Previous: [Financial Tracking](../examples/complex/financial-tracking.md) | Next: [Circular References](../examples/edge-cases/circular-references.md)
 
 # NULL Handling
 
@@ -236,4 +236,4 @@ The new format eliminates ambiguity and provides actionable guidance for both re
 
 ---
 
-Previous: [Consolidated Triggers](consolidated-triggers.md)
+Previous: [Financial Tracking](../examples/complex/financial-tracking.md) | Next: [Circular References](../examples/edge-cases/circular-references.md)

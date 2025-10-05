@@ -1,4 +1,4 @@
-Previous: [SUM Automation](../automations/sum-automation.md)
+Previous: [Mixed Inheritance](../inheritance/mixed-inheritance.md) | Next: [Multiple Foreign Keys](multiple-foreign-keys.md)
 
 # Simple Foreign Key Example
 
@@ -130,4 +130,4 @@ SELECT * FROM posts WHERE author_fk = 2;
 
 ---
 
-Previous: [SUM Automation](../automations/sum-automation.md)
+Previous: [Mixed Inheritance](../inheritance/mixed-inheritance.md) | Next: [Multiple Foreign Keys](multiple-foreign-keys.md)

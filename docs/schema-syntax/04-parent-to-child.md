@@ -1,3 +1,5 @@
+Previous: [Foreign Keys](03-foreign-keys.md) | Next: [Calculating Values Within a Row](05-calculated-columns.md)
+
 # Moving Values from Parent to Child
 
 Columns can automatically copy values from a parent table using SNAPSHOT or FOLLOW automation.
@@ -174,3 +176,7 @@ FOLLOW is useful for:
 - Denormalizing current values (always reflect latest discount rate)
 - Performance optimization (avoiding joins for frequently accessed values)
 - Cascading updates (keep derived data synchronized with source)
+
+---
+
+Previous: [Foreign Keys](03-foreign-keys.md) | Next: [Calculating Values Within a Row](05-calculated-columns.md)

@@ -1,3 +1,5 @@
+Previous: [CLI Usage](01-cli-usage.md) | Next: [Documentation Navigation Links](../development/01-navigation-links.md)
+
 # Seed Data
 
 Seed data can be included in schema definitions using `content` sections. The Content Manager handles insertion with idempotent behavior and foreign key resolution.
@@ -375,3 +377,7 @@ tables:
             column: id
         email: admin@example.com
 ```
+
+---
+
+Previous: [CLI Usage](01-cli-usage.md) | Next: [Documentation Navigation Links](../development/01-navigation-links.md)
