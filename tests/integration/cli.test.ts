@@ -7,6 +7,11 @@ import { join } from 'path';
 const TEST_DIR = join(process.cwd(), 'debug', 'cli-test');
 const CLI_PATH = join(process.cwd(), 'src', 'cli.ts');
 
+// Test database credentials for CLI integration tests
+const TEST_DB = 'genlogic_test_cli';
+const TEST_USER = 'ken';
+const TEST_PASSWORD = 'password123';
+
 describe('CLI Integration Tests', () => {
   beforeAll(() => {
     // Create test directory
@@ -35,7 +40,7 @@ describe('CLI Integration Tests', () => {
   });
 
   describe('Validation Mode', () => {
-    test('should validate a simple schema in test mode', async () => {
+    test('should validate a simple schema in dry-run mode', async () => {
       const schemaPath = join(TEST_DIR, 'simple.yaml');
       const schema = `
 columns:
@@ -50,7 +55,7 @@ tables:
 `;
       writeFileSync(schemaPath, schema);
 
-      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} --test-mode`.quiet().nothrow();
+      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} -d ${TEST_DB} -u ${TEST_USER} -w ${TEST_PASSWORD} --dry-run`.quiet().nothrow();
       expect(result.exitCode).toBe(0);
 
       unlinkSync(schemaPath);
@@ -70,7 +75,7 @@ tables:
 `;
       writeFileSync(schemaPath, schema);
 
-      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} --test-mode`.quiet().nothrow();
+      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} -d ${TEST_DB} -u ${TEST_USER} -w ${TEST_PASSWORD} --dry-run`.quiet().nothrow();
       expect(result.exitCode).toBe(1);
       expect(result.stderr.toString()).toContain('nonexistent');
 
@@ -97,7 +102,7 @@ tables:
 `;
       writeFileSync(schemaPath, schema);
 
-      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} --test-mode`.quiet().nothrow();
+      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} -d ${TEST_DB} -u ${TEST_USER} -w ${TEST_PASSWORD} --dry-run`.quiet().nothrow();
       // Should detect cycle
       expect(result.exitCode).toBe(1);
 
@@ -163,7 +168,7 @@ tables:
     });
 
     test('should handle missing schema file', async () => {
-      const result = await $`bun run ${CLI_PATH} -s nonexistent.yaml --test-mode`.quiet().nothrow();
+      const result = await $`bun run ${CLI_PATH} -s nonexistent.yaml -d ${TEST_DB} -u ${TEST_USER} -w ${TEST_PASSWORD} --dry-run`.quiet().nothrow();
       expect(result.exitCode).toBe(1);
     });
 
@@ -171,7 +176,7 @@ tables:
       const schemaPath = join(TEST_DIR, 'invalid-yaml.yaml');
       writeFileSync(schemaPath, 'tables:\n  invalid: [unclosed');
 
-      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} --test-mode`.quiet().nothrow();
+      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} -d ${TEST_DB} -u ${TEST_USER} -w ${TEST_PASSWORD} --dry-run`.quiet().nothrow();
       expect(result.exitCode).toBe(1);
 
       unlinkSync(schemaPath);
@@ -193,7 +198,7 @@ tables:
 `;
       writeFileSync(schemaPath, schema);
 
-      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} --test-mode`.quiet().nothrow();
+      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} -d ${TEST_DB} -u ${TEST_USER} -w ${TEST_PASSWORD} --dry-run`.quiet().nothrow();
       expect(result.exitCode).toBe(0);
 
       unlinkSync(schemaPath);
@@ -208,7 +213,7 @@ matching_tables:
 `;
       writeFileSync(schemaPath, schema);
 
-      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} --test-mode`.quiet().nothrow();
+      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} -d ${TEST_DB} -u ${TEST_USER} -w ${TEST_PASSWORD} --dry-run`.quiet().nothrow();
       expect(result.exitCode).toBe(0);
 
       unlinkSync(schemaPath);
@@ -232,7 +237,7 @@ tables:
 `;
       writeFileSync(schemaPath, schema);
 
-      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} --test-mode`.quiet().nothrow();
+      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} -d ${TEST_DB} -u ${TEST_USER} -w ${TEST_PASSWORD} --dry-run`.quiet().nothrow();
       expect(result.exitCode).toBe(0);
 
       unlinkSync(schemaPath);
@@ -254,7 +259,7 @@ tables:
 `;
       writeFileSync(schemaPath, schema);
 
-      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} --test-mode`.quiet().nothrow();
+      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} -d ${TEST_DB} -u ${TEST_USER} -w ${TEST_PASSWORD} --dry-run`.quiet().nothrow();
       expect(result.exitCode).toBe(0);
 
       unlinkSync(schemaPath);
@@ -266,7 +271,7 @@ tables:
       const schemaPath = join(TEST_DIR, 'test.yaml');
       writeFileSync(schemaPath, 'tables: {}');
 
-      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} -h db.example.com -p 5433 --test-mode`.quiet().nothrow();
+      const result = await $`bun run ${CLI_PATH} -s ${schemaPath} -h 127.0.0.1 -p 5432 -d ${TEST_DB} -u ${TEST_USER} -w ${TEST_PASSWORD} --dry-run`.quiet().nothrow();
       expect(result.exitCode).toBe(0);
 
       unlinkSync(schemaPath);
@@ -282,7 +287,7 @@ tables:
 `;
       writeFileSync(defaultSchemaPath, schema);
 
-      const result = await $`bun run ${CLI_PATH} --test-mode`.quiet().nothrow();
+      const result = await $`bun run ${CLI_PATH} -d ${TEST_DB} -u ${TEST_USER} -w ${TEST_PASSWORD} --dry-run`.quiet().nothrow();
       expect(result.exitCode).toBe(0);
 
       unlinkSync(defaultSchemaPath);

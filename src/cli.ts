@@ -18,25 +18,22 @@ program
   .option('-w, --password <password>', 'PostgreSQL password')
   .option('-s, --schema <path>', 'Path to YAML schema file(s)', './schema.yaml')
   .option('--dry-run', 'Show planned changes without executing them', false)
-  .option('--test-mode', 'Test mode - skip database connection for validation testing', false)
   .action(async (options) => {
     try {
-      // Validate required options (unless in test mode)
-      if (!options.testMode) {
-        if (!options.database) {
-          console.error('Error: Database name is required (-d, --database)');
-          process.exit(1);
-        }
+      // Validate required options
+      if (!options.database) {
+        console.error('Error: Database name is required (-d, --database)');
+        process.exit(1);
+      }
 
-        if (!options.user) {
-          console.error('Error: Username is required (-u, --user)');
-          process.exit(1);
-        }
+      if (!options.user) {
+        console.error('Error: Username is required (-u, --user)');
+        process.exit(1);
+      }
 
-        if (!options.password) {
-          console.error('Error: Password is required (-w, --password)');
-          process.exit(1);
-        }
+      if (!options.password) {
+        console.error('Error: Password is required (-w, --password)');
+        process.exit(1);
       }
 
       // GENLOGIC CORE PRINCIPLE: Foreign keys are DATA PIPELINES, not just constraints
@@ -47,8 +44,7 @@ program
         database: options.database || 'test',
         user: options.user || 'test',
         password: options.password || 'test',
-        dryRun: options.dryRun,
-        testMode: options.testMode
+        dryRun: options.dryRun
       });
 
       await processor.process(options.schema);

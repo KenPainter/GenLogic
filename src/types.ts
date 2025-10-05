@@ -8,7 +8,6 @@ export interface DatabaseConfig {
   user: string;
   password: string;
   dryRun: boolean;
-  testMode?: boolean;
 }
 
 // YAML Schema Types - matches our JSON Schema structure

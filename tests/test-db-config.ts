@@ -13,8 +13,7 @@ export const TEST_DB_CONFIG = {
   port: 5432,
   user: 'ken',
   password: 'password123',
-  dryRun: false,
-  testMode: true
+  dryRun: false
 };
 
 export function getTestDbConfig(database: string) {

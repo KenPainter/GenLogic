@@ -103,85 +103,58 @@ export class GenLogicProcessor {
       }
 
       // PHASE 6: Database introspection and diffing
-      if (this.config.testMode) {
-        console.log('🔍 Test mode - skipping database analysis...');
-        console.log('📝 Generating test SQL statements...');
+      console.log('🔍 Analyzing current database state...');
+      await this.database.connect();
+      try {
+        // PHASE 6.5: Drop ALL GenLogic triggers first for clean slate
+        console.log('🧹 Dropping all existing GenLogic triggers...');
+        const dropAllTriggersSQL = await this.database.generateDropAllGenLogicTriggersSQL();
 
-        // Create mock diff for testing
-        const mockDiff = {
-          tablesToCreate: [
-            { tableName: 'accounts', columns: [{ name: 'account_id', definition: { type: 'INTEGER' } }], foreignKeys: {} },
-            { tableName: 'ledger', columns: [{ name: 'amount', definition: { type: 'NUMERIC' } }], foreignKeys: {} }
-          ],
-          columnsToAdd: [],
-          indexesToCreate: [],
-          foreignKeysToAdd: [],
-          triggersToRecreate: ['accounts', 'ledger']
-        };
+        const currentSchema = await this.database.analyzeCurrentSchema();
+        const diff = this.diffEngine.generateDiff(processedSchema, currentSchema);
 
+        // PHASE 7: SQL generation
+        console.log('📝 Generating SQL statements...');
+        const ddlStatements = this.sqlGenerator.generateSQL(diff);
         const triggerStatements = this.triggerGenerator.generateTriggers(schema, processedSchema);
         const matchingStatements = this.matchingGenerator.generateMatchingSQL(schema, processedSchema);
         const contentStatements = this.contentManager.generateContentInserts(schema, processedSchema);
 
-        const allStatements = [...triggerStatements, ...matchingStatements, ...contentStatements];
+        // ROBUST EXECUTION ORDER:
+        // 1. Drop ALL GenLogic triggers (clean slate)
+        // 2. Run all DDL (tables, columns, constraints)
+        // 3. Add comments (table and column descriptions)
+        // 4. Create ALL triggers (fresh from schema)
+        // 5. Create matching functions (pattern matching utilities)
+        // 6. Insert content (with complete schema and active triggers)
+        const allStatements = [
+          ...dropAllTriggersSQL,
+          ...ddlStatements.createTables,
+          ...ddlStatements.addColumns,
+          ...ddlStatements.addForeignKeys,
+          ...ddlStatements.createIndexes,
+          ...ddlStatements.addComments,
+          ...triggerStatements,
+          ...matchingStatements,
+          ...contentStatements
+        ].filter(sql => sql.trim().length > 0 && !sql.startsWith('--'));
 
-        console.log('📋 TEST MODE - Schema validation completed successfully!');
-        this.reportPlannedChanges(mockDiff, allStatements);
-
-      } else {
-        console.log('🔍 Analyzing current database state...');
-        await this.database.connect();
-        try {
-          // PHASE 6.5: Drop ALL GenLogic triggers first for clean slate
-          console.log('🧹 Dropping all existing GenLogic triggers...');
-          const dropAllTriggersSQL = await this.database.generateDropAllGenLogicTriggersSQL();
-
-          const currentSchema = await this.database.analyzeCurrentSchema();
-          const diff = this.diffEngine.generateDiff(processedSchema, currentSchema);
-
-          // PHASE 7: SQL generation
-          console.log('📝 Generating SQL statements...');
-          const ddlStatements = this.sqlGenerator.generateSQL(diff);
-          const triggerStatements = this.triggerGenerator.generateTriggers(schema, processedSchema);
-          const matchingStatements = this.matchingGenerator.generateMatchingSQL(schema, processedSchema);
-          const contentStatements = this.contentManager.generateContentInserts(schema, processedSchema);
-
-          // ROBUST EXECUTION ORDER:
-          // 1. Drop ALL GenLogic triggers (clean slate)
-          // 2. Run all DDL (tables, columns, constraints)
-          // 3. Add comments (table and column descriptions)
-          // 4. Create ALL triggers (fresh from schema)
-          // 5. Create matching functions (pattern matching utilities)
-          // 6. Insert content (with complete schema and active triggers)
-          const allStatements = [
-            ...dropAllTriggersSQL,
-            ...ddlStatements.createTables,
-            ...ddlStatements.addColumns,
-            ...ddlStatements.addForeignKeys,
-            ...ddlStatements.createIndexes,
-            ...ddlStatements.addComments,
-            ...triggerStatements,
-            ...matchingStatements,
-            ...contentStatements
-          ].filter(sql => sql.trim().length > 0 && !sql.startsWith('--'));
-
-          // PHASE 8: Execution or dry-run reporting
-          if (this.config.dryRun) {
-            console.log('📋 DRY RUN - Planned changes:');
-            this.reportPlannedChanges(diff, allStatements);
+        // PHASE 8: Execution or dry-run reporting
+        if (this.config.dryRun) {
+          console.log('📋 DRY RUN - Planned changes:');
+          this.reportPlannedChanges(diff, allStatements);
+        } else {
+          console.log('⚡ Executing database changes...');
+          if (allStatements.length > 0) {
+            await this.database.executeInTransaction(allStatements);
+            console.log(`✅ Successfully executed ${allStatements.length} SQL statements`);
           } else {
-            console.log('⚡ Executing database changes...');
-            if (allStatements.length > 0) {
-              await this.database.executeInTransaction(allStatements);
-              console.log(`✅ Successfully executed ${allStatements.length} SQL statements`);
-            } else {
-              console.log('✅ No changes needed - schema is up to date');
-            }
+            console.log('✅ No changes needed - schema is up to date');
           }
-
-        } finally {
-          await this.database.disconnect();
         }
+
+      } finally {
+        await this.database.disconnect();
       }
 
       // PHASE 9: Generate resolved schema documentation
