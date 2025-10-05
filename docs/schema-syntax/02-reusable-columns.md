@@ -8,14 +8,14 @@ Column definitions can be declared once and reused across multiple tables.
 
 ```yaml
 columns:
-  column_template_name:
-    type: data_type
-    # ... other properties
+  template_name:
+    type: *any valid PostgreSQL type*
+    comment: *description*
 
 tables:
   table_name:
     columns:
-      actual_column_name: column_template_name
+      column_name: template_name
 ```
 
 ## Simple Example
@@ -23,17 +23,16 @@ tables:
 ```yaml
 columns:
   id:
-    type: integer
-    sequence: true
-    primary_key: true
+    type: serial primary key
+    comment: Auto-incrementing primary key
 
   name:
-    type: varchar
-    size: 100
+    type: varchar(100)
+    comment: Name field
 
   email:
-    type: varchar
-    size: 255
+    type: varchar(255)
+    comment: Email address
 
 tables:
   users:
@@ -74,6 +73,7 @@ Reference a column template by name:
 columns:
   timestamp:
     type: timestamptz
+    comment: Timestamp with timezone
 
 tables:
   orders:
@@ -87,14 +87,16 @@ Use null to inherit with the same column name:
 ```yaml
 columns:
   id:
-    type: integer
-    primary_key: true
-    sequence: true
+    type: serial primary key
+    comment: Auto-incrementing primary key
 
 tables:
   products:
     columns:
       id: null  # Creates column 'id' with properties from 'id' template
+  customers:
+    columns:
+      id:       # Same as id: null
 ```
 
 ### Reference Inheritance with Overrides
@@ -103,13 +105,12 @@ Use $ref to inherit and override specific properties:
 ```yaml
 columns:
   id:
-    type: integer
-    sequence: true
-    primary_key: true
+    type: serial primary key
+    comment: Primary key
 
   text_column:
-    type: varchar
-    size: 100
+    type: varchar(100)
+    comment: Text field
 
 tables:
   articles:
@@ -119,7 +120,7 @@ tables:
 
       title:
         $ref: text_column
-        size: 200  # Override: increase size to 200
+        type: varchar(200)  # Override: increase size to 200
 
       summary:
         $ref: text_column  # Use default size of 100
@@ -140,27 +141,28 @@ CREATE TABLE articles (
 ```yaml
 columns:
   id:
-    type: integer
-    sequence: true
-    primary_key: true
+    type: serial primary key
+    comment: Auto-incrementing primary key
 
   name:
-    type: varchar
-    size: 100
+    type: varchar(100)
+    comment: Name field
 
   description:
     type: text
+    comment: Description field
 
   price:
-    type: numeric
-    size: 10
-    decimal: 2
+    type: numeric(10,2)
+    comment: Price amount
 
   timestamp:
     type: timestamptz
+    comment: Timestamp with timezone
 
   active:
     type: boolean
+    comment: Active status
 
 tables:
   categories:
@@ -202,38 +204,40 @@ When a table column references a template:
 columns:
   # Auto-incrementing primary key
   id:
-    type: integer
-    sequence: true
-    primary_key: true
+    type: serial primary key
+    comment: Auto-incrementing primary key
 
   # Standard timestamps
   created_at:
     type: timestamptz
+    comment: Creation timestamp
 
   updated_at:
     type: timestamptz
+    comment: Last update timestamp
 
   # Standard text fields
   short_text:
-    type: varchar
-    size: 100
+    type: varchar(100)
+    comment: Short text field
 
   medium_text:
-    type: varchar
-    size: 255
+    type: varchar(255)
+    comment: Medium text field
 
   long_text:
     type: text
+    comment: Long text field
 
   # Money
   currency:
-    type: numeric
-    size: 15
-    decimal: 2
+    type: numeric(15,2)
+    comment: Currency amount
 
   # Boolean flags
   flag:
     type: boolean
+    comment: Boolean flag
 ```
 
 ---

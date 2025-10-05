@@ -24,17 +24,39 @@ export class SQLGenerator {
       addColumns: [],
       addForeignKeys: [],
       createIndexes: [],
-      createTriggers: []
+      createTriggers: [],
+      addComments: []
     };
 
     // 1. Create new tables
     for (const table of diff.tablesToCreate) {
       statements.createTables.push(this.generateCreateTableSQL(table));
+
+      // Add table comment if present
+      if (table.comment) {
+        statements.addComments.push(this.generateTableCommentSQL(table.tableName, table.comment));
+      }
+
+      // Add column comments if present
+      for (const column of table.columns) {
+        if (column.definition.comment) {
+          statements.addComments.push(
+            this.generateColumnCommentSQL(table.tableName, column.name, column.definition.comment)
+          );
+        }
+      }
     }
 
     // 2. Add new columns to existing tables
     for (const column of diff.columnsToAdd) {
       statements.addColumns.push(this.generateAddColumnSQL(column));
+
+      // Add column comment if present
+      if (column.definition.comment) {
+        statements.addComments.push(
+          this.generateColumnCommentSQL(column.tableName, column.columnName, column.definition.comment)
+        );
+      }
     }
 
     // 3. Add foreign key constraints
@@ -141,11 +163,28 @@ export class SQLGenerator {
       // FETCH, FETCH_UPDATES, LATEST, calculated columns: keep NULL default
     }
 
-    // Add constraints (nullable not defined in ColumnDefinition yet)
-    // sql += definition.nullable === false ? ' NOT NULL' : '';
+    // Add constraints
+    if (definition.not_null) {
+      sql += ' NOT NULL';
+    }
 
     if (definition.unique && !definition.primary_key) {
       sql += ' UNIQUE';
+    }
+
+    // Add DEFAULT clause
+    if (definition.default !== undefined) {
+      // Determine if default value needs quotes
+      const defaultValue = definition.default;
+      if (defaultValue.match(/^-?\d+(\.\d+)?$/) || // number
+          defaultValue.toLowerCase() === 'true' ||
+          defaultValue.toLowerCase() === 'false' ||
+          defaultValue.toLowerCase() === 'null' ||
+          defaultValue.match(/\w+\(.*\)$/)) { // function call
+        sql += ` DEFAULT ${defaultValue}`;
+      } else {
+        sql += ` DEFAULT '${defaultValue}'`;
+      }
     }
 
     return sql;
@@ -183,6 +222,22 @@ export class SQLGenerator {
 
     return pgType.toUpperCase();
   }
+
+  /**
+   * Generate COMMENT ON TABLE statement
+   */
+  private generateTableCommentSQL(tableName: string, description: string): string {
+    const escapedDescription = description.replace(/'/g, "''");
+    return `COMMENT ON TABLE "${tableName}" IS '${escapedDescription}';`;
+  }
+
+  /**
+   * Generate COMMENT ON COLUMN statement
+   */
+  private generateColumnCommentSQL(tableName: string, columnName: string, description: string): string {
+    const escapedDescription = description.replace(/'/g, "''");
+    return `COMMENT ON COLUMN "${tableName}"."${columnName}" IS '${escapedDescription}';`;
+  }
 }
 
 export interface SQLStatements {
@@ -191,4 +246,5 @@ export interface SQLStatements {
   addForeignKeys: string[];
   createIndexes: string[];
   createTriggers: string[];
+  addComments: string[];
 }

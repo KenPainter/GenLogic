@@ -19,36 +19,31 @@ A basic blog schema demonstrating table relationships with foreign keys. This ex
 
 columns:
   id:
-    type: integer
-    sequence: true
-    primary_key: true
+    type: serial primary key
+    comment: Auto-incrementing primary key
 
   title:
-    type: varchar
-    size: 200
+    type: varchar(200)
+    comment: Title field
 
   content:
     type: text
+    comment: Content field
 
   created_at:
     type: timestamp
+    comment: Creation timestamp
 
 tables:
   authors:
     columns:
       author_id: id
-      name:
-        type: varchar
-        size: 100
-      email:
-        type: varchar
-        size: 255
-        unique: true
+      name: varchar(100)
+      email: varchar(255) unique
 
   posts:
     foreign_keys:
-      author_fk:
-        table: authors
+      author_fk: authors
     columns:
       post_id: id
       title: null        # Null reference - inherits 'title' with same name

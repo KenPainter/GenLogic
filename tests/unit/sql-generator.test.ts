@@ -268,7 +268,7 @@ describe('SQLGenerator', () => {
               type: 'varchar',
               size: 50,
               automation: {
-                type: 'LATEST',
+                type: 'LAST_VALUE',
                 table: 'order_items',
                 foreign_key: 'order_fk',
                 column: 'status'

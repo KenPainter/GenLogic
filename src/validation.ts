@@ -134,16 +134,20 @@ export class SchemaValidator {
               }
             }
 
-            // Check string references (inherit named column)
+            // Check string references (inherit named column) vs SQL type strings
             if (typeof column === 'string') {
-              if (!reusableColumns.has(column)) {
+              // Detect if it's a SQL type string by checking for common patterns
+              // SQL type strings contain: parentheses, spaces, or SQL keywords
+              const isSQLType = /[\(\)\s]|^(serial|bigserial|smallserial|varchar|numeric|integer|bigint|smallint|text|date|timestamp|boolean)/i.test(column);
+
+              if (!isSQLType && !reusableColumns.has(column)) {
                 errors.push(`Table '${tableName}', column '${columnName}': reference '${column}' does not exist in reusable columns`);
               }
             }
 
-            // Check mutual exclusion: automation and calculated cannot coexist
-            if (column && typeof column === 'object' && 'automation' in column && 'calculated' in column) {
-              errors.push(`Table '${tableName}', column '${columnName}': cannot have both 'automation' and 'calculated' properties`);
+            // Check mutual exclusion: automation and generated cannot coexist
+            if (column && typeof column === 'object' && 'automation' in column && 'generated' in column) {
+              errors.push(`Table '${tableName}', column '${columnName}': cannot have both 'automation' and 'generated' properties`);
             }
 
             // Check automation references
@@ -210,7 +214,10 @@ export class SchemaValidator {
 
         // Validate foreign key table references and auto_create basic structure
         if (table.foreign_keys) {
-          for (const [fkName, fk] of Object.entries(table.foreign_keys)) {
+          for (const [fkName, fkDef] of Object.entries(table.foreign_keys)) {
+            // Normalize: FK can be string (table name) or object
+            const fk = typeof fkDef === 'string' ? { table: fkDef } : fkDef;
+
             if (!tableNames.has(fk.table)) {
               errors.push(`Table '${tableName}', foreign_key '${fkName}': target table '${fk.table}' does not exist`);
             }

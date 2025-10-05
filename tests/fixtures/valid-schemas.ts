@@ -9,31 +9,22 @@ export const validSchemas = {
   simpleAccountLedger: {
     columns: {
       account_name: {
-        type: 'varchar',
-        size: 50
+        type: 'varchar(50)'
       },
       amount: {
-        type: 'numeric',
-        size: 10,
-        decimal: 2
+        type: 'numeric(10,2)'
       },
       balance: {
-        type: 'numeric',
-        size: 15,
-        decimal: 2
+        type: 'numeric(15,2)'
       }
     },
     tables: {
       accounts: {
         columns: {
-          account_id: {
-            type: 'integer',
-            sequence: true,
-            primary_key: true
-          },
+          account_id: 'serial primary key',
           account_name: {
             $ref: 'account_name',
-            unique: true
+            type: 'varchar(50) unique'
           },
           balance: {
             $ref: 'balance',
@@ -54,14 +45,8 @@ export const validSchemas = {
           }
         },
         columns: {
-          ledger_id: {
-            type: 'integer',
-            sequence: true,
-            primary_key: true
-          },
-          date: {
-            type: 'date'
-          },
+          ledger_id: 'serial primary key',
+          date: 'date',
           amount: null,  // Inherits from reusable column
           description: 'account_name'  // String reference
         }
@@ -71,15 +56,15 @@ export const validSchemas = {
 
   multipleAggregations: {
     columns: {
-      amount: { type: 'numeric', size: 10, decimal: 2 },
+      amount: { type: 'numeric(10,2)' },
       count: { type: 'integer' },
-      max_amount: { type: 'numeric', size: 10, decimal: 2 },
+      max_amount: { type: 'numeric(10,2)' },
       latest_date: { type: 'date' }
     },
     tables: {
       accounts: {
         columns: {
-          account_id: { type: 'integer', sequence: true, primary_key: true },
+          account_id: 'serial primary key',
           total_balance: {
             $ref: 'amount',
             automation: {
@@ -110,7 +95,7 @@ export const validSchemas = {
           latest_transaction_date: {
             $ref: 'latest_date',
             automation: {
-              type: 'LATEST',
+              type: 'LAST_VALUE',
               table: 'transactions',
               foreign_key: 'account_fk',
               column: 'transaction_date'
@@ -123,9 +108,9 @@ export const validSchemas = {
           account_fk: { table: 'accounts' }
         },
         columns: {
-          transaction_id: { type: 'integer', sequence: true, primary_key: true },
+          transaction_id: 'serial primary key',
           amount: null,
-          transaction_date: { type: 'date' }
+          transaction_date: 'date'
         }
       }
     }
@@ -133,10 +118,10 @@ export const validSchemas = {
 
   complexSchema: {
     columns: {
-      id: { type: 'integer', sequence: true, primary_key: true },
-      name: { type: 'varchar', size: 100 },
-      email: { type: 'varchar', size: 255 },
-      amount: { type: 'numeric', size: 10, decimal: 2 },
+      id: { type: 'serial primary key' },
+      name: { type: 'varchar(100)' },
+      email: { type: 'varchar(255)' },
+      amount: { type: 'numeric(10,2)' },
       created_at: { type: 'timestamp' }
     },
     tables: {

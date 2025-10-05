@@ -9,7 +9,7 @@ This directory contains comprehensive documentation for GenLogic schema definiti
 2. [Reusable Columns](schema-syntax/02-reusable-columns.md) - Column inheritance with string, null, and $ref methods
 3. [Foreign Keys](schema-syntax/03-foreign-keys.md) - Establishing relationships between tables
 4. [Moving Values from Parent to Child](schema-syntax/04-parent-to-child.md) - FOLLOW automation
-5. [Calculating Values Within a Row](schema-syntax/05-calculated-columns.md) - Expression-based calculations
+5. [Generating Values Within a Row](schema-syntax/05-generated-columns.md) - Expression-based calculations
 6. [Moving Values from Child to Parent](schema-syntax/06-child-to-parent.md) - Aggregation automations
 7. [Pattern Matching Tables](schema-syntax/07-matching-tables.md) - Rule-based categorization with specificity ranking
 

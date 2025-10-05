@@ -149,15 +149,17 @@ export class GenLogicProcessor {
           // ROBUST EXECUTION ORDER:
           // 1. Drop ALL GenLogic triggers (clean slate)
           // 2. Run all DDL (tables, columns, constraints)
-          // 3. Create ALL triggers (fresh from schema)
-          // 4. Create matching functions (pattern matching utilities)
-          // 5. Insert content (with complete schema and active triggers)
+          // 3. Add comments (table and column descriptions)
+          // 4. Create ALL triggers (fresh from schema)
+          // 5. Create matching functions (pattern matching utilities)
+          // 6. Insert content (with complete schema and active triggers)
           const allStatements = [
             ...dropAllTriggersSQL,
             ...ddlStatements.createTables,
             ...ddlStatements.addColumns,
             ...ddlStatements.addForeignKeys,
             ...ddlStatements.createIndexes,
+            ...ddlStatements.addComments,
             ...triggerStatements,
             ...matchingStatements,
             ...contentStatements
@@ -273,6 +275,7 @@ export class GenLogicProcessor {
           ...ddlStatements.addColumns,
           ...ddlStatements.addForeignKeys,
           ...ddlStatements.createIndexes,
+          ...ddlStatements.addComments,
           ...triggerStatements
         ].filter(sql => sql.trim().length > 0 && !sql.startsWith('--'));
 

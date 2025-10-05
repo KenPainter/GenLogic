@@ -9,6 +9,13 @@ dist/
 build/
 *.tsbuildinfo
 
+# Local files during dev
+debug/
+
+# Local files for user apps
+apps/
+
+
 # Environment variables
 .env
 .env.local
@@ -67,5 +74,3 @@ postgres_test_data/
 # Generated schema files
 *.resolved.yaml
 
-# Debug files
-debug/

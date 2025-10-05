@@ -1,0 +1,5 @@
+
+tables:
+  test:
+    columns:
+      id: { type: integer, primary_key: true }

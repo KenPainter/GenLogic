@@ -50,7 +50,9 @@ In addition to the docs linked to above, you need [Contributing](./CONTRIBUTING.
 ## Major TO-DO Items
 
 - Implement SNAPSHOT - parent to child only once on insert to child
-- Rework Database Architecture docs - they are a mess
-- Rework Code Architecture docs - they are a mess
+- Docs:
+  - Database Architecture docs need a rethink
+  - Code Architecture docs need a rethink
+  - Edge cases are documented but not in the toc
 - Better solution for AI assisants to write schema files.
 - Implement subversion protection

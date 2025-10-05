@@ -7,18 +7,16 @@ describe('Calculated Column Validation Tests', () => {
   const graphValidator = new DataFlowGraphValidator();
 
   describe('Schema Syntax Validation', () => {
-    it('should accept valid calculated column', () => {
+    it('should accept valid generated column', () => {
       const schema = {
         tables: {
           orders: {
             columns: {
-              price: { type: 'numeric', size: 10, decimal: 2 },
-              quantity: { type: 'integer' },
+              price: 'numeric(10,2)',
+              quantity: 'integer',
               total: {
-                type: 'numeric',
-                size: 10,
-                decimal: 2,
-                calculated: 'price * quantity'
+                type: 'numeric(10,2)',
+                generated: 'price * quantity'
               }
             }
           }
@@ -30,17 +28,15 @@ describe('Calculated Column Validation Tests', () => {
       expect(result.errors).toHaveLength(0);
     });
 
-    it('should accept CASE expression in calculated column', () => {
+    it('should accept CASE expression in generated column', () => {
       const schema = {
         tables: {
           products: {
             columns: {
-              price: { type: 'numeric', size: 10, decimal: 2 },
+              price: 'numeric(10,2)',
               discount_price: {
-                type: 'numeric',
-                size: 10,
-                decimal: 2,
-                calculated: 'case when price > 100 then price * 0.9 else price end'
+                type: 'numeric(10,2)',
+                generated: 'case when price > 100 then price * 0.9 else price end'
               }
             }
           }
@@ -54,12 +50,12 @@ describe('Calculated Column Validation Tests', () => {
   });
 
   describe('Mutual Exclusion Validation', () => {
-    it('should reject column with both calculated and automation', () => {
+    it('should reject column with both generated and automation', () => {
       const schema = {
         tables: {
           accounts: {
             columns: {
-              account_id: { type: 'integer', primary_key: true, sequence: true }
+              account_id: 'serial primary key'
             }
           },
           transactions: {
@@ -67,12 +63,10 @@ describe('Calculated Column Validation Tests', () => {
               account_fk: { table: 'accounts' }
             },
             columns: {
-              amount: { type: 'numeric', size: 10, decimal: 2 },
+              amount: 'numeric(10,2)',
               doubled: {
-                type: 'numeric',
-                size: 10,
-                decimal: 2,
-                calculated: 'amount * 2',
+                type: 'numeric(10,2)',
+                generated: 'amount * 2',
                 automation: {
                   type: 'SUM',
                   table: 'transactions',
@@ -92,13 +86,13 @@ describe('Calculated Column Validation Tests', () => {
   });
 
   describe('Cycle Detection', () => {
-    it('should detect simple cycle in calculated columns', () => {
+    it('should detect simple cycle in generated columns', () => {
       const schema = {
         tables: {
           test: {
             columns: {
-              col_a: { type: 'integer', calculated: 'col_b + 1' },
-              col_b: { type: 'integer', calculated: 'col_a + 1' }
+              col_a: { type: 'integer', generated: 'col_b + 1' },
+              col_b: { type: 'integer', generated: 'col_a + 1' }
             }
           }
         }
@@ -109,14 +103,14 @@ describe('Calculated Column Validation Tests', () => {
       expect(result.errors.some(e => e.includes('Calculated Column Cycle'))).toBe(true);
     });
 
-    it('should detect three-way cycle in calculated columns', () => {
+    it('should detect three-way cycle in generated columns', () => {
       const schema = {
         tables: {
           test: {
             columns: {
-              col_a: { type: 'integer', calculated: 'col_b + 1' },
-              col_b: { type: 'integer', calculated: 'col_c + 1' },
-              col_c: { type: 'integer', calculated: 'col_a + 1' }
+              col_a: { type: 'integer', generated: 'col_b + 1' },
+              col_b: { type: 'integer', generated: 'col_c + 1' },
+              col_c: { type: 'integer', generated: 'col_a + 1' }
             }
           }
         }
@@ -132,25 +126,19 @@ describe('Calculated Column Validation Tests', () => {
         tables: {
           orders: {
             columns: {
-              price: { type: 'numeric', size: 10, decimal: 2 },
-              quantity: { type: 'integer' },
+              price: 'numeric(10,2)',
+              quantity: 'integer',
               subtotal: {
-                type: 'numeric',
-                size: 10,
-                decimal: 2,
-                calculated: 'price * quantity'
+                type: 'numeric(10,2)',
+                generated: 'price * quantity'
               },
               tax: {
-                type: 'numeric',
-                size: 10,
-                decimal: 2,
-                calculated: 'subtotal * 0.1'
+                type: 'numeric(10,2)',
+                generated: 'subtotal * 0.1'
               },
               total: {
-                type: 'numeric',
-                size: 10,
-                decimal: 2,
-                calculated: 'subtotal + tax'
+                type: 'numeric(10,2)',
+                generated: 'subtotal + tax'
               }
             }
           }
@@ -169,9 +157,9 @@ describe('Calculated Column Validation Tests', () => {
         tables: {
           test: {
             columns: {
-              a: { type: 'integer' },
-              b: { type: 'integer' },
-              c: { type: 'integer', calculated: 'a + b' }
+              a: 'integer',
+              b: 'integer',
+              c: { type: 'integer', generated: 'a + b' }
             }
           }
         }
@@ -197,10 +185,10 @@ describe('Calculated Column Validation Tests', () => {
         tables: {
           test: {
             columns: {
-              value: { type: 'integer' },
+              value: 'integer',
               result: {
                 type: 'integer',
-                calculated: 'case when value > 0 then value else 0 end'
+                generated: 'case when value > 0 then value else 0 end'
               }
             }
           }
@@ -228,9 +216,9 @@ describe('Calculated Column Validation Tests', () => {
         tables: {
           test: {
             columns: {
-              a: { type: 'integer' },
-              b: { type: 'integer', calculated: 'a + 1' },
-              c: { type: 'integer', calculated: 'b + 1' }
+              a: 'integer',
+              b: { type: 'integer', generated: 'a + 1' },
+              c: { type: 'integer', generated: 'b + 1' }
             }
           }
         }
@@ -259,8 +247,8 @@ describe('Calculated Column Validation Tests', () => {
         tables: {
           test: {
             columns: {
-              a: { type: 'integer', calculated: 'b + 1' },
-              b: { type: 'integer', calculated: 'a + 1' }
+              a: { type: 'integer', generated: 'b + 1' },
+              b: { type: 'integer', generated: 'a + 1' }
             }
           }
         }
@@ -280,10 +268,10 @@ describe('Calculated Column Validation Tests', () => {
         tables: {
           test: {
             columns: {
-              a: { type: 'integer' },
-              b: { type: 'integer' },
-              c: { type: 'integer' },
-              result: { type: 'integer', calculated: 'a + b - c' }
+              a: 'integer',
+              b: 'integer',
+              c: 'integer',
+              result: { type: 'integer', generated: 'a + b - c' }
             }
           }
         }
@@ -306,14 +294,12 @@ describe('Calculated Column Validation Tests', () => {
         tables: {
           test: {
             columns: {
-              price: { type: 'numeric', size: 10, decimal: 2 },
-              quantity: { type: 'integer' },
-              discount: { type: 'numeric', size: 10, decimal: 2 },
+              price: 'numeric(10,2)',
+              quantity: 'integer',
+              discount: 'numeric(10,2)',
               total: {
-                type: 'numeric',
-                size: 10,
-                decimal: 2,
-                calculated: '(price * quantity) - discount'
+                type: 'numeric(10,2)',
+                generated: '(price * quantity) - discount'
               }
             }
           }

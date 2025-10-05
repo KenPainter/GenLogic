@@ -30,8 +30,8 @@ describe('Group 1.4: Data Flow Graph Validation', () => {
               parent_fk: { table: 'categories' }  // Self-reference creates cycle
             },
             columns: {
-              id: { type: 'integer', primary_key: true },
-              name: { type: 'varchar', size: 100 }
+              id: 'integer primary key',
+              name: 'varchar(100)'
             }
           }
         }
@@ -46,7 +46,7 @@ describe('Group 1.4: Data Flow Graph Validation', () => {
         tables: {
           users: {
             columns: {
-              user_id: { type: 'integer', primary_key: true }
+              user_id: 'integer primary key'
             }
           },
           accounts: {
@@ -54,7 +54,7 @@ describe('Group 1.4: Data Flow Graph Validation', () => {
               user_fk: { table: 'users' }
             },
             columns: {
-              account_id: { type: 'integer', primary_key: true }
+              account_id: 'integer primary key'
             }
           },
           transactions: {
@@ -63,7 +63,7 @@ describe('Group 1.4: Data Flow Graph Validation', () => {
               user_fk: { table: 'users' }
             },
             columns: {
-              transaction_id: { type: 'integer', primary_key: true }
+              transaction_id: 'integer primary key'
             }
           }
         }
@@ -81,25 +81,25 @@ describe('Group 1.4: Data Flow Graph Validation', () => {
             foreign_keys: {
               b_fk: { table: 'table_b' }
             },
-            columns: { id: { type: 'integer', primary_key: true } }
+            columns: { id: 'integer primary key' }
           },
           table_b: {
             foreign_keys: {
               c_fk: { table: 'table_c' }
             },
-            columns: { id: { type: 'integer', primary_key: true } }
+            columns: { id: 'integer primary key' }
           },
           table_c: {
             foreign_keys: {
               d_fk: { table: 'table_d' }
             },
-            columns: { id: { type: 'integer', primary_key: true } }
+            columns: { id: 'integer primary key' }
           },
           table_d: {
             foreign_keys: {
               a_fk: { table: 'table_a' }  // Creates A→B→C→D→A cycle
             },
-            columns: { id: { type: 'integer', primary_key: true } }
+            columns: { id: 'integer primary key' }
           }
         }
       };
@@ -112,22 +112,22 @@ describe('Group 1.4: Data Flow Graph Validation', () => {
       const schema = {
         tables: {
           root: {
-            columns: { id: { type: 'integer', primary_key: true } }
+            columns: { id: 'integer primary key' }
           },
           branch_a: {
             foreign_keys: { root_fk: { table: 'root' } },
-            columns: { id: { type: 'integer', primary_key: true } }
+            columns: { id: 'integer primary key' }
           },
           branch_b: {
             foreign_keys: { root_fk: { table: 'root' } },
-            columns: { id: { type: 'integer', primary_key: true } }
+            columns: { id: 'integer primary key' }
           },
           merge: {
             foreign_keys: {
               a_fk: { table: 'branch_a' },
               b_fk: { table: 'branch_b' }
             },
-            columns: { id: { type: 'integer', primary_key: true } }
+            columns: { id: 'integer primary key' }
           }
         }
       };
@@ -140,12 +140,12 @@ describe('Group 1.4: Data Flow Graph Validation', () => {
     test('should validate automation dependency chains', () => {
       const schema = {
         columns: {
-          amount: { type: 'numeric', size: 10, decimal: 2 }
+          amount: { type: 'numeric(10,2)' }
         },
         tables: {
           level1: {
             columns: {
-              id: { type: 'integer', primary_key: true },
+              id: 'integer primary key',
               total: {
                 automation: {
                   type: 'SUM',
@@ -161,7 +161,7 @@ describe('Group 1.4: Data Flow Graph Validation', () => {
               level1_fk: { table: 'level1' }
             },
             columns: {
-              id: { type: 'integer', primary_key: true },
+              id: 'integer primary key',
               subtotal: {
                 automation: {
                   type: 'SUM',
@@ -177,7 +177,7 @@ describe('Group 1.4: Data Flow Graph Validation', () => {
               level2_fk: { table: 'level2' }
             },
             columns: {
-              id: { type: 'integer', primary_key: true },
+              id: 'integer primary key',
               amount: null
             }
           }
@@ -190,14 +190,14 @@ describe('Group 1.4: Data Flow Graph Validation', () => {
     test('should handle complex automation patterns', () => {
       const schema = {
         columns: {
-          amount: { type: 'numeric', size: 10, decimal: 2 },
+          amount: { type: 'numeric(10,2)' },
           count: { type: 'integer' },
           date: { type: 'date' }
         },
         tables: {
           summary: {
             columns: {
-              id: { type: 'integer', primary_key: true },
+              id: 'integer primary key',
               total_amount: {
                 automation: {
                   type: 'SUM',
@@ -216,7 +216,7 @@ describe('Group 1.4: Data Flow Graph Validation', () => {
               },
               latest_date: {
                 automation: {
-                  type: 'LATEST',
+                  type: 'LAST_VALUE',
                   table: 'details',
                   foreign_key: 'summary_fk',
                   column: 'created_date'
@@ -229,7 +229,7 @@ describe('Group 1.4: Data Flow Graph Validation', () => {
               summary_fk: { table: 'summary' }
             },
             columns: {
-              id: { type: 'integer', primary_key: true },
+              id: 'integer primary key',
               amount: null,
               created_date: 'date'
             }
@@ -245,12 +245,12 @@ describe('Group 1.4: Data Flow Graph Validation', () => {
     test('should validate schemas with both FK and automation dependencies', () => {
       const schema = {
         columns: {
-          amount: { type: 'numeric', size: 10, decimal: 2 }
+          amount: { type: 'numeric(10,2)' }
         },
         tables: {
           accounts: {
             columns: {
-              id: { type: 'integer', primary_key: true },
+              id: 'integer primary key',
               balance: {
                 automation: {
                   type: 'SUM',
@@ -267,13 +267,13 @@ describe('Group 1.4: Data Flow Graph Validation', () => {
               category_fk: { table: 'categories' }
             },
             columns: {
-              id: { type: 'integer', primary_key: true },
+              id: 'integer primary key',
               amount: null
             }
           },
           categories: {
             columns: {
-              id: { type: 'integer', primary_key: true },
+              id: 'integer primary key',
               total_spent: {
                 automation: {
                   type: 'SUM',

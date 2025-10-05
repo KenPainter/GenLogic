@@ -77,7 +77,7 @@ describe('Group 1.3: Cross-Reference Validation', () => {
         tables: {
           users: {
             columns: {
-              user_id: { type: 'integer', primary_key: true }
+              user_id: 'integer primary key'
             }
           },
           accounts: {
@@ -85,7 +85,7 @@ describe('Group 1.3: Cross-Reference Validation', () => {
               user_fk: { table: 'users' }
             },
             columns: {
-              account_id: { type: 'integer', primary_key: true }
+              account_id: 'integer primary key'
             }
           }
         }
@@ -99,7 +99,7 @@ describe('Group 1.3: Cross-Reference Validation', () => {
         tables: {
           users: {
             columns: {
-              user_id: { type: 'integer', primary_key: true }
+              user_id: 'integer primary key'
             }
           },
           accounts: {
@@ -111,7 +111,7 @@ describe('Group 1.3: Cross-Reference Validation', () => {
               }
             },
             columns: {
-              account_id: { type: 'integer', primary_key: true }
+              account_id: 'integer primary key'
             }
           }
         }
@@ -125,8 +125,8 @@ describe('Group 1.3: Cross-Reference Validation', () => {
     test('should validate multi-level references', () => {
       const schema = {
         columns: {
-          base_id: { type: 'integer', primary_key: true },
-          base_name: { type: 'varchar', size: 100 }
+          base_id: { type: 'integer primary key' },
+          base_name: { type: 'varchar(100)' }
         },
         tables: {
           level1: {
@@ -135,7 +135,7 @@ describe('Group 1.3: Cross-Reference Validation', () => {
               name: 'base_name',
               latest_level2_name: {
                 automation: {
-                  type: 'LATEST',
+                  type: 'LAST_VALUE',
                   table: 'level2',
                   foreign_key: 'level1_fk',
                   column: 'name'
@@ -161,8 +161,8 @@ describe('Group 1.3: Cross-Reference Validation', () => {
     test('should validate cascading inheritance patterns', () => {
       const schema = {
         columns: {
-          id: { type: 'integer', sequence: true, primary_key: true },
-          name: { type: 'varchar', size: 50 },
+          id: { type: 'serial primary key' },
+          name: { type: 'varchar(50)' },
           enhanced_name: { $ref: 'name', unique: true }
         },
         tables: {

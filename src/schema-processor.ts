@@ -5,6 +5,7 @@ import type {
   TableDefinition,
   ForeignKeyDefinition
 } from './types.js';
+import { parseSQLType } from './sql-type-parser.js';
 
 /**
  * Schema Processing Engine
@@ -61,6 +62,7 @@ export class SchemaProcessor {
     }
 
     return {
+      comment: table.comment,
       columns: processedColumns,
       foreignKeys: table.foreign_keys || {},
       generatedColumns: {}, // Will be populated by FK column generation
@@ -71,7 +73,7 @@ export class SchemaProcessor {
   /**
    * Resolve column inheritance using our mixed syntax:
    * - null: inherit same name
-   * - string: inherit named column
+   * - string: SQL type string OR inherit named column
    * - object with $ref: inherit + override
    * - full object: no inheritance
    */
@@ -90,13 +92,28 @@ export class SchemaProcessor {
       return { ...reusableColumn };
     }
 
-    // Case 2: string - inherit from named reusable column
+    // Case 2: string - SQL type string OR inherit from named reusable column
     if (typeof column === 'string') {
-      const reusableColumn = reusableColumns[column];
-      if (!reusableColumn) {
-        throw new Error(`Column '${columnName}' references missing reusable column '${column}'`);
+      // Try to detect if it's a SQL type string by checking for common patterns
+      // SQL type strings contain: parentheses, spaces, or SQL keywords
+      const isSQLType = /[\(\)\s]|^(serial|bigserial|smallserial|varchar|numeric|integer|bigint|smallint|text|date|timestamp|boolean)/i.test(column);
+
+      if (isSQLType) {
+        // Parse SQL type string
+        try {
+          const parsed = parseSQLType(column);
+          return { ...parsed };
+        } catch (error) {
+          throw new Error(`Invalid SQL type string for column '${columnName}': ${error instanceof Error ? error.message : String(error)}`);
+        }
+      } else {
+        // Treat as reference to reusable column
+        const reusableColumn = reusableColumns[column];
+        if (!reusableColumn) {
+          throw new Error(`Column '${columnName}' references missing reusable column '${column}'`);
+        }
+        return { ...reusableColumn };
       }
-      return { ...reusableColumn };
     }
 
     // Case 3: object with $ref - inherit + override
@@ -110,15 +127,31 @@ export class SchemaProcessor {
       // Merge reusable column with overrides
       const merged = { ...reusableColumn };
 
-      // Apply overrides
-      if (refColumn.type !== undefined) merged.type = refColumn.type;
-      if (refColumn.size !== undefined) merged.size = refColumn.size;
-      if (refColumn.decimal !== undefined) merged.decimal = refColumn.decimal;
-      if (refColumn.primary_key !== undefined) merged.primary_key = refColumn.primary_key;
-      if (refColumn.unique !== undefined) merged.unique = refColumn.unique;
-      if (refColumn.sequence !== undefined) merged.sequence = refColumn.sequence;
+      // Apply overrides - complete replacement for each property
+      if (refColumn.type !== undefined) {
+        // Type override completely replaces the type and all parsed modifiers
+        const isSQLType = /[\(\)\s]|^(serial|bigserial|smallserial|varchar|numeric|integer|bigint|smallint|text|date|timestamp|boolean)/i.test(refColumn.type);
+        if (isSQLType) {
+          // Parse SQL type string and completely replace type definition
+          const parsed = parseSQLType(refColumn.type);
+          // Clear old type-related fields
+          delete merged.size;
+          delete merged.decimal;
+          delete merged.primary_key;
+          delete merged.unique;
+          delete merged.not_null;
+          delete merged.sequence;
+          delete merged.default;
+          // Apply new parsed values
+          Object.assign(merged, parsed);
+        } else {
+          merged.type = refColumn.type;
+        }
+      }
+      // Complete replacement for other properties
       if (refColumn.automation !== undefined) merged.automation = refColumn.automation;
-      if (refColumn.calculated !== undefined) merged.calculated = refColumn.calculated;
+      if (refColumn.generated !== undefined) merged.generated = refColumn.generated;
+      if (refColumn.comment !== undefined) merged.comment = refColumn.comment;
       if (refColumn['ui-notes'] !== undefined) merged['ui-notes'] = refColumn['ui-notes'];
 
       return merged;
@@ -138,11 +171,16 @@ export class SchemaProcessor {
    */
   private generateForeignKeyColumns(
     processedTable: ProcessedTable,
-    foreignKeys: Record<string, ForeignKeyDefinition>,
+    foreignKeys: Record<string, ForeignKeyDefinition | string>,
     processedSchema: ProcessedSchema
   ): void {
 
-    for (const [fkName, fk] of Object.entries(foreignKeys)) {
+    for (const [fkName, fkDef] of Object.entries(foreignKeys)) {
+      // Normalize: if FK is a string, convert to object with table property
+      const fk: ForeignKeyDefinition = typeof fkDef === 'string'
+        ? { table: fkDef }
+        : fkDef;
+
       const referencedTable = processedSchema.tables[fk.table];
       if (!referencedTable) {
         throw new Error(`Foreign key '${fkName}' references missing table '${fk.table}'`);
@@ -159,7 +197,17 @@ export class SchemaProcessor {
 
       // Generate FK columns for each primary key column
       for (const pkColumn of primaryKeyColumns) {
-        const fkColumnName = this.generateFKColumnName(pkColumn.name, fk);
+        let fkColumnName: string;
+
+        // Simple FK (no prefix/suffix): use FK name as column name
+        // Complex FK (has prefix/suffix): use prefix/suffix pattern
+        if (!fk.prefix && !fk.suffix && primaryKeyColumns.length === 1) {
+          // Simple single-column FK: FK name IS the column name
+          fkColumnName = fkName;
+        } else {
+          // Complex FK: use traditional prefix/suffix naming
+          fkColumnName = this.generateFKColumnName(pkColumn.name, fk);
+        }
 
         // Create FK column with same type as PK column but without PK/sequence flags
         const fkColumnDef: ColumnDefinition = {
@@ -168,7 +216,8 @@ export class SchemaProcessor {
           ...(pkColumn.definition.decimal && { decimal: pkColumn.definition.decimal }),
           primary_key: false, // FK columns are not primary keys
           unique: false,
-          sequence: false // FK columns don't have sequences
+          sequence: false, // FK columns don't have sequences
+          ...(fk.not_null && { not_null: true })
         };
 
         processedTable.generatedColumns[fkColumnName] = fkColumnDef;
@@ -227,6 +276,7 @@ export interface ProcessedSchema {
 }
 
 export interface ProcessedTable {
+  comment?: string;
   columns: Record<string, ColumnDefinition>;
   foreignKeys: Record<string, ForeignKeyDefinition>;
   generatedColumns: Record<string, ColumnDefinition>; // FK columns generated automatically

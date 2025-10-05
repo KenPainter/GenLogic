@@ -18,13 +18,12 @@ This is the simplest possible GenLogic schema, demonstrating the basic concepts 
 
 columns:
   id:
-    type: integer
-    sequence: true
-    primary_key: true
+    type: serial primary key
+    comment: Auto-incrementing primary key
 
   name:
-    type: varchar
-    size: 100
+    type: varchar(100)
+    comment: Name field
 
 tables:
   users:

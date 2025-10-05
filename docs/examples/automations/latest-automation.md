@@ -1,31 +1,29 @@
 Previous: [MAX/MIN Automation](max-min-automation.md) | Next: [Multiple Automations](multiple-automations.md)
 
-# LATEST Automation Example
+# LAST_VALUE Automation Example
 
 ## Overview
 
-The LATEST automation tracks the most recently added or updated value from child records. Unlike MAX/MIN which find extreme numeric values, LATEST captures the actual value from the chronologically newest record. This is perfect for status tracking, last-known values, and maintaining current state.
+The LAST_VALUE automation tracks the most recently added or updated value from child records. Unlike MAX/MIN which find extreme numeric values, LAST_VALUE captures the actual value from the chronologically newest record. This is perfect for status tracking, last-known values, and maintaining current state.
 
 ## YAML Configuration
 
 ```yaml
-# LATEST Automation Example
+# LAST_VALUE Automation Example
 # Automatically copies the most recently inserted/updated value from child records
 
 columns:
   id:
-    type: integer
-    sequence: true
-    primary_key: true
+    type: serial primary key
+    comment: Auto-incrementing primary key
 
   status:
-    type: varchar
-    size: 50
+    type: varchar(50)
+    comment: Status field
 
   reading:
-    type: numeric
-    size: 8
-    decimal: 2
+    type: numeric(8,2)
+    comment: Sensor reading
 
 tables:
   devices:
@@ -33,15 +31,13 @@ tables:
       device_id:
         $ref: id
 
-      device_name:
-        type: varchar
-        size: 100
+      device_name: varchar(100)
 
       # Always contains the most recent status from device_logs
       current_status:
         $ref: status
         automation:
-          type: LATEST
+          type: LAST_VALUE
           table: device_logs
           foreign_key: device_fk
           column: status
@@ -50,7 +46,7 @@ tables:
       last_reading:
         $ref: reading
         automation:
-          type: LATEST
+          type: LAST_VALUE
           table: sensor_readings
           foreign_key: device_fk
           column: value
@@ -64,15 +60,14 @@ tables:
       latest_status:
         $ref: status
         automation:
-          type: LATEST
+          type: LAST_VALUE
           table: order_status_history
           foreign_key: order_fk
           column: status
 
   device_logs:
     foreign_keys:
-      device_fk:
-        table: devices
+      device_fk: devices
 
     columns:
       log_id:
@@ -80,13 +75,11 @@ tables:
 
       status: null
 
-      logged_at:
-        type: timestamp
+      logged_at: timestamp
 
   sensor_readings:
     foreign_keys:
-      device_fk:
-        table: devices
+      device_fk: devices
 
     columns:
       reading_id:
@@ -95,13 +88,11 @@ tables:
       value:
         $ref: reading
 
-      recorded_at:
-        type: timestamp
+      recorded_at: timestamp
 
   order_status_history:
     foreign_keys:
-      order_fk:
-        table: orders
+      order_fk: orders
 
     columns:
       history_id:
@@ -109,10 +100,9 @@ tables:
 
       status: null
 
-      updated_at:
-        type: timestamp
+      updated_at: timestamp
 
-# How LATEST works:
+# How LAST_VALUE works:
 # 1. INSERT new device_log with status="online" for device_id=1
 #    → devices.current_status for device 1 immediately updates to "online"
 # 2. INSERT another device_log with status="maintenance" for device_id=1
@@ -122,12 +112,12 @@ tables:
 # 4. DELETE the most recent device_log
 #    → Trigger finds the previous most recent log and updates devices.current_status
 #
-# LATEST automation behavior:
+# LAST_VALUE automation behavior:
 # - INSERT: Always updates parent with the new value
 # - UPDATE: Always updates parent with the NEW value
 # - DELETE: Falls back to the previous most recent value (if any)
 #
-# LATEST is suitable for status tracking, last known values, and audit trails
+# LAST_VALUE is suitable for status tracking, last known values, and audit trails
 ```
 
 ## Generated SQL

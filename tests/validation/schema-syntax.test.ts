@@ -45,7 +45,7 @@ describe('Group 1.1: Schema Syntax Validation', () => {
     test('should reject column names with spaces', () => {
       const schema = {
         columns: {
-          'invalid name': { type: 'varchar', size: 50 }
+          'invalid name': { type: 'varchar(50)' }
         }
       };
       const result = validator.validateSyntax(schema);
@@ -55,7 +55,7 @@ describe('Group 1.1: Schema Syntax Validation', () => {
     test('should reject column names with hyphens', () => {
       const schema = {
         columns: {
-          'invalid-name': { type: 'varchar', size: 50 }
+          'invalid-name': { type: 'varchar(50)' }
         }
       };
       const result = validator.validateSyntax(schema);
@@ -65,10 +65,10 @@ describe('Group 1.1: Schema Syntax Validation', () => {
     test('should accept valid column names', () => {
       const schema = {
         columns: {
-          'valid_name': { type: 'varchar', size: 50 },
+          'valid_name': { type: 'varchar(50)' },
           'ValidName': { type: 'integer' },
           '_private': { type: 'text' },
-          'name123': { type: 'varchar', size: 100 }
+          'name123': { type: 'varchar(100)' }
         }
       };
       const result = validator.validateSyntax(schema);
@@ -87,7 +87,7 @@ describe('Group 1.1: Schema Syntax Validation', () => {
       const schema = {
         tables: {
           'invalid table': {
-            columns: { id: { type: 'integer' } }
+            columns: { id: 'integer' }
           }
         }
       };
@@ -98,10 +98,10 @@ describe('Group 1.1: Schema Syntax Validation', () => {
     test('should accept valid table names', () => {
       const schema = {
         tables: {
-          'users': { columns: { id: { type: 'integer' } } },
-          'UserProfiles': { columns: { id: { type: 'integer' } } },
-          '_temp_table': { columns: { id: { type: 'integer' } } },
-          'table123': { columns: { id: { type: 'integer' } } }
+          'users': { columns: { id: 'integer' } },
+          'UserProfiles': { columns: { id: 'integer' } },
+          '_temp_table': { columns: { id: 'integer' } },
+          'table123': { columns: { id: 'integer' } }
         }
       };
       const result = validator.validateSyntax(schema);

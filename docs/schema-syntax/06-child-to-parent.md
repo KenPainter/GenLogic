@@ -11,19 +11,18 @@ tables:
   parent_table:
     columns:
       aggregate_column:
-        type: data_type
+        type: *result type*
         automation:
-          type: AGGREGATION_TYPE
+          type: *SUM | COUNT | MAX | MIN | LAST_VALUE*
           table: child_table
           foreign_key: parent_fk
           column: source_column
 
   child_table:
     foreign_keys:
-      parent_fk:
-        table: parent_table
+      parent_fk: parent_table
     columns:
-      source_column: { type: data_type }
+      source_column: *any valid PostgreSQL type*
 ```
 
 ## SUM Aggregation
@@ -34,14 +33,12 @@ Sum numeric values from child rows:
 tables:
   accounts:
     columns:
-      account_id: { type: integer, primary_key: true, sequence: true }
-      account_name: { type: varchar, size: 100 }
+      account_id: serial primary key
+      account_name: varchar(100)
 
       # Automatically maintained sum
       balance:
-        type: numeric
-        size: 10
-        decimal: 2
+        type: numeric(10,2)
         automation:
           type: SUM
           table: transactions
@@ -50,14 +47,13 @@ tables:
 
   transactions:
     foreign_keys:
-      account_fk:
-        table: accounts
+      account_fk: accounts
 
     columns:
-      transaction_id: { type: integer, primary_key: true, sequence: true }
-      account_fk: { type: integer }
-      amount: { type: numeric, size: 10, decimal: 2 }
-      description: { type: varchar, size: 200 }
+      transaction_id: serial primary key
+      account_fk: integer
+      amount: numeric(10,2)
+      description: varchar(200)
 ```
 
 Example:
@@ -88,8 +84,8 @@ Count the number of child rows:
 tables:
   categories:
     columns:
-      category_id: { type: integer, primary_key: true, sequence: true }
-      category_name: { type: varchar, size: 100 }
+      category_id: serial primary key
+      category_name: varchar(100)
 
       # Count products in category
       product_count:
@@ -102,13 +98,12 @@ tables:
 
   products:
     foreign_keys:
-      category_fk:
-        table: categories
+      category_fk: categories
 
     columns:
-      product_id: { type: integer, primary_key: true, sequence: true }
-      category_fk: { type: integer }
-      product_name: { type: varchar, size: 100 }
+      product_id: serial primary key
+      category_fk: integer
+      product_name: varchar(100)
 ```
 
 Example:
@@ -135,13 +130,11 @@ Track maximum or minimum values:
 tables:
   orders:
     columns:
-      order_id: { type: integer, primary_key: true, sequence: true }
+      order_id: serial primary key
 
       # Track highest item price
       max_item_price:
-        type: numeric
-        size: 10
-        decimal: 2
+        type: numeric(10,2)
         automation:
           type: MAX
           table: order_items
@@ -150,9 +143,7 @@ tables:
 
       # Track lowest item price
       min_item_price:
-        type: numeric
-        size: 10
-        decimal: 2
+        type: numeric(10,2)
         automation:
           type: MIN
           table: order_items
@@ -161,16 +152,15 @@ tables:
 
   order_items:
     foreign_keys:
-      order_fk:
-        table: orders
+      order_fk: orders
 
     columns:
-      item_id: { type: integer, primary_key: true, sequence: true }
-      order_fk: { type: integer }
-      unit_price: { type: numeric, size: 10, decimal: 2 }
+      item_id: serial primary key
+      order_fk: integer
+      unit_price: numeric(10,2)
 ```
 
-## LATEST Aggregation
+## LAST_VALUE Aggregation
 
 Copy the most recent value from child rows:
 
@@ -178,26 +168,25 @@ Copy the most recent value from child rows:
 tables:
   customers:
     columns:
-      customer_id: { type: integer, primary_key: true, sequence: true }
+      customer_id: serial primary key
 
       # Track most recent order date
       last_order_date:
         type: date
         automation:
-          type: LATEST
+          type: LAST_VALUE
           table: orders
           foreign_key: customer_fk
           column: order_date
 
   orders:
     foreign_keys:
-      customer_fk:
-        table: customers
+      customer_fk: customers
 
     columns:
-      order_id: { type: integer, primary_key: true, sequence: true }
-      customer_fk: { type: integer }
-      order_date: { type: date }
+      order_id: serial primary key
+      customer_fk: integer
+      order_date: date
 ```
 
 ## What Happens
@@ -212,13 +201,11 @@ A parent can have multiple aggregations from the same or different child tables:
 tables:
   orders:
     columns:
-      order_id: { type: integer, primary_key: true, sequence: true }
+      order_id: serial primary key
 
       # Sum of line item amounts
       order_total:
-        type: numeric
-        size: 10
-        decimal: 2
+        type: numeric(10,2)
         automation:
           type: SUM
           table: order_items
@@ -236,13 +223,12 @@ tables:
 
   order_items:
     foreign_keys:
-      order_fk:
-        table: orders
+      order_fk: orders
 
     columns:
-      item_id: { type: integer, primary_key: true, sequence: true }
-      order_fk: { type: integer }
-      line_total: { type: numeric, size: 10, decimal: 2 }
+      item_id: serial primary key
+      order_fk: integer
+      line_total: numeric(10,2)
 ```
 
 ## Aggregation Types Summary
@@ -253,7 +239,7 @@ tables:
 | COUNT | Number of child rows | Product count, order count |
 | MAX | Highest value | Maximum price, latest date |
 | MIN | Lowest value | Minimum price, earliest date |
-| LATEST | Most recent value | Last order date, current status |
+| LAST_VALUE | Most recent value | Last order date, current status |
 
 ## Default Values
 
@@ -263,7 +249,7 @@ Aggregation columns are initialized with appropriate defaults:
 - COUNT: 0
 - MAX: NULL (until first child row exists)
 - MIN: NULL (until first child row exists)
-- LATEST: NULL (until first child row exists)
+- LAST_VALUE: NULL (until first child row exists)
 
 ## When Aggregations Update
 

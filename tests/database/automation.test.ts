@@ -265,7 +265,7 @@ describe('Group 2.2: Automation Testing', () => {
                 size: 8,
                 decimal: 2,
                 automation: {
-                  type: 'LATEST',
+                  type: 'LAST_VALUE',
                   table: 'readings',
                   foreign_key: 'device_fk',
                   column: 'value'
@@ -361,7 +361,7 @@ describe('Group 2.2: Automation Testing', () => {
               latest_date: {
                 $ref: 'transaction_date',
                 automation: {
-                  type: 'LATEST',
+                  type: 'LAST_VALUE',
                   table: 'details',
                   foreign_key: 'summary_fk',
                   column: 'transaction_date'

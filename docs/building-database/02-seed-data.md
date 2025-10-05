@@ -20,9 +20,9 @@ Content sections define seed data that should exist in the database:
 tables:
   categories:
     columns:
-      id: { type: integer, primary_key: true, sequence: true }
-      name: { type: varchar, size: 100, unique: true }
-      description: { type: text }
+      id: serial primary key
+      name: varchar(100) unique
+      description: text
     content:
       - name: Electronics
         description: Electronic devices and accessories
@@ -40,9 +40,9 @@ When providing explicit primary keys:
 tables:
   roles:
     columns:
-      id: { type: integer, primary_key: true }
-      name: { type: varchar, size: 50, unique: true }
-      permissions: { type: jsonb }
+      id: integer primary key
+      name: varchar(50) unique
+      permissions: jsonb
     content:
       - id: 1
         name: admin
@@ -62,9 +62,9 @@ Reference data from other tables using $lookup:
 tables:
   accounts:
     columns:
-      id: { type: integer, primary_key: true, sequence: true }
-      account_code: { type: varchar, size: 20, unique: true }
-      name: { type: varchar, size: 100 }
+      id: serial primary key
+      account_code: varchar(20) unique
+      name: varchar(100)
     content:
       - account_code: CASH
         name: Cash Account
@@ -73,13 +73,12 @@ tables:
 
   transactions:
     columns:
-      id: { type: integer, primary_key: true, sequence: true }
-      account_id: { type: integer }
-      amount: { type: numeric }
-      description: { type: text }
+      id: serial primary key
+      account_id: integer
+      amount: numeric
+      description: text
     foreign_keys:
-      account:
-        table: accounts
+      account: accounts
     content:
       - account_id:
           $lookup:
@@ -149,8 +148,8 @@ Content with primary keys uses `ON CONFLICT DO NOTHING`:
 tables:
   settings:
     columns:
-      key: { type: varchar, size: 50, primary_key: true }
-      value: { type: text }
+      key: varchar(50) primary key
+      value: text
     content:
       - key: site_name
         value: My Application
@@ -173,9 +172,9 @@ When primary key is auto-generated, unique columns are used:
 tables:
   users:
     columns:
-      id: { type: integer, primary_key: true, sequence: true }
-      email: { type: varchar, size: 255, unique: true }
-      name: { type: varchar, size: 100 }
+      id: serial primary key
+      email: varchar(255) unique
+      name: varchar(100)
     content:
       - email: admin@example.com
         name: Administrator
@@ -240,8 +239,8 @@ Define unique business keys for reliable conflict resolution:
 
 ```yaml
 columns:
-  code: { type: varchar, size: 20, unique: true }
-  name: { type: varchar, size: 100 }
+  code: varchar(20) unique
+  name: varchar(100)
 content:
   - code: USD
     name: US Dollar
@@ -355,20 +354,20 @@ content:
 tables:
   tenants:
     columns:
-      id: { type: integer, primary_key: true, sequence: true }
-      code: { type: varchar, size: 20, unique: true }
-      name: { type: varchar, size: 100 }
+      id: serial primary key
+      code: varchar(20) unique
+      name: varchar(100)
     content:
       - code: DEFAULT
         name: Default Tenant
 
   users:
     columns:
-      id: { type: integer, primary_key: true, sequence: true }
-      tenant_id: { type: integer }
-      email: { type: varchar, size: 255 }
+      id: serial primary key
+      tenant_id: integer
+      email: varchar(255)
     foreign_keys:
-      tenant: { table: tenants }
+      tenant: tenants
     content:
       - tenant_id:
           $lookup:

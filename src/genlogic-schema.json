@@ -60,45 +60,23 @@
             },
             "type": {
               "type": "string",
-              "description": "Override PostgreSQL column type"
-            },
-            "size": {
-              "type": "integer",
-              "minimum": 1,
-              "description": "Override size parameter"
-            },
-            "decimal": {
-              "type": "integer",
-              "minimum": 0,
-              "description": "Override decimal places"
-            },
-            "primary_key": {
-              "type": "boolean",
-              "description": "Override primary key setting"
-            },
-            "unique": {
-              "type": "boolean",
-              "description": "Override unique constraint"
-            },
-            "not_null": {
-              "type": "boolean",
-              "description": "Override not_null constraint"
-            },
-            "sequence": {
-              "type": "boolean",
-              "description": "Override sequence setting"
+              "description": "Override SQL type string (completely replaces)"
             },
             "automation": {
               "$ref": "#/definitions/automationDefinition",
-              "description": "Override or add automation"
+              "description": "Override automation (completely replaces)"
             },
-            "calculated": {
+            "generated": {
               "type": "string",
-              "description": "Override or add calculated expression"
+              "description": "Override generated expression (completely replaces)"
+            },
+            "comment": {
+              "type": "string",
+              "description": "Override comment (completely replaces)"
             },
             "ui-notes": {
               "type": "array",
-              "description": "Override or add UI guidance notes",
+              "description": "Override UI guidance notes",
               "items": {
                 "type": "string",
                 "enum": ["read-only", "hidden"]
@@ -112,45 +90,23 @@
     },
     "columnDefinition": {
       "type": "object",
-      "description": "Column definition with type, constraints, and optional automation",
+      "description": "Column definition with SQL type string and optional GenLogic features (automation, generated, comment)",
       "properties": {
         "type": {
           "type": "string",
-          "description": "PostgreSQL column type (e.g., integer, varchar, numeric)"
-        },
-        "size": {
-          "type": "integer",
-          "minimum": 1,
-          "description": "Size parameter for types that support it (e.g., varchar size)"
-        },
-        "decimal": {
-          "type": "integer",
-          "minimum": 0,
-          "description": "Decimal places for numeric types (only valid when size is present)"
-        },
-        "primary_key": {
-          "type": "boolean",
-          "description": "Whether this column is part of the primary key"
-        },
-        "unique": {
-          "type": "boolean",
-          "description": "Whether this column has a unique constraint"
-        },
-        "not_null": {
-          "type": "boolean",
-          "description": "Whether this column has a NOT NULL constraint"
-        },
-        "sequence": {
-          "type": "boolean",
-          "description": "Whether to create a sequence for this column (auto-increment)"
+          "description": "SQL type string (e.g., 'varchar(100)', 'serial primary key', 'numeric(10,2) not null default 0')"
         },
         "automation": {
           "$ref": "#/definitions/automationDefinition",
           "description": "GENLOGIC CORE: Automation that references FK names, not table names"
         },
-        "calculated": {
+        "generated": {
           "type": "string",
-          "description": "SQL expression for calculated column (e.g., 'column1 + column2'). Mutually exclusive with automation."
+          "description": "SQL expression for generated column (e.g., 'column1 + column2'). Mutually exclusive with automation."
+        },
+        "comment": {
+          "type": "string",
+          "description": "Human-readable description of this column's purpose and usage (emits SQL COMMENT ON)"
         },
         "ui-notes": {
           "type": "array",
@@ -170,57 +126,13 @@
           "required": ["automation"]
         },
         {
-          "required": ["calculated"]
+          "required": ["generated"]
         }
       ],
-      "additionalProperties": false,
-      "dependencies": {
-        "decimal": ["size"]
-      },
-      "allOf": [
-        {
-          "if": {
-            "allOf": [
-              { "required": ["type"] },
-              {
-                "properties": {
-                  "type": {
-                    "enum": ["varchar", "char", "bit"]
-                  }
-                }
-              }
-            ]
-          },
-          "then": {
-            "required": ["size"]
-          }
-        },
-        {
-          "if": {
-            "allOf": [
-              { "required": ["type"] },
-              {
-                "properties": {
-                  "type": {
-                    "enum": ["date", "timestamp", "timestamptz", "boolean", "bool", "integer", "int", "int4", "bigint", "int8", "smallint", "int2", "real", "float4", "double precision", "float8", "text", "uuid", "json", "jsonb"]
-                  }
-                }
-              }
-            ]
-          },
-          "then": {
-            "not": {
-              "anyOf": [
-                { "required": ["size"] },
-                { "required": ["decimal"] }
-              ]
-            }
-          }
-        }
-      ]
+      "additionalProperties": false
     },
     "tableColumnDefinition": {
-      "description": "Table column with mixed inheritance: empty object (inherit same name), string (inherit named), object with $ref (inherit + override)",
+      "description": "Table column: SQL type string, inherit from reusable column, or full definition with GenLogic features",
       "oneOf": [
         {
           "type": "null",
@@ -228,8 +140,7 @@
         },
         {
           "type": "string",
-          "description": "String value - inherit from named reusable column (for renaming)",
-          "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$"
+          "description": "SQL type string (e.g. 'varchar(100) not null') OR reference to reusable column name"
         },
         {
           "type": "object",
@@ -237,50 +148,28 @@
           "properties": {
             "$ref": {
               "type": "string",
-              "description": "Name of reusable column to inherit from - VALIDATION REQUIRED: Must exist in top-level 'columns' section",
+              "description": "Name of reusable column to inherit from",
               "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$"
             },
             "type": {
               "type": "string",
-              "description": "Override PostgreSQL column type"
-            },
-            "size": {
-              "type": "integer",
-              "minimum": 1,
-              "description": "Override size parameter"
-            },
-            "decimal": {
-              "type": "integer",
-              "minimum": 0,
-              "description": "Override decimal places"
-            },
-            "primary_key": {
-              "type": "boolean",
-              "description": "Override primary key setting"
-            },
-            "unique": {
-              "type": "boolean",
-              "description": "Override unique constraint"
-            },
-            "not_null": {
-              "type": "boolean",
-              "description": "Override not_null constraint"
-            },
-            "sequence": {
-              "type": "boolean",
-              "description": "Override sequence setting"
+              "description": "Override SQL type string (completely replaces)"
             },
             "automation": {
               "$ref": "#/definitions/automationDefinition",
-              "description": "Override or add automation"
+              "description": "Override automation (completely replaces)"
             },
-            "calculated": {
+            "generated": {
               "type": "string",
-              "description": "Override or add calculated expression"
+              "description": "Override generated expression (completely replaces)"
+            },
+            "comment": {
+              "type": "string",
+              "description": "Override comment (completely replaces)"
             },
             "ui-notes": {
               "type": "array",
-              "description": "Override or add UI guidance notes",
+              "description": "Override UI guidance notes",
               "items": {
                 "type": "string",
                 "enum": ["read-only", "hidden"]
@@ -300,6 +189,10 @@
       "type": "object",
       "description": "Table definition with foreign keys as named data pipelines",
       "properties": {
+        "comment": {
+          "type": "string",
+          "description": "Human-readable description of this table's purpose and usage (emits SQL COMMENT ON)"
+        },
         "ui-notes": {
           "type": "array",
           "description": "UI guidance notes - not processed by database, expanded in resolved schema",
@@ -322,9 +215,22 @@
         "foreign_keys": {
           "type": "object",
           "description": "GENLOGIC CORE: Named data pipelines that create columns AND automation pathways",
-          "additionalProperties": {
-            "$ref": "#/definitions/foreignKeyDefinition"
-          }
+          "patternProperties": {
+            "^[a-zA-Z_][a-zA-Z0-9_]*$": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
+                  "description": "Simple string shorthand: FK name = table name (e.g., 'category_id: categories')"
+                },
+                {
+                  "$ref": "#/definitions/foreignKeyDefinition",
+                  "description": "Object syntax for complex cases (composite keys, multiple FKs to same table, special behavior)"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
         },
         "content": {
           "type": "array",
@@ -342,6 +248,10 @@
       "type": "object",
       "description": "GENLOGIC: Foreign key as named data pipeline - creates columns and defines automation paths",
       "properties": {
+        "comment": {
+          "type": "string",
+          "description": "Human-readable description of this foreign key relationship"
+        },
         "table": {
           "type": "string",
           "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
@@ -355,54 +265,54 @@
           "type": "string",
           "description": "Suffix for created column names"
         },
+        "not_null": {
+          "type": "boolean",
+          "description": "Whether the generated FK column(s) should be NOT NULL (required relationship)"
+        },
         "delete": {
           "type": "string",
           "enum": ["restrict", "cascade"],
-          "description": "Foreign key delete behavior"
+          "description": "ON DELETE behavior - restrict (default) or cascade"
         },
         "auto_create": {
           "$ref": "#/definitions/autoCreateDefinition",
-          "description": "GENLOGIC: Auto-create rows in this table when parent table changes (sync/spread pattern)"
+          "description": "GENLOGIC: Auto-creation behavior when parent is referenced"
         }
       },
-      "required": ["table"]
+      "required": ["table"],
+      "additionalProperties": false
     },
     "autoCreateDefinition": {
       "type": "object",
-      "description": "FK-following auto-creation: sync (1:1 row copy) or spread (1:N date range expansion)",
+      "description": "Auto-creation configuration for FK-following record creation",
       "properties": {
         "on": {
           "type": "array",
-          "description": "Which operations trigger auto-creation",
           "items": {
             "type": "string",
             "enum": ["insert", "update", "delete"]
           },
-          "minItems": 1
+          "description": "Which operations trigger auto-creation"
         },
         "spread": {
           "type": "object",
-          "description": "Generate multiple rows from date range and interval (omit for simple sync)",
+          "description": "Spread configuration for date range expansion",
           "properties": {
             "start": {
               "type": "string",
-              "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
-              "description": "Column name in parent table containing start date"
+              "description": "Column name in parent table for range start"
             },
             "end": {
               "type": "string",
-              "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
-              "description": "Column name in parent table containing end date"
+              "description": "Column name in parent table for range end"
             },
             "interval": {
               "type": "string",
-              "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
-              "description": "Column name in parent table containing PostgreSQL interval value"
+              "description": "Column name in parent table for interval"
             },
             "generated_column": {
               "type": "string",
-              "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
-              "description": "Column name in this (child) table to populate with generated dates"
+              "description": "Column name in this (child) table for generated dates"
             }
           },
           "required": ["start", "end", "interval", "generated_column"],
@@ -410,160 +320,148 @@
         },
         "copy_columns": {
           "type": "object",
-          "description": "Map parent columns to child columns (parent_col: child_col)",
-          "patternProperties": {
-            "^[a-zA-Z_][a-zA-Z0-9_]*$": {
-              "type": "string",
-              "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
-              "description": "Parent column name mapped to child column name"
-            }
-          },
-          "additionalProperties": false
+          "description": "Map of parent column to child column for value copying",
+          "additionalProperties": {
+            "type": "string"
+          }
         },
         "literals": {
           "type": "object",
-          "description": "Constant values to set in child table",
-          "patternProperties": {
-            "^[a-zA-Z_][a-zA-Z0-9_]*$": {
-              "type": "string",
-              "description": "Child column name and literal SQL value to set"
-            }
-          },
-          "additionalProperties": false
+          "description": "Map of child column to literal value",
+          "additionalProperties": {
+            "type": "string"
+          }
         },
         "filter": {
           "type": "string",
-          "description": "Optional SQL WHERE condition to filter which parent rows trigger creation"
+          "description": "Optional SQL WHERE condition for filtering auto-creation"
         }
       },
       "required": ["on"],
       "additionalProperties": false
     },
-    "automationDefinition": {
-      "description": "GENLOGIC PRINCIPLE: Automations specify explicit data flow pathways",
-      "oneOf": [
-        {
-          "type": "object",
-          "description": "Standard automation (SUM, COUNT, MAX, etc.) using foreign keys",
-          "properties": {
-            "type": {
-              "type": "string",
-              "enum": ["SUM", "COUNT", "MAX", "MIN", "LATEST", "SNAPSHOT", "FOLLOW", "DOMINANT", "QUEUEPOS"],
-              "description": "Type of automation"
-            },
-            "table": {
-              "type": "string",
-              "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
-              "description": "Source table name for the automation - VALIDATION REQUIRED: Must exist in 'tables' section"
-            },
-            "foreign_key": {
-              "type": "string",
-              "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
-              "description": "GENLOGIC CORE: FK name within the source table - VALIDATION REQUIRED: Must exist in specified table's foreign_keys section"
-            },
-            "column": {
-              "type": "string",
-              "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
-              "description": "Source column name for the automation"
-            }
-          },
-          "required": ["type", "table", "foreign_key", "column"],
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "description": "RULE_MATCH automation using dynamic pattern matching (generates stored procedures)",
-          "properties": {
-            "type": {
-              "type": "string",
-              "enum": ["RULE_MATCH"],
-              "description": "Rule-based matching automation"
-            },
-            "mode": {
-              "type": "string",
-              "enum": ["stored_procedure"],
-              "description": "Automation mode - generates stored procedures for middleware control",
-              "default": "stored_procedure"
-            },
-            "source_table": {
-              "type": "string",
-              "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
-              "description": "Table containing the matching rules - VALIDATION REQUIRED: Must exist in 'tables' section"
-            },
-            "source_columns": {
-              "type": "object",
-              "description": "Column names in source table that define the matching rules",
-              "properties": {
-                "match_column": {
-                  "type": "string",
-                  "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
-                  "description": "Column in source specifying which destination column to match"
-                },
-                "operator": {
-                  "type": "string",
-                  "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
-                  "description": "Column in source specifying comparison operator"
-                },
-                "compare_value": {
-                  "type": "string",
-                  "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
-                  "description": "Column in source with the pattern to match"
-                },
-                "target_value": {
-                  "type": "string",
-                  "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
-                  "description": "Column in source with value to set in destination"
-                },
-                "priority": {
-                  "type": "string",
-                  "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
-                  "description": "Column in source for tie-breaking when multiple rules match"
-                }
-              },
-              "required": ["match_column", "operator", "compare_value", "target_value", "priority"],
-              "additionalProperties": false
-            },
-            "destination_columns": {
-              "type": "array",
-              "description": "List of columns in destination table that can be matched against - VALIDATION REQUIRED: Must exist in destination table",
-              "items": {
-                "type": "string",
-                "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$"
-              },
-              "minItems": 1
-            },
-            "operators": {
-              "type": "array",
-              "description": "Supported comparison operators for matching",
-              "items": {
-                "type": "string",
-                "enum": ["equals", "starts_with", "contains", "ends_with"]
-              },
-              "minItems": 1
-            },
-            "overwrite_policy": {
-              "type": "string",
-              "enum": ["always", "if_null", "never"],
-              "description": "Policy for overwriting existing values in destination column",
-              "default": "if_null"
-            }
-          },
-          "required": ["type", "mode", "source_table", "source_columns", "destination_columns", "operators"],
-          "additionalProperties": false
-        }
-      ]
-    },
     "matchingTableDefinition": {
       "type": "object",
-      "description": "Pattern matching table with fixed structure and automatic stored procedures",
+      "description": "Pattern matching table definition with automatic structure",
       "properties": {
+        "comment": {
+          "type": "string",
+          "description": "Human-readable description of this matching table"
+        },
         "result_column_name": {
           "type": "string",
-          "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
-          "description": "Name for the result column (e.g., 'category', 'department', 'inbox')"
+          "description": "Name of the result column in the matching table",
+          "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$"
         }
       },
       "required": ["result_column_name"],
+      "additionalProperties": false
+    },
+    "automationDefinition": {
+      "oneOf": [
+        {
+          "$ref": "#/definitions/standardAutomationDefinition"
+        },
+        {
+          "$ref": "#/definitions/ruleMatchAutomationDefinition"
+        }
+      ]
+    },
+    "standardAutomationDefinition": {
+      "type": "object",
+      "description": "Standard automation types (aggregations and syncs)",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["SUM", "COUNT", "MAX", "MIN", "LAST_VALUE", "SNAPSHOT", "SYNC", "DOMINANT", "QUEUEPOS"],
+          "description": "Automation type"
+        },
+        "table": {
+          "type": "string",
+          "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
+          "description": "Source/target table name - VALIDATION REQUIRED: Must exist in 'tables' section"
+        },
+        "foreign_key": {
+          "type": "string",
+          "description": "Foreign key name in the source/target table - VALIDATION REQUIRED: Must exist in table's foreign_keys section"
+        },
+        "column": {
+          "type": "string",
+          "description": "Column name in source table to aggregate/sync"
+        }
+      },
+      "required": ["type", "table", "foreign_key", "column"],
+      "additionalProperties": false
+    },
+    "ruleMatchAutomationDefinition": {
+      "type": "object",
+      "description": "Rule matching automation using stored procedure",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["RULE_MATCH"],
+          "description": "Rule matching automation type"
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["stored_procedure"],
+          "description": "Execution mode"
+        },
+        "source_table": {
+          "type": "string",
+          "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
+          "description": "Source table with rules - VALIDATION REQUIRED: Must exist in 'tables' section"
+        },
+        "source_columns": {
+          "type": "object",
+          "description": "Column mapping from source table",
+          "properties": {
+            "match_column": {
+              "type": "string",
+              "description": "Column specifying which destination column to match"
+            },
+            "operator": {
+              "type": "string",
+              "description": "Column specifying comparison operator"
+            },
+            "compare_value": {
+              "type": "string",
+              "description": "Column with pattern to match"
+            },
+            "target_value": {
+              "type": "string",
+              "description": "Column with value to set in destination"
+            },
+            "priority": {
+              "type": "string",
+              "description": "Column for tie-breaking"
+            }
+          },
+          "required": ["match_column", "operator", "compare_value", "target_value", "priority"],
+          "additionalProperties": false
+        },
+        "destination_columns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Columns in destination table - VALIDATION REQUIRED: Must exist"
+        },
+        "operators": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["equals", "starts_with", "contains", "ends_with"]
+          },
+          "description": "Allowed operators"
+        },
+        "overwrite_policy": {
+          "type": "string",
+          "enum": ["always", "if_null", "never"],
+          "description": "When to overwrite existing values (default: if_null)"
+        }
+      },
+      "required": ["type", "mode", "source_table", "source_columns", "destination_columns", "operators"],
       "additionalProperties": false
     }
   }

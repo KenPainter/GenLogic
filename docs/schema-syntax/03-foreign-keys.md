@@ -10,15 +10,13 @@ Foreign keys establish relationships between tables.
 tables:
   parent_table:
     columns:
-      id: { type: integer, primary_key: true }
+      id: serial primary key
 
   child_table:
     foreign_keys:
-      fk_name:
-        table: parent_table
+      fk_name: parent_table  # Simple shorthand - auto-generates FK column
     columns:
-      id: { type: integer, primary_key: true }
-      fk_name: { type: integer }
+      name: *any valid PostgreSQL type*
 ```
 
 ## Simple Example
@@ -26,25 +24,22 @@ tables:
 ```yaml
 columns:
   id:
-    type: integer
-    sequence: true
-    primary_key: true
+    type: serial primary key
 
 tables:
   users:
     columns:
       user_id: id
-      username: { type: varchar, size: 100 }
+      username: varchar(100)
 
   posts:
     foreign_keys:
-      user_fk:
-        table: users
+      user_fk: users  # Simple string shorthand
 
     columns:
       post_id: id
-      title: { type: varchar, size: 200 }
-      user_fk: { type: integer }
+      title: varchar(200)
+      user_fk: integer
 ```
 
 ## Generated SQL
@@ -77,17 +72,16 @@ GenLogic automatically creates the foreign key column if it does not exist:
 tables:
   categories:
     columns:
-      id: { type: integer, primary_key: true, sequence: true }
-      name: { type: varchar, size: 100 }
+      id: serial primary key
+      name: varchar(100)
 
   products:
     foreign_keys:
-      category_fk:
-        table: categories
+      category_fk: categories  # Shorthand syntax
 
     columns:
-      id: { type: integer, primary_key: true, sequence: true }
-      name: { type: varchar, size: 100 }
+      id: serial primary key
+      name: varchar(100)
       # category_fk column automatically created as INTEGER
 ```
 
@@ -96,13 +90,12 @@ To control the foreign key column properties, declare it explicitly:
 ```yaml
   products:
     foreign_keys:
-      category_fk:
-        table: categories
+      category_fk: categories
 
     columns:
-      id: { type: integer, primary_key: true, sequence: true }
-      name: { type: varchar, size: 100 }
-      category_fk: { type: integer }  # Explicit declaration
+      id: serial primary key
+      name: varchar(100)
+      category_fk: integer not null  # Explicit declaration with constraints
 ```
 
 ## Multiple Foreign Keys
@@ -113,24 +106,22 @@ A table can have multiple foreign keys:
 tables:
   users:
     columns:
-      id: { type: integer, primary_key: true, sequence: true }
+      id: serial primary key
 
   categories:
     columns:
-      id: { type: integer, primary_key: true, sequence: true }
+      id: serial primary key
 
   products:
     foreign_keys:
-      user_fk:
-        table: users
-      category_fk:
-        table: categories
+      user_fk: users        # Shorthand
+      category_fk: categories  # Shorthand
 
     columns:
-      id: { type: integer, primary_key: true, sequence: true }
-      name: { type: varchar, size: 100 }
-      user_fk: { type: integer }
-      category_fk: { type: integer }
+      id: serial primary key
+      name: varchar(100)
+      user_fk: integer
+      category_fk: integer not null
 ```
 
 Generated SQL:
@@ -158,18 +149,17 @@ Foreign keys can reference composite primary keys:
 tables:
   order_headers:
     columns:
-      order_id: { type: integer, primary_key: true }
-      order_year: { type: integer, primary_key: true }
+      order_id: integer primary key
+      order_year: integer primary key
 
   order_lines:
     foreign_keys:
-      order_fk:
-        table: order_headers
+      order_fk: order_headers
 
     columns:
-      line_id: { type: integer, primary_key: true }
-      order_id: { type: integer }
-      order_year: { type: integer }
+      line_id: serial primary key
+      order_id: integer
+      order_year: integer
 ```
 
 Generated SQL:
@@ -189,13 +179,12 @@ Tables can reference themselves for hierarchical data:
 tables:
   employees:
     foreign_keys:
-      manager_fk:
-        table: employees
+      manager_fk: employees  # Self-referencing
 
     columns:
-      id: { type: integer, primary_key: true, sequence: true }
-      name: { type: varchar, size: 100 }
-      manager_fk: { type: integer }
+      id: serial primary key
+      name: varchar(100)
+      manager_fk: integer
 ```
 
 Generated SQL:
@@ -221,7 +210,7 @@ Control what happens when a parent row is deleted:
 tables:
   customers:
     columns:
-      id: { type: integer, primary_key: true, sequence: true }
+      id: serial primary key
 
   orders:
     foreign_keys:
@@ -230,8 +219,8 @@ tables:
         delete: cascade  # or 'restrict'
 
     columns:
-      id: { type: integer, primary_key: true, sequence: true }
-      customer_fk: { type: integer }
+      id: serial primary key
+      customer_fk: integer
 ```
 
 Generated SQL with CASCADE:

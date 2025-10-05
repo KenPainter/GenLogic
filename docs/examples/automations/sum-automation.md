@@ -14,14 +14,12 @@ The SUM automation automatically calculates and maintains the sum of child value
 
 columns:
   id:
-    type: integer
-    sequence: true
-    primary_key: true
+    type: serial primary key
+    comment: Auto-incrementing primary key
 
   amount:
-    type: numeric
-    size: 10
-    decimal: 2
+    type: numeric(10,2)
+    comment: Amount value
 
 tables:
   accounts:
@@ -29,9 +27,7 @@ tables:
       account_id:
         $ref: id
 
-      account_name:
-        type: varchar
-        size: 100
+      account_name: varchar(100)
 
       # This balance automatically maintains the SUM of all transaction amounts
       balance:
@@ -44,8 +40,7 @@ tables:
 
   transactions:
     foreign_keys:
-      account_fk:
-        table: accounts
+      account_fk: accounts
 
     columns:
       transaction_id:
@@ -53,9 +48,7 @@ tables:
 
       amount: null  # This gets summed into accounts.balance
 
-      description:
-        type: varchar
-        size: 200
+      description: varchar(200)
 
 # How it works:
 # 1. When you INSERT into transactions with account_fk=1, amount=100.00

@@ -9,7 +9,7 @@ Matching tables provide pattern-based categorization with specificity ranking.
 ```yaml
 matching_tables:
   table_name:
-    result_column_name: column_name
+    result_column_name: *name for result column*
 ```
 
 This automatically creates a table with fixed structure and matching functions.

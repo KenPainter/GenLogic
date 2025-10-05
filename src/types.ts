@@ -19,25 +19,31 @@ export interface GenLogicSchema {
 }
 
 export interface MatchingTableDefinition {
+  comment?: string;
   result_column_name: string;
 }
 
 export interface ColumnDefinition {
   type: string;
+  automation?: AutomationDefinition;
+  generated?: string;
+  comment?: string;
+  'ui-notes'?: ('read-only' | 'hidden')[];
+  // Internal fields populated by SQL type parser:
   size?: number;
   decimal?: number;
   primary_key?: boolean;
   unique?: boolean;
+  not_null?: boolean;
   sequence?: boolean;
-  automation?: AutomationDefinition;
-  calculated?: string;
-  'ui-notes'?: ('read-only' | 'hidden')[];
+  default?: string;
 }
 
 export interface TableDefinition {
+  comment?: string;
   'ui-notes'?: UINote[];
   columns?: Record<string, TableColumnDefinition>;
-  foreign_keys?: Record<string, ForeignKeyDefinition>;
+  foreign_keys?: Record<string, ForeignKeyDefinition | string>;  // String = simple shorthand
   content?: Record<string, any>[];
 }
 
@@ -55,9 +61,11 @@ export interface ColumnReference extends Partial<ColumnDefinition> {
 }
 
 export interface ForeignKeyDefinition {
+  comment?: string;
   table: string;    // VALIDATION REQUIRED: Must exist in 'tables' section
   prefix?: string;
   suffix?: string;
+  not_null?: boolean;
   delete?: 'restrict' | 'cascade';
   auto_create?: AutoCreateDefinition;  // FK-following auto-creation (sync/spread)
 }
@@ -80,7 +88,7 @@ export type AutomationDefinition =
   | RuleMatchAutomationDefinition;
 
 export interface StandardAutomationDefinition {
-  type: 'SUM' | 'COUNT' | 'MAX' | 'MIN' | 'LATEST' | 'SNAPSHOT' | 'FOLLOW' | 'DOMINANT' | 'QUEUEPOS';
+  type: 'SUM' | 'COUNT' | 'MAX' | 'MIN' | 'LAST_VALUE' | 'SNAPSHOT' | 'SYNC' | 'DOMINANT' | 'QUEUEPOS';
   table: string;      // VALIDATION REQUIRED: Must exist in 'tables' section
   foreign_key: string; // VALIDATION REQUIRED: Must exist in specified table's foreign_keys section
   column: string;

@@ -27,11 +27,14 @@ export class DataFlowGraphValidator {
     // Add edges for foreign key relationships
     for (const [tableName, table] of Object.entries(schema.tables)) {
       if (table.foreign_keys) {
-        for (const [_fkName, fk] of Object.entries(table.foreign_keys)) {
+        for (const [_fkName, fkDef] of Object.entries(table.foreign_keys)) {
+          // Normalize: FK can be string (table name) or object
+          const targetTable = typeof fkDef === 'string' ? fkDef : fkDef.table;
+
           // Edge from child table to parent table
           const childEdges = edges.get(tableName);
           if (childEdges) {
-            childEdges.add(fk.table);
+            childEdges.add(targetTable);
           }
         }
       }
@@ -234,9 +237,9 @@ export class DataFlowGraphValidator {
             const sourceTable = automation.table;
             const targetTable = tableName;
 
-            // For aggregation automations (SUM, COUNT, MAX, MIN, LATEST), verify path from source to target
+            // For aggregation automations (SUM, COUNT, MAX, MIN, LAST_VALUE), verify path from source to target
             // Source table (child) must have FK to target table (parent)
-            if (['SUM', 'COUNT', 'MAX', 'MIN', 'LATEST'].includes(automation.type)) {
+            if (['SUM', 'COUNT', 'MAX', 'MIN', 'LAST_VALUE'].includes(automation.type)) {
               if (!this.isPathReachable(fkGraph, sourceTable, targetTable)) {
                 errors.push(
                   `Automation '${automation.type}' in table '${targetTable}', column '${columnName}': ` +
@@ -245,9 +248,9 @@ export class DataFlowGraphValidator {
               }
             }
 
-            // For cascade/follow automations (SNAPSHOT, FOLLOW), verify path from target to source
+            // For cascade/sync automations (SNAPSHOT, SYNC), verify path from target to source
             // Target table (child) must have FK to source table (parent)
-            if (['SNAPSHOT', 'FOLLOW'].includes(automation.type)) {
+            if (['SNAPSHOT', 'SYNC'].includes(automation.type)) {
               if (!this.isPathReachable(fkGraph, targetTable, sourceTable)) {
                 errors.push(
                   `Automation '${automation.type}' in table '${targetTable}', column '${columnName}': ` +

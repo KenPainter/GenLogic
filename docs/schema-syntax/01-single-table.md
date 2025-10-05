@@ -10,7 +10,7 @@ A GenLogic schema defines one or more tables with their columns and data types.
 tables:
   table_name:
     columns:
-      column_name: { type: data_type }
+      column_name: *any valid PostgreSQL type*
 ```
 
 ## Complete Example with All Column Types
@@ -20,37 +20,37 @@ tables:
   products:
     columns:
       # Integer types
-      id: { type: integer, primary_key: true, sequence: true }
-      stock_count: { type: bigint }
-      priority: { type: smallint }
+      id: serial primary key
+      stock_count: bigint
+      priority: smallint
 
       # Text types
-      name: { type: varchar, size: 100 }
-      code: { type: char, size: 10 }
-      description: { type: text }
+      name: varchar(100)
+      code: char(10)
+      description: text
 
       # Numeric types with precision
-      price: { type: numeric, size: 10, decimal: 2 }
-      weight: { type: decimal, size: 8, decimal: 3 }
-      unlimited_precision: { type: numeric }
+      price: numeric(10,2)
+      weight: decimal(8,3)
+      unlimited_precision: numeric
 
       # Floating point
-      ratio: { type: real }
-      precise_ratio: { type: double precision }
+      ratio: real
+      precise_ratio: double precision
 
       # Boolean
-      active: { type: boolean }
+      active: boolean
 
       # Date and time
-      manufacture_date: { type: date }
-      created_at: { type: timestamp }
-      updated_at: { type: timestamptz }
+      manufacture_date: date
+      created_at: timestamp
+      updated_at: timestamptz
 
       # Other types
-      external_id: { type: uuid }
-      bit_flags: { type: bit, size: 8 }
-      settings: { type: json }
-      metadata: { type: jsonb }
+      external_id: uuid
+      bit_flags: bit(8)
+      settings: json
+      metadata: jsonb
 ```
 
 ## Generated SQL
@@ -79,27 +79,38 @@ CREATE TABLE products (
 );
 ```
 
-## Column Properties
+## Column Definition Formats
 
-### type (required)
-The PostgreSQL data type. See type reference below.
+### SQL String (Simple)
+The simplest format uses SQL type strings directly:
 
-### size (conditional)
-- Required for: varchar, char, bit
-- Optional for: numeric, decimal
-- Not allowed for: all other types
+```yaml
+columns:
+  id: serial primary key
+  name: varchar(100) not null unique
+  balance: numeric(15,2) default 0
+  created_at: timestamp default NOW()
+```
 
-### decimal (optional)
-Number of decimal places for numeric and decimal types. Requires size to be specified first.
+### Object Format (For GenLogic Features)
+Use object format when you need GenLogic-specific features like automation or generated columns:
 
-### primary_key (optional)
-Marks column as primary key. Default: false
+```yaml
+columns:
+  total_sales:
+    type: numeric(12,2)
+    automation:
+      type: SUM
+      table: orders
+      foreign_key: customer_id
+      column: amount
+    comment: Total from all orders
 
-### sequence (optional)
-Auto-increment integer columns. Generates SERIAL, BIGSERIAL, or SMALLSERIAL based on type. Default: false
-
-### unique (optional)
-Adds UNIQUE constraint. Default: false
+  net_balance:
+    type: numeric(15,2)
+    generated: debits - credits
+    comment: Calculated balance
+```
 
 ## Data Type Reference
 
@@ -107,6 +118,8 @@ Adds UNIQUE constraint. Default: false
 - integer - 4-byte integer
 - bigint - 8-byte integer
 - smallint - 2-byte integer
+- serial - Auto-incrementing integer
+- bigserial - Auto-incrementing bigint
 
 ### Text Types
 - varchar(n) - Variable-length text, size required
@@ -114,8 +127,9 @@ Adds UNIQUE constraint. Default: false
 - text - Unlimited length text
 
 ### Numeric Types
-- numeric(p,s) - Exact decimal, size optional
+- numeric(p,s) - Exact decimal with precision and scale
 - decimal(p,s) - Same as numeric
+- numeric - Unlimited precision
 - real - 4-byte floating point
 - double precision - 8-byte floating point
 
@@ -129,9 +143,17 @@ Adds UNIQUE constraint. Default: false
 
 ### Other Types
 - uuid - Universally unique identifier
-- bit(n) - Fixed-length bit string, size required
+- bit(n) - Fixed-length bit string
 - json - JSON data
 - jsonb - Binary JSON data (indexable)
+
+### SQL Constraints
+You can combine types with constraints:
+- not null - Prevents NULL values
+- unique - Ensures unique values
+- default value - Sets default value
+- primary key - Marks as primary key
+- check (condition) - Custom validation
 
 ---
 

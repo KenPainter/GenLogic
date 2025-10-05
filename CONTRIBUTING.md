@@ -35,7 +35,7 @@ provides facts and instructions.  In particular:
 - Avoid qualitative descriptions such as "...a high quality
   solution for...".
 - Avoid even single adjectives like "powerful", "intelligent".
-  Stick to the neutral tone and provide facts and instrucitons.
+  Stick to the neutral tone and provide facts and instructions.
 - Avoid statements that assert fit-for-purpose, such as
   "production-ready", "enterprise scale" and so forth.
 - Avoid **bold items** entirely.  They are annoying to
@@ -60,6 +60,6 @@ and belong in the [./docs](./docs/) folder.
 The top level file [./docs/toc.md](./docs/toc.md) must always
 list every other file in the [./docs](./docs) foler.
 
-The utility [./docs/](./docs/add-navigation.mjs) will put
+The utility [./docs/add-navigation.mjs](./docs/add-navigation.mjs) will put
 previous/next links onto all documents that are linked in
 the table of contents.

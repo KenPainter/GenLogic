@@ -35,6 +35,7 @@ export class DiffEngine {
         // Table doesn't exist - create it with all columns
         diff.tablesToCreate.push({
           tableName,
+          comment: desiredTable.comment,
           columns: this.getAllTableColumns(desiredTable),
           foreignKeys: desiredTable.foreignKeys
         });
@@ -146,6 +147,7 @@ export interface SchemaDiff {
 
 export interface TableCreation {
   tableName: string;
+  comment?: string;
   columns: Array<{name: string, definition: ColumnDefinition}>;
   foreignKeys: Record<string, any>;
 }

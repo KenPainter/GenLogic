@@ -29,7 +29,7 @@ export const invalidSchemas = {
     schema: {
       tables: {
         'my-table': {  // Contains hyphen
-          columns: { id: { type: 'integer' } }
+          columns: { id: 'integer' }
         }
       }
     },
@@ -51,9 +51,7 @@ export const invalidSchemas = {
   varcharWithoutSize: {
     schema: {
       columns: {
-        name: {
-          type: 'varchar'  // varchar requires size
-        }
+        name: { type: 'varchar' }  // varchar requires size
       }
     },
     expectedError: 'size is required'
@@ -62,10 +60,7 @@ export const invalidSchemas = {
   dateWithSize: {
     schema: {
       columns: {
-        created: {
-          type: 'date',
-          size: 10  // date cannot have size
-        }
+        created: { type: 'date(10)' }  // date cannot have size
       }
     },
     expectedError: 'not'
@@ -74,10 +69,7 @@ export const invalidSchemas = {
   decimalWithoutSize: {
     schema: {
       columns: {
-        amount: {
-          type: 'numeric',
-          decimal: 2  // decimal requires size
-        }
+        amount: { type: 'numeric(,2)' }  // decimal requires size
       }
     },
     expectedError: 'decimal'
@@ -115,7 +107,7 @@ export const invalidSchemas = {
   invalidAutomationTable: {
     schema: {
       columns: {
-        balance: { type: 'numeric', size: 10, decimal: 2 }
+        balance: { type: 'numeric(10,2)' }
       },
       tables: {
         accounts: {
@@ -139,7 +131,7 @@ export const invalidSchemas = {
   invalidAutomationForeignKey: {
     schema: {
       columns: {
-        balance: { type: 'numeric', size: 10, decimal: 2 }
+        balance: { type: 'numeric(10,2)' }
       },
       tables: {
         accounts: {
@@ -160,7 +152,7 @@ export const invalidSchemas = {
             account_fk: { table: 'accounts' }  // Different FK name
           },
           columns: {
-            amount: { type: 'numeric', size: 10, decimal: 2 }
+            amount: 'numeric(10,2)'
           }
         }
       }
@@ -178,7 +170,7 @@ export const invalidSchemas = {
             }
           },
           columns: {
-            amount: { type: 'numeric', size: 10, decimal: 2 }
+            amount: 'numeric(10,2)'
           }
         }
       }
@@ -194,19 +186,19 @@ export const invalidSchemas = {
           foreign_keys: {
             b_fk: { table: 'table_b' }
           },
-          columns: { id: { type: 'integer', primary_key: true } }
+          columns: { id: 'integer primary key' }
         },
         table_b: {
           foreign_keys: {
             c_fk: { table: 'table_c' }
           },
-          columns: { id: { type: 'integer', primary_key: true } }
+          columns: { id: 'integer primary key' }
         },
         table_c: {
           foreign_keys: {
             a_fk: { table: 'table_a' }  // Creates cycle A→B→C→A
           },
-          columns: { id: { type: 'integer', primary_key: true } }
+          columns: { id: 'integer primary key' }
         }
       }
     },
@@ -232,7 +224,7 @@ export const partiallyValidSchemas = {
   // Schemas that pass JSON Schema but fail cross-reference validation
   missingReusableColumn: {
     columns: {
-      name: { type: 'varchar', size: 50 }
+      name: { type: 'varchar(50)' }
     },
     tables: {
       users: {

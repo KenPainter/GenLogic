@@ -19,8 +19,8 @@ describe('Group 1.5: Column Inheritance Edge Cases', () => {
     test('should handle null inheritance (same name)', () => {
       const schema = {
         columns: {
-          id: { type: 'integer', sequence: true, primary_key: true },
-          name: { type: 'varchar', size: 50 }
+          id: { type: 'serial primary key' },
+          name: { type: 'varchar(50)' }
         },
         tables: {
           users: {
@@ -38,8 +38,8 @@ describe('Group 1.5: Column Inheritance Edge Cases', () => {
     test('should handle string inheritance (named reference)', () => {
       const schema = {
         columns: {
-          id: { type: 'integer', sequence: true, primary_key: true },
-          name: { type: 'varchar', size: 50 }
+          id: { type: 'serial primary key' },
+          name: { type: 'varchar(50)' }
         },
         tables: {
           users: {
@@ -58,15 +58,14 @@ describe('Group 1.5: Column Inheritance Edge Cases', () => {
       const schema = {
         columns: {
           id: { type: 'integer' },
-          name: { type: 'varchar', size: 50 }
+          name: { type: 'varchar(50)' }
         },
         tables: {
           users: {
             columns: {
               user_id: {
                 $ref: 'id',
-                sequence: true,     // Add sequence to inherited id
-                primary_key: true   // Add primary key constraint
+                type: 'serial primary key'   // Override type to add sequence and primary key
               },
               username: {
                 $ref: 'name',
@@ -90,15 +89,14 @@ describe('Group 1.5: Column Inheritance Edge Cases', () => {
     test('should allow type overrides in $ref inheritance', () => {
       const schema = {
         columns: {
-          amount: { type: 'numeric', size: 10, decimal: 2 }
+          amount: { type: 'numeric(10,2)' }
         },
         tables: {
           transactions: {
             columns: {
               large_amount: {
                 $ref: 'amount',
-                size: 15,       // Override size
-                decimal: 4      // Override decimal places
+                type: 'numeric(15,4)'  // Override with larger size and decimal
               }
             }
           }
@@ -111,7 +109,7 @@ describe('Group 1.5: Column Inheritance Edge Cases', () => {
     test('should allow constraint additions in $ref inheritance', () => {
       const schema = {
         columns: {
-          email: { type: 'varchar', size: 255 }
+          email: { type: 'varchar(255)' }
         },
         tables: {
           users: {
@@ -132,7 +130,7 @@ describe('Group 1.5: Column Inheritance Edge Cases', () => {
     test('should allow automation additions in inheritance', () => {
       const schema = {
         columns: {
-          balance: { type: 'numeric', size: 15, decimal: 2 }
+          balance: { type: 'numeric(15,2)' }
         },
         tables: {
           accounts: {
@@ -168,8 +166,8 @@ describe('Group 1.5: Column Inheritance Edge Cases', () => {
       const schema = {
         columns: {
           base_id: { type: 'integer' },
-          enhanced_id: { $ref: 'base_id', sequence: true },
-          primary_id: { $ref: 'enhanced_id', primary_key: true }
+          enhanced_id: { $ref: 'base_id', type: 'serial' },
+          primary_id: { $ref: 'enhanced_id', type: 'serial primary key' }
         },
         tables: {
           users: {
@@ -188,13 +186,13 @@ describe('Group 1.5: Column Inheritance Edge Cases', () => {
         columns: {
           // Base types
           id: { type: 'integer' },
-          name: { type: 'varchar', size: 50 },
-          amount: { type: 'numeric', size: 10, decimal: 2 },
+          name: { type: 'varchar(50)' },
+          amount: { type: 'numeric(10,2)' },
 
           // Enhanced types
-          primary_id: { $ref: 'id', sequence: true, primary_key: true },
+          primary_id: { $ref: 'id', type: 'serial primary key' },
           unique_name: { $ref: 'name', unique: true },
-          currency_amount: { $ref: 'amount', size: 15, decimal: 4 }
+          currency_amount: { $ref: 'amount', type: 'numeric(15,4)' }
         },
         tables: {
           accounts: {
@@ -273,7 +271,7 @@ describe('Group 1.5: Column Inheritance Edge Cases', () => {
             columns: {
               user_id: {
                 $ref: 'missing_column',  // No reusable column named 'missing_column'
-                primary_key: true
+                type: 'integer primary key'
               }
             }
           }
@@ -291,7 +289,7 @@ describe('Group 1.5: Column Inheritance Edge Cases', () => {
         tables: {
           users: {
             columns: {
-              direct_column: { type: 'varchar', size: 50 },  // Direct definition
+              direct_column: 'varchar(50)',  // Direct definition
               inherited_column: 'id'  // Inherited definition
             }
           }
@@ -306,7 +304,7 @@ describe('Group 1.5: Column Inheritance Edge Cases', () => {
     test('should validate inherited types follow size rules', () => {
       const schema = {
         columns: {
-          base_varchar: { type: 'varchar', size: 50 },
+          base_varchar: { type: 'varchar(50)' },
           base_text: { type: 'text' }
         },
         tables: {
@@ -325,7 +323,7 @@ describe('Group 1.5: Column Inheritance Edge Cases', () => {
     test('should maintain type constraints through inheritance', () => {
       const schema = {
         columns: {
-          precise_numeric: { type: 'numeric', size: 10, decimal: 2 },
+          precise_numeric: { type: 'numeric(10,2)' },
           simple_integer: { type: 'integer' }
         },
         tables: {

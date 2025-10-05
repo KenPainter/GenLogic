@@ -112,6 +112,11 @@ export class ResolvedSchemaGenerator {
       foreign_keys: Object.keys(processedTable.foreignKeys).length
     };
 
+    // Add description if present
+    if (processedTable.description) {
+      info.description = processedTable.description;
+    }
+
     // Document sync relationships
     if (hasSyncTargets) {
       info.sync_targets = Object.keys(tableDefSrc.sync).map((targetTable: string) => ({
@@ -259,6 +264,11 @@ export class ResolvedSchemaGenerator {
     const doc: any = {
       type: columnDef.type
     };
+
+    // Add description if present
+    if (columnDef.description) {
+      doc.description = columnDef.description;
+    }
 
     // Add type parameters
     if (columnDef.size !== undefined) doc.size = columnDef.size;
