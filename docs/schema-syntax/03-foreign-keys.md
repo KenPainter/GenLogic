@@ -44,6 +44,10 @@ tables:
 
 ## Generated SQL
 
+GenLogic automatically creates:
+1. Foreign key constraint (referential integrity)
+2. Index on foreign key columns (query performance)
+
 ```sql
 CREATE TABLE users (
   user_id SERIAL PRIMARY KEY,
@@ -61,6 +65,7 @@ ALTER TABLE posts
   FOREIGN KEY (user_fk)
   REFERENCES users(user_id);
 
+-- Index automatically created for query performance
 CREATE INDEX idx_posts_user_fk ON posts(user_fk);
 ```
 
@@ -169,6 +174,9 @@ ALTER TABLE order_lines
   ADD CONSTRAINT fk_order_lines_order_fk
   FOREIGN KEY (order_id, order_year)
   REFERENCES order_headers(order_id, order_year);
+
+-- Composite index for multi-column FK
+CREATE INDEX idx_order_lines_order_id_order_year ON order_lines(order_id, order_year);
 ```
 
 ## Self-Referencing Foreign Keys
@@ -200,6 +208,8 @@ ALTER TABLE employees
   ADD CONSTRAINT fk_employees_manager_fk
   FOREIGN KEY (manager_fk)
   REFERENCES employees(id);
+
+CREATE INDEX idx_employees_manager_fk ON employees(manager_fk);
 ```
 
 ## Delete Actions

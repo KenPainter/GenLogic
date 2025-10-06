@@ -39,6 +39,19 @@ export class DiffEngine {
           columns: this.getAllTableColumns(desiredTable),
           foreignKeys: desiredTable.foreignKeys
         });
+
+        // Create indexes for foreign key columns
+        for (const [fkName] of Object.entries(desiredTable.foreignKeys)) {
+          // Get the FK column names from the mapping
+          const columnNames = desiredTable.fkColumnMapping[fkName] || [fkName];
+
+          diff.indexesToCreate.push({
+            tableName,
+            indexName: `idx_${tableName}_${columnNames.join('_')}`,
+            columns: columnNames,
+            isUnique: false
+          });
+        }
       } else {
         // Table exists - check for new columns
         const newColumns = this.findNewColumns(desiredTable, currentTable);
@@ -56,7 +69,17 @@ export class DiffEngine {
           diff.foreignKeysToAdd.push({
             tableName,
             foreignKeyName: fk.name,
-            definition: fk.definition
+            fkName: fk.fkName,
+            definition: fk.definition,
+            columnNames: fk.columnNames
+          });
+
+          // Create index for the new FK column(s)
+          diff.indexesToCreate.push({
+            tableName,
+            indexName: `idx_${tableName}_${fk.columnNames.join('_')}`,
+            columns: fk.columnNames,
+            isUnique: false
           });
         }
       }
@@ -120,15 +143,22 @@ export class DiffEngine {
   private findNewForeignKeys(
     desiredTable: ProcessedTable,
     currentTable: DatabaseTable
-  ): Array<{name: string, definition: any}> {
-    const newForeignKeys: Array<{name: string, definition: any}> = [];
+  ): Array<{name: string, fkName: string, definition: any, columnNames: string[]}> {
+    const newForeignKeys: Array<{name: string, fkName: string, definition: any, columnNames: string[]}> = [];
     const currentFKNames = new Set(currentTable.foreignKeys.map(fk => fk.name));
 
-    for (const [name, definition] of Object.entries(desiredTable.foreignKeys)) {
+    for (const [fkName, definition] of Object.entries(desiredTable.foreignKeys)) {
       // Generate a consistent FK constraint name
-      const constraintName = `fk_${currentTable.name}_${name}`;
+      const constraintName = `fk_${currentTable.name}_${fkName}`;
       if (!currentFKNames.has(constraintName)) {
-        newForeignKeys.push({ name: constraintName, definition });
+        // Get the column names for this FK from the mapping
+        const columnNames = desiredTable.fkColumnMapping[fkName] || [fkName];
+        newForeignKeys.push({
+          name: constraintName,
+          fkName,
+          definition,
+          columnNames
+        });
       }
     }
 
@@ -168,5 +198,7 @@ export interface IndexCreation {
 export interface ForeignKeyAddition {
   tableName: string;
   foreignKeyName: string;
+  fkName: string;
   definition: any;
+  columnNames: string[];
 }

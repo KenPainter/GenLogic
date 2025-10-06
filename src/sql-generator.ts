@@ -109,9 +109,17 @@ export class SQLGenerator {
    * Generate ALTER TABLE ADD CONSTRAINT for foreign key
    */
   private generateAddForeignKeySQL(fk: ForeignKeyAddition): string {
-    // This would need to be expanded based on FK definition structure
-    // For now, generating a placeholder
-    return `-- ALTER TABLE ${fk.tableName} ADD CONSTRAINT ${fk.foreignKeyName} FOREIGN KEY (...) REFERENCES (...);`;
+    const fkDef = fk.definition;
+    const referencedTable = fkDef.table;
+    const onDelete = fkDef.delete === 'cascade' ? 'CASCADE' : 'RESTRICT';
+
+    // Use the column names from the FK addition
+    const columnList = fk.columnNames.map(col => `"${col}"`).join(', ');
+
+    // For composite FKs, we need to reference the corresponding PK columns
+    // For now, assuming single-column FKs or that composite FKs reference matching PK columns
+    // TODO: Handle explicit column references in FK definition
+    return `ALTER TABLE "${fk.tableName}" ADD CONSTRAINT "${fk.foreignKeyName}" FOREIGN KEY (${columnList}) REFERENCES "${referencedTable}" ON DELETE ${onDelete};`;
   }
 
   /**
