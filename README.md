@@ -49,17 +49,15 @@ In addition to the docs linked to above, you need [Contributing](./CONTRIBUTING.
 
 ## Status and Major TO-DO Items
 
-[x] Tests - always up to date w/every commit
-[x] Schema syntax docs - always up to date w/every commit
-
 General To-Do
+- Replace Bun postgres built-in with pg driver, allows tests
+  and use w/o password
 - Implement SNAPSHOT - parent to child only once on insert to child
 - Docs:
   - Database Architecture docs need a rethink
   - Code Architecture docs need a rethink
   - Edge cases are documented but not in the toc
-  - maybe improve docs for tests, explain authentication
 - Better solution for AI assisants to write schema files.
-- Implement subversion protection for automated column
+- Implement subversion protection for automated columns
 
 

@@ -4,6 +4,12 @@ Previous: [Moving Values from Parent to Child](04-parent-to-child.md) | Next: [M
 
 Columns can automatically compute their values from other columns in the same row.
 
+GenLogic uses the 'generated' keyword from Postgres but GenLogic does not
+implement these using the Postgres generated column mechanism because
+that mechanism does not allow generated columns to refer to other generated
+columsn.  The GenLogic system is more powerful, and is implemented in
+triggers.
+
 ## Basic Structure
 
 ```yaml

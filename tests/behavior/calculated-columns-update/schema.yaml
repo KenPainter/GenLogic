@@ -1,0 +1,9 @@
+tables:
+  products:
+    columns:
+      id: integer primary key
+      base_price: numeric(10,2)
+      markup: numeric(5,2)
+      final_price:
+        type: numeric(10,2)
+        generated: "base_price * (1 + markup / 100)"

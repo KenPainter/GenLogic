@@ -1,0 +1,8 @@
+tables:
+  orders:
+    columns:
+      price: numeric(10,2)
+      quantity: integer
+      total:
+        type: numeric(10,2)
+        generated: price * quantity

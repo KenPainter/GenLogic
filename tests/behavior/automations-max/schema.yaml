@@ -1,0 +1,20 @@
+tables:
+  portfolios:
+    columns:
+      id: integer primary key
+      name: varchar(50)
+      max_investment:
+        type: numeric(10,2)
+        automation:
+          type: MAX
+          table: investments
+          foreign_key: portfolio
+          column: amount
+
+  investments:
+    columns:
+      id: integer primary key
+      portfolio_id: integer
+      amount: numeric(10,2)
+    foreign_keys:
+      portfolio: { table: portfolios }

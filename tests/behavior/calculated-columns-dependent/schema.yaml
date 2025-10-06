@@ -1,0 +1,15 @@
+tables:
+  orders:
+    columns:
+      id: integer primary key
+      quantity: integer
+      unit_price: numeric(10,2)
+      subtotal:
+        type: numeric(10,2)
+        generated: "quantity * unit_price"
+      tax:
+        type: numeric(10,2)
+        generated: "subtotal * 0.08"
+      total:
+        type: numeric(10,2)
+        generated: "subtotal + tax"

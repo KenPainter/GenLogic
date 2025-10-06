@@ -1,0 +1,9 @@
+columns:
+  id: serial primary key
+  name: varchar(100)
+
+tables:
+  users:
+    columns:
+      id: null
+      name: null

@@ -1,0 +1,3 @@
+matching_tables:
+  expense_rules:
+    result_column_name: category

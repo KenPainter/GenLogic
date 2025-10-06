@@ -22,6 +22,7 @@ For documentation changes:
 - Run `bun add-navigation.mjs` from the docs directory
 - Commit the navigation changes with your documentation
 
+
 ## Documentation
 
 This section, sadly, is written for AI assistants that

@@ -1,0 +1,20 @@
+tables:
+  customers:
+    columns:
+      id: integer primary key
+      name: varchar(50)
+      order_count:
+        type: integer
+        automation:
+          type: COUNT
+          table: orders
+          foreign_key: customer
+          column: id
+
+  orders:
+    columns:
+      id: integer primary key
+      customer_id: integer
+      total: numeric(10,2)
+    foreign_keys:
+      customer: { table: customers }

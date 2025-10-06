@@ -1,0 +1,13 @@
+tables:
+  type_showcase:
+    columns:
+      id: serial primary key
+      name: varchar(100) not null
+      email: varchar(255) unique
+      age: integer
+      salary: numeric(10,2)
+      is_active: boolean default true
+      created_at: timestamp default now()
+      bio: text
+      data:
+        type: jsonb

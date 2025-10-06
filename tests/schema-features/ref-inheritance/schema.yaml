@@ -1,0 +1,23 @@
+columns:
+  id_col: serial primary key
+  name_col: varchar(100) not null
+  timestamp_col: timestamp default now()
+
+tables:
+  users:
+    columns:
+      user_id:
+        $ref: id_col
+      username:
+        $ref: name_col
+      created_at:
+        $ref: timestamp_col
+
+  posts:
+    columns:
+      post_id:
+        $ref: id_col
+      title:
+        $ref: name_col
+      published_at:
+        $ref: timestamp_col

@@ -1,0 +1,14 @@
+tables:
+  a:
+    columns:
+      id: integer primary key
+      b_id: integer
+    foreign_keys:
+      b: { table: b }
+
+  b:
+    columns:
+      id: integer primary key
+      a_id: integer
+    foreign_keys:
+      a: { table: a }

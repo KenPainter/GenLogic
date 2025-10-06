@@ -31,11 +31,6 @@ program
         process.exit(1);
       }
 
-      if (!options.password) {
-        console.error('Error: Password is required (-w, --password)');
-        process.exit(1);
-      }
-
       // GENLOGIC CORE PRINCIPLE: Foreign keys are DATA PIPELINES, not just constraints
       // This processor validates the data flow graph before any database operations
       const processor = new GenLogicProcessor({
@@ -43,7 +38,7 @@ program
         port: parseInt(options.port || '5432'),
         database: options.database || 'test',
         user: options.user || 'test',
-        password: options.password || 'test',
+        password: options.password,
         dryRun: options.dryRun
       });
 

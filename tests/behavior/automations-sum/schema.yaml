@@ -1,0 +1,20 @@
+tables:
+  accounts:
+    columns:
+      id: integer primary key
+      name: varchar(50)
+      balance:
+        type: numeric(10,2)
+        automation:
+          type: SUM
+          table: transactions
+          foreign_key: account
+          column: amount
+
+  transactions:
+    columns:
+      id: integer primary key
+      account_id: integer
+      amount: numeric(10,2)
+    foreign_keys:
+      account: { table: accounts }

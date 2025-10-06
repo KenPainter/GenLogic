@@ -1,0 +1,20 @@
+tables:
+  products:
+    columns:
+      id: integer primary key
+      name: varchar(100)
+      base_price: numeric(10,2)
+
+  orders:
+    columns:
+      id: integer primary key
+      product_id: integer
+      price_at_purchase:
+        type: numeric(10,2)
+        automation:
+          type: SNAPSHOT
+          table: products
+          foreign_key: product
+          column: base_price
+    foreign_keys:
+      product: { table: products }

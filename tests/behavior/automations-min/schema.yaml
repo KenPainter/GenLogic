@@ -1,0 +1,20 @@
+tables:
+  products:
+    columns:
+      id: integer primary key
+      name: varchar(50)
+      min_price:
+        type: numeric(10,2)
+        automation:
+          type: MIN
+          table: prices
+          foreign_key: product
+          column: amount
+
+  prices:
+    columns:
+      id: integer primary key
+      product_id: integer
+      amount: numeric(10,2)
+    foreign_keys:
+      product: { table: products }

@@ -1,0 +1,8 @@
+tables:
+  transactions:
+    columns:
+      id: integer primary key
+      amount: numeric(10,2)
+      status:
+        type: varchar(20)
+        generated: "CASE WHEN amount > 0 THEN 'credit' WHEN amount < 0 THEN 'debit' ELSE 'zero' END"

@@ -1,0 +1,21 @@
+tables:
+  categories:
+    columns:
+      id: integer primary key
+      name: varchar(100)
+      tax_rate: numeric(5,2)
+
+  products:
+    columns:
+      id: integer primary key
+      category_id: integer
+      name: varchar(100)
+      category_tax:
+        type: numeric(5,2)
+        automation:
+          type: SYNC
+          table: categories
+          foreign_key: category
+          column: tax_rate
+    foreign_keys:
+      category: { table: categories }
