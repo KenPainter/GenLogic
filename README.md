@@ -61,3 +61,5 @@ General To-Do
   - maybe improve docs for tests, explain authentication
 - Better solution for AI assisants to write schema files.
 - Implement subversion protection for automated column
+
+
