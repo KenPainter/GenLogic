@@ -2,13 +2,18 @@
 
 import { Command } from 'commander';
 import { GenLogicProcessor } from './processor.js';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+
+// Read version from package.json
+const packageJson = JSON.parse(readFileSync(join(import.meta.dir, '../package.json'), 'utf-8'));
 
 const program = new Command();
 
 program
   .name('genlogic')
   .description('GenLogic - Augmented Normalization for PostgreSQL with foreign keys as data pipelines')
-  .version('1.0.0');
+  .version(packageJson.version);
 
 program
   .option('-h, --host <host>', 'PostgreSQL host', 'localhost')
