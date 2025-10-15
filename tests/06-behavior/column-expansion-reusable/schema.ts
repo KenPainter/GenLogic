@@ -2,11 +2,11 @@
 // This file describes the actual database structure after GenLogic processing
 // Source: /home/ken/hacking/genlogic/tests/06-behavior/column-expansion-reusable/schema.yaml
 // Database: genlogic_test_cli
-// Generated: 2025-10-15T21:28:27.715Z
+// Generated: 2025-10-15T21:35:16.159Z
 
 export const schema = {
   "_metadata": {
-    "generated_at": "2025-10-15T21:28:27.715Z",
+    "generated_at": "2025-10-15T21:35:16.158Z",
     "source_schema": "/home/ken/hacking/genlogic/tests/06-behavior/column-expansion-reusable/schema.yaml",
     "database": "genlogic_test_cli",
     "genlogic_version": "1.0.0",

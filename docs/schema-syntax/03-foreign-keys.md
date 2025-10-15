@@ -4,6 +4,15 @@ Previous: [Reusable Columns](02-reusable-columns.md) | Next: [Moving Values from
 
 Foreign keys establish relationships between tables.
 
+GenLogic defines foreign keys differently than traditional SQL syntax.
+
+In SQL, we define the columns in the table, then we establish the
+constraint.
+
+By contrast, in GenLogic we specify that we need a foreign key to
+a table, and GenLogic copies the primary key columns into the
+child table's definition.
+
 ## Basic Structure
 
 ```yaml
@@ -34,7 +43,7 @@ tables:
 
   posts:
     foreign_keys:
-      user_fk: users  # Simple string shorthand
+      user_fk: users  # creates column 'user_fk' automatically
 
     columns:
       post_id: id
@@ -90,7 +99,7 @@ tables:
       # category_fk column automatically created as INTEGER
 ```
 
-To control the foreign key column properties, declare it explicitly:
+To control the foreign key column properties, re-declare it explicitly:
 
 ```yaml
   products:

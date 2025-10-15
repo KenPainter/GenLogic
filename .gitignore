@@ -8,6 +8,7 @@ yarn-error.log*
 dist/
 build/
 *.tsbuildinfo
+tests/**/schema.ts
 
 # Local files during dev
 debug/
@@ -39,13 +40,6 @@ apps/
 ehthumbs.db
 Thumbs.db
 
-# Test coverage
-coverage/
-*.lcov
-
-# Logs
-logs/
-*.log
 
 # Runtime data
 pids/

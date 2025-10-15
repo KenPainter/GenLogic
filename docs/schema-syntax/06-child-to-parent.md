@@ -21,14 +21,14 @@ tables:
       source_column: *any valid PostgreSQL type*
 ```
 
-The automation format is: `TYPE table.column` where:
+The automation format is: `TYPE @table.column` where:
 - `TYPE` is one of: SUM, COUNT, MAX, MIN, LAST_VALUE
 - `table` is the child table name
 - `column` is the column in the child table to aggregate
 
 If the child table has multiple foreign keys to the parent table, specify which one:
 ```yaml
-automation: TYPE(foreign_key_name) table.column
+automation: TYPE(foreign_key_name) @table.column
 ```
 
 ## SUM Aggregation
@@ -45,7 +45,7 @@ tables:
       # Automatically maintained sum
       balance:
         type: numeric(10,2)
-        automation: SUM transactions.amount
+        automation: SUM @transactions.amount
 
   transactions:
     foreign_keys:
@@ -92,7 +92,7 @@ tables:
       # Count products in category
       product_count:
         type: integer
-        automation: COUNT products.product_id
+        automation: COUNT @products.product_id
 
   products:
     foreign_keys:
@@ -133,12 +133,12 @@ tables:
       # Track highest item price
       max_item_price:
         type: numeric(10,2)
-        automation: MAX order_items.unit_price
+        automation: MAX @order_items.unit_price
 
       # Track lowest item price
       min_item_price:
         type: numeric(10,2)
-        automation: MIN order_items.unit_price
+        automation: MIN @order_items.unit_price
 
   order_items:
     foreign_keys:
@@ -163,7 +163,7 @@ tables:
       # Track most recent order date
       last_order_date:
         type: date
-        automation: LAST_VALUE orders.order_date
+        automation: LAST_VALUE @orders.order_date
 
   orders:
     foreign_keys:
@@ -192,12 +192,12 @@ tables:
       # Sum of line item amounts
       order_total:
         type: numeric(10,2)
-        automation: SUM order_items.line_total
+        automation: SUM @order_items.line_total
 
       # Count of line items
       item_count:
         type: integer
-        automation: COUNT order_items.item_id
+        automation: COUNT @order_items.item_id
 
   order_items:
     foreign_keys:

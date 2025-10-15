@@ -112,7 +112,7 @@ seed-rows:
 ### Supported Value Types
 
 ```yaml
-content:
+seed-rows:
   # String values
   - name: "John's Shop"  # Single quotes are escaped automatically
 
@@ -150,7 +150,7 @@ tables:
     columns:
       key: varchar(50) primary key
       value: text
-    content:
+    seed-rows:
       - key: site_name
         value: My Application
       - key: maintenance_mode
@@ -175,7 +175,7 @@ tables:
       id: serial primary key
       email: varchar(255) unique
       name: varchar(100)
-    content:
+    seed-rows:
       - email: admin@example.com
         name: Administrator
 ```
@@ -207,11 +207,11 @@ For $lookup references, it validates:
 
 ```yaml
 # Invalid column reference
-content:
+seed-rows:
   - nonexistent_column: value  # Error: column doesn't exist
 
 # Invalid $lookup
-content:
+seed-rows:
   - user_id:
       $lookup:
         table: nonexistent_table  # Error: table doesn't exist
@@ -241,7 +241,7 @@ Define unique business keys for reliable conflict resolution:
 columns:
   code: varchar(20) unique
   name: varchar(100)
-content:
+seed-rows:
   - code: USD
     name: US Dollar
   - code: EUR
@@ -256,13 +256,13 @@ List tables with no dependencies first:
 tables:
   # Define parent tables first
   categories:
-    content: [...]
+    seed-rows: [...]
 
   # Then child tables with foreign keys
   products:
     foreign_keys:
       category: { table: categories }
-    content: [...]
+    seed-rows: [...]
 ```
 
 ### 3. Use $lookup for References
@@ -271,11 +271,11 @@ Avoid hardcoding IDs:
 
 ```yaml
 # Bad: Hardcoded ID
-content:
+seed-rows:
   - category_id: 1  # What if ID changes?
 
 # Good: Use $lookup
-content:
+seed-rows:
   - category_id:
       $lookup:
         table: categories
@@ -299,12 +299,12 @@ Use different content for different environments:
 
 ```yaml
 # development.yaml
-content:
+seed-rows:
   - email: test@example.com
     name: Test User
 
 # production.yaml
-content:
+seed-rows:
   - email: admin@company.com
     name: System Administrator
 ```
@@ -314,7 +314,7 @@ content:
 Combine static and dynamic values:
 
 ```yaml
-content:
+seed-rows:
   - code: "INIT-001"
     description: "Initial setup"
     created_at: '2024-01-01T00:00:00Z'
@@ -357,7 +357,7 @@ tables:
       id: serial primary key
       code: varchar(20) unique
       name: varchar(100)
-    content:
+    seed-rows:
       - code: DEFAULT
         name: Default Tenant
 
@@ -368,7 +368,7 @@ tables:
       email: varchar(255)
     foreign_keys:
       tenant: tenants
-    content:
+    seed-rows:
       - tenant_id:
           $lookup:
             table: tenants

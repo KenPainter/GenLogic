@@ -2,11 +2,11 @@
 // This file describes the actual database structure after GenLogic processing
 // Source: /home/ken/hacking/genlogic/tests/05-schema-features/pattern-match-all/schema.yaml
 // Database: genlogic_test_cli
-// Generated: 2025-10-15T21:28:16.180Z
+// Generated: 2025-10-15T21:35:02.205Z
 
 export const schema = {
   "_metadata": {
-    "generated_at": "2025-10-15T21:28:16.180Z",
+    "generated_at": "2025-10-15T21:35:02.204Z",
     "source_schema": "/home/ken/hacking/genlogic/tests/05-schema-features/pattern-match-all/schema.yaml",
     "database": "genlogic_test_cli",
     "genlogic_version": "1.0.0",

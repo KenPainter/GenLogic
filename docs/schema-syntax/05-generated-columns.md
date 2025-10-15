@@ -33,7 +33,7 @@ tables:
       quantity: integer
       total:
         type: numeric(10,2)
-        generated: price * quantity
+        generated: "@price * @quantity"
 ```
 
 ## What Happens
@@ -47,17 +47,17 @@ In the example above, when inserting `(price: 10.50, quantity: 3)`, the total is
 ### Arithmetic
 
 ```yaml
-generated: price * quantity
-generated: (amount - discount) * 1.1
-generated: subtotal + tax
+generated: "@price * @quantity"
+generated: "(@amount - @discount) * 1.1"
+generated: "@subtotal + @tax"
 ```
 
 ### String Operations
 
 ```yaml
-generated: first_name || ' ' || last_name
-generated: UPPER(email)
-generated: SUBSTRING(code, 1, 5)
+generated: "@first_name || ' ' || @last_name"
+generated: "UPPER(@email)"
+generated: "SUBSTRING(@code, 1, 5)"
 ```
 
 ### CASE Expressions
@@ -65,21 +65,21 @@ generated: SUBSTRING(code, 1, 5)
 ```yaml
 status:
   type: varchar(20)
-  generated: case when amount > 0 then 'positive' when amount < 0 then 'negative' else 'zero' end
+  generated: "case when @amount > 0 then 'positive' when @amount < 0 then 'negative' else 'zero' end"
 ```
 
 ### NULL Handling
 
 ```yaml
-generated: COALESCE(value1, 0) + COALESCE(value2, 0)
+generated: "COALESCE(@value1, 0) + COALESCE(@value2, 0)"
 ```
 
 ### Date Operations
 
 ```yaml
-generated: CURRENT_DATE
-generated: start_date + INTERVAL '30 days'
-generated: EXTRACT(YEAR FROM order_date)
+generated: "CURRENT_DATE"
+generated: "@start_date + INTERVAL '30 days'"
+generated: "EXTRACT(YEAR FROM @order_date)"
 ```
 
 ## Dependent Generated Columns
@@ -96,17 +96,17 @@ tables:
       # Generated first
       subtotal:
         type: numeric(10,2)
-        generated: unit_price * quantity
+        generated: "@unit_price * @quantity"
 
       # Generated second (uses subtotal)
       tax:
         type: numeric(10,2)
-        generated: subtotal * 0.1
+        generated: "@subtotal * 0.1"
 
       # Generated third (uses subtotal and tax)
       total:
         type: numeric(10,2)
-        generated: subtotal + tax
+        generated: "@subtotal + @tax"
 ```
 
 ## Circular Dependencies
@@ -120,11 +120,11 @@ tables:
     columns:
       col_a:
         type: integer
-        generated: col_b + 1  # Depends on col_b
+        generated: "@col_b + 1"  # Depends on col_b
 
       col_b:
         type: integer
-        generated: col_a + 1  # Depends on col_a - CYCLE!
+        generated: "@col_a + 1"  # Depends on col_a - CYCLE!
 ```
 
 ## Restrictions
@@ -137,12 +137,8 @@ A column cannot have both generated and automation properties:
 # INVALID
 balance:
   type: numeric(10,2)
-  generated: credits - debits  # Can't have both
-  automation:
-    type: SUM
-    table: transactions
-    foreign_key: account_fk
-    column: amount
+  generated: "@credits - @debits"  # Can't have both
+  automation: SUM @transactions.amount
 ```
 
 ### Expression Scope
@@ -170,22 +166,22 @@ tables:
       # Concatenate name
       full_name:
         type: varchar(101)
-        generated: "first_name || ' ' || last_name"
+        generated: "@first_name || ' ' || @last_name"
 
       # Calculate gross pay
       gross_pay:
         type: numeric(10,2)
-        generated: "hourly_rate * hours_worked"
+        generated: "@hourly_rate * @hours_worked"
 
       # Calculate tax
       tax_amount:
         type: numeric(10,2)
-        generated: "gross_pay * 0.15"
+        generated: "@gross_pay * 0.15"
 
       # Calculate net pay
       net_pay:
         type: numeric(10,2)
-        generated: "gross_pay - tax_amount"
+        generated: "@gross_pay - @tax_amount"
 ```
 
 Usage:

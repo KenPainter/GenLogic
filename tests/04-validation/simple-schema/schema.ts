@@ -2,11 +2,11 @@
 // This file describes the actual database structure after GenLogic processing
 // Source: /home/ken/hacking/genlogic/tests/04-validation/simple-schema/schema.yaml
 // Database: genlogic_test_cli
-// Generated: 2025-10-15T21:27:57.451Z
+// Generated: 2025-10-15T21:34:41.850Z
 
 export const schema = {
   "_metadata": {
-    "generated_at": "2025-10-15T21:27:57.450Z",
+    "generated_at": "2025-10-15T21:34:41.849Z",
     "source_schema": "/home/ken/hacking/genlogic/tests/04-validation/simple-schema/schema.yaml",
     "database": "genlogic_test_cli",
     "genlogic_version": "1.0.0",

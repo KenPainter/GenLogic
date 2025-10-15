@@ -104,7 +104,8 @@ columns:
 
   net_balance:
     type: numeric(15,2)
-    generated: debits - credits
+    # use quotes if the first symbol is @ in the string
+    generated: "@debits - @credits"
     comment: Calculated balance
 ```
 

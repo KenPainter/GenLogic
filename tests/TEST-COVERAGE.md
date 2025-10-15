@@ -14,7 +14,6 @@ This document catalogs all testable behavior in GenLogic. It serves as:
 
 1. **PostgreSQL database**: Tests require a test database
 2. **Database creation**: Create `genlogic_test_cli` database
-3. **Authentication**: Configure password OR pg_hba.conf for passwordless auth
 
 ```bash
 # Create test database
