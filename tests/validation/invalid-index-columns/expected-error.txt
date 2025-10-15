@@ -1,0 +1,2 @@
+Index/constraint validation failed:
+Table 'test_table', indexes[0]: column 'nonexistent_column' does not exist

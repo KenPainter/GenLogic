@@ -4,22 +4,28 @@ This directory contains comprehensive documentation for GenLogic schema definiti
 
 ## Table of Contents
 
+### Building and Updating a Database
+1. [Installation](building-database/00-installation.md) 
+2. [CLI Usage](building-database/10-cli-usage.md) 
+3. [What GenLogic Does](building-database/20-what-genlogic-does.md)
+
+
 ### GenLogic Schema Syntax
 1. [Single Table Basics](schema-syntax/01-single-table.md) - Creating a simple table with all column types
 2. [Reusable Columns](schema-syntax/02-reusable-columns.md) - Column inheritance with string, null, and $ref methods
 3. [Foreign Keys](schema-syntax/03-foreign-keys.md) - Establishing relationships between tables
-4. [Moving Values from Parent to Child](schema-syntax/04-parent-to-child.md) - FOLLOW automation
+4. [Moving Values from Parent to Child](schema-syntax/04-parent-to-child.md) - SNAPSHOT and SYNC automations
 5. [Generating Values Within a Row](schema-syntax/05-generated-columns.md) - Expression-based calculations
 6. [Moving Values from Child to Parent](schema-syntax/06-child-to-parent.md) - Aggregation automations
 7. [Pattern Matching Tables](schema-syntax/07-matching-tables.md) - Rule-based categorization with specificity ranking
+8. [Indexes and Unique Constraints](schema-syntax/08-indexes-and-constraints.md) - Composite indexes and unique constraints
+9. [Label and Format](schema-syntax/09-label-and-format.md) - UI metadata that propagates through relationships
+10. [Seed Data](schema-syntax/02-seed-data.md) - Loading seed data with foreign key resolution
 
-### Building and Updating a Database
-1. [CLI Usage](building-database/01-cli-usage.md) - Command-line interface usage and options
-2. [Seed Data](building-database/02-seed-data.md) - Loading seed data with foreign key resolution
 
-### Development Utilities
-1. [Documentation Navigation Links](development/01-navigation-links.md) - Adding navigation to documentation
-2. [Test Guide](development/02-test-guide.md) - Testing framework and validation
+### Hacking GenLogic
+1. [Test Guide](development/02-test-guide.md) - Testing framework and validation
+2. [Documentation Navigation Links](development/01-navigation-links.md) - Adding navigation to documentation
 3. [Test Coverage Matrix](development/03-test-coverage-matrix.md) - Source code to test and documentation mapping
 
 ### Database Architecture

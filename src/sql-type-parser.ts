@@ -27,6 +27,15 @@ export function parseSQLType(sqlTypeString: string): ParsedSQLType {
   // Normalize whitespace
   let sql = sqlTypeString.trim().replace(/\s+/g, ' ');
 
+  // Handle multi-word types (normalize before parsing)
+  // These must be handled as special cases since the type regex expects single words
+  if (sql.match(/^double\s+precision/i)) {
+    sql = sql.replace(/^double\s+precision/i, 'double_precision');
+  }
+  if (sql.match(/^character\s+varying/i)) {
+    sql = sql.replace(/^character\s+varying/i, 'varchar');
+  }
+
   // Handle SERIAL types (shorthand for integer with sequence)
   const serialMatch = sql.match(/^(big|small)?serial/i);
   if (serialMatch) {

@@ -28,7 +28,7 @@ All automation logic and calculated columns for a given operation are consolidat
 All triggers fire BEFORE the operation completes. This allows:
 - Modifying NEW row values before they are written to disk
 - Calculated columns to compute values
-- FOLLOW automations to fetch values from parent tables
+- SNAPSHOT/SYNC automations to fetch values from parent tables
 - Change detection by comparing OLD vs NEW values
 
 ### 3. Four-Step Execution Order
@@ -36,7 +36,7 @@ All triggers fire BEFORE the operation completes. This allows:
 Within each UPDATE trigger, steps execute in this order:
 
 ```
-1. PUSH to children (FOLLOW)            - Cascade parent changes downward
+1. PUSH to children (SYNC)              - Cascade parent changes downward
 2. PULL from parents (when FK changes)  - Fetch new parent values
 3. Calculate calculated columns          - Evaluate expressions in dependency order
 4. PUSH to parents (aggregations)       - Update parent aggregations
@@ -103,13 +103,13 @@ tables:
       child_id: { type: integer, primary_key: true, sequence: true }
       child_value: { type: numeric, size: 10, decimal: 2 }
 
-      # FOLLOW from parent
+      # SYNC from parent
       fetched_parent_value:
         type: numeric
         size: 10
         decimal: 2
         automation:
-          type: FOLLOW
+          type: SYNC
           table: parent
           foreign_key: parent_fk
           column: parent_value
@@ -128,7 +128,7 @@ tables:
 CREATE OR REPLACE FUNCTION parent_before_update_genlogic()
 RETURNS TRIGGER AS $$
 BEGIN
-  -- Step 1: PUSH to children (FOLLOW with change detection)
+  -- Step 1: PUSH to children (SYNC with change detection)
   IF OLD.parent_value IS DISTINCT FROM NEW.parent_value THEN
     UPDATE child SET
       fetched_parent_value = NEW.parent_value
@@ -236,7 +236,7 @@ All automation and calculation logic for a table is organized in the `TableAutom
 interface TableAutomations {
   tableName: string;
 
-  // Step 1: PUSH to children (FOLLOW)
+  // Step 1: PUSH to children (SYNC)
   pushToChildren: Array<{
     childTable: string;
     foreignKeyName: string;
@@ -373,7 +373,7 @@ tables:
     columns:
       fetched_value:
         automation:
-          type: FOLLOW
+          type: SYNC
           table: parent
           column: parent_value  # child ← parent (cycle!)
 ```
@@ -448,7 +448,7 @@ DEBUG_SQL=1 bun run src/cli.ts -s test_consolidated_triggers.yaml --dry-run
 
 ### Test Schemas
 - `test_simple_consolidated.yaml` - Basic SUM aggregation and calculated columns
-- `test_consolidated_triggers.yaml` - Complex Parent/Child with FOLLOW, calculations, and aggregations
+- `test_consolidated_triggers.yaml` - Complex Parent/Child with SYNC, calculations, and aggregations
 
 ### Integration Tests
 Database tests verify the complete trigger execution flow with real data.
@@ -470,7 +470,7 @@ calculated: "a + b"  # NULL + anything = NULL
 ```
 
 ### 4. Test Bidirectional Flows
-When you have parent ↔ child automation (SUM + FOLLOW), test updates in both directions to verify loop prevention works.
+When you have parent ↔ child automation (SUM + SYNC), test updates in both directions to verify loop prevention works.
 
 ### 5. Understand the Four Steps
 When debugging trigger issues, trace through the four steps sequentially. Most issues are ordering problems (e.g., calculating before pulling from parent).

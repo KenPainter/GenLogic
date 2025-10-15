@@ -9,7 +9,7 @@ calls "Augmented Normalization" - a normalized foundation for external
 values that automatically generates the denormalized calculated values.
 
 This produces two major simplifications for application development:
-* Declarative business logic
+* Declarative business logic in a single source of truth.
 * No ORM in the stack - Middleware and UI can be destructered to views
   and actions on single tables.
 

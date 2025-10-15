@@ -12,10 +12,6 @@ tables:
       name: varchar(100)
       category_tax:
         type: numeric(5,2)
-        automation:
-          type: SYNC
-          table: categories
-          foreign_key: category
-          column: tax_rate
+        automation: SYNC @categories.tax_rate
     foreign_keys:
       category: { table: categories }

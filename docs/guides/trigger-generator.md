@@ -81,15 +81,15 @@ columns:
   customer_name:
     type: varchar
     automation:
-      type: FOLLOW
+      type: SYNC
       table: customers
       foreign_key: customer_fk
       column: name
 ```
 
 **Generated Behavior:**
-- When customer_fk is set/changed, fetches customer name
-- Updates when parent data changes (if FETCH_UPDATES enabled)
+- When customer_fk is set/changed, fetches customer name from parent
+- Updates when parent data changes (bidirectional synchronization)
 
 ### 4. PUSH - Cascade Updates to Children
 
@@ -106,7 +106,7 @@ tables:
       unit_price:
         type: numeric
         automation:
-          type: FOLLOW
+          type: SYNC
           table: products
           foreign_key: product_fk
           column: price
@@ -305,7 +305,7 @@ tables:
   order_items:
     columns:
       amount: { calculated: "quantity * unit_price" }
-      product_name: { automation: { type: FOLLOW, table: products, foreign_key: product_fk, column: name }}
+      product_name: { automation: { type: SYNC, table: products, foreign_key: product_fk, column: name }}
     foreign_keys:
       order_fk: { table: orders }
       product_fk: { table: products }

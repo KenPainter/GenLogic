@@ -1,4 +1,4 @@
-Previous: [Seed Data](../building-database/02-seed-data.md) | Next: [Test Guide](02-test-guide.md)
+Previous: [Test Guide](02-test-guide.md) | Next: [Test Coverage Matrix](03-test-coverage-matrix.md)
 
 # Documentation Navigation Links
 
@@ -38,4 +38,4 @@ Content goes here...
 
 ---
 
-Previous: [Seed Data](../building-database/02-seed-data.md) | Next: [Test Guide](02-test-guide.md)
+Previous: [Test Guide](02-test-guide.md) | Next: [Test Coverage Matrix](03-test-coverage-matrix.md)

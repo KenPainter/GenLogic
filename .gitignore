@@ -71,6 +71,9 @@ temp/
 # Docker volumes
 postgres_test_data/
 
-# Generated schema files
-*.resolved.yaml
+# Generated schema files (TypeScript resolved schemas from .yaml)
+# These are generated from source .yaml files by GenLogic
+# Uncomment to ignore them:
+# apps/*.ts
+# tests/**/*.ts
 

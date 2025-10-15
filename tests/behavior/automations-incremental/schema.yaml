@@ -4,11 +4,7 @@ tables:
       id: integer primary key
       balance:
         type: numeric(10,2)
-        automation:
-          type: SUM
-          table: transactions
-          foreign_key: account
-          column: amount
+        automation: SUM @transactions.amount
 
   transactions:
     columns:

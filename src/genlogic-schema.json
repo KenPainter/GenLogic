@@ -78,13 +78,13 @@
               "type": "string",
               "description": "Override comment (completely replaces)"
             },
-            "ui-notes": {
-              "type": "array",
-              "description": "Override UI guidance notes",
-              "items": {
-                "type": "string",
-                "enum": ["read-only", "hidden"]
-              }
+            "label": {
+              "type": "string",
+              "description": "Override label (completely replaces)"
+            },
+            "format": {
+              "type": "string",
+              "description": "Override format (completely replaces)"
             }
           },
           "required": ["$ref"],
@@ -112,14 +112,13 @@
           "type": "string",
           "description": "Human-readable description of this column's purpose and usage (emits SQL COMMENT ON)"
         },
-        "ui-notes": {
-          "type": "array",
-          "description": "UI guidance notes for this column",
-          "items": {
-            "type": "string",
-            "enum": ["read-only", "hidden"],
-            "description": "UI behavior hints: read-only (not editable), hidden (don't show in UI)"
-          }
+        "label": {
+          "type": "string",
+          "description": "Human-readable label for UI display - follows through foreign keys and SYNC/SNAPSHOT automations"
+        },
+        "format": {
+          "type": "string",
+          "description": "Format hint for UI rendering (e.g., 'currency', 'date', 'email') - follows through foreign keys and SYNC/SNAPSHOT automations"
         }
       },
       "anyOf": [
@@ -171,13 +170,13 @@
               "type": "string",
               "description": "Override comment (completely replaces)"
             },
-            "ui-notes": {
-              "type": "array",
-              "description": "Override UI guidance notes",
-              "items": {
-                "type": "string",
-                "enum": ["read-only", "hidden"]
-              }
+            "label": {
+              "type": "string",
+              "description": "Override label (completely replaces)"
+            },
+            "format": {
+              "type": "string",
+              "description": "Override format (completely replaces)"
             }
           },
           "required": ["$ref"],
@@ -196,15 +195,6 @@
         "comment": {
           "type": "string",
           "description": "Human-readable description of this table's purpose and usage (emits SQL COMMENT ON)"
-        },
-        "ui-notes": {
-          "type": "array",
-          "description": "UI guidance notes - not processed by database, expanded in resolved schema",
-          "items": {
-            "type": "string",
-            "enum": ["singleton", "no-insert", "no-update", "no-delete"],
-            "description": "UI behavior hints: singleton (expect 1 row), no-insert/update/delete (disable CRUD operations)"
-          }
         },
         "columns": {
           "type": "object",
@@ -236,7 +226,33 @@
           },
           "additionalProperties": false
         },
-        "content": {
+        "unique_constraints": {
+          "type": "array",
+          "description": "Composite unique constraints - each item is an array of column names that must be unique in combination",
+          "items": {
+            "type": "array",
+            "description": "Array of column names forming a unique constraint",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$"
+            },
+            "minItems": 1
+          }
+        },
+        "indexes": {
+          "type": "array",
+          "description": "Non-unique indexes - each item is an array of column names to index together",
+          "items": {
+            "type": "array",
+            "description": "Array of column names forming an index",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$"
+            },
+            "minItems": 1
+          }
+        },
+        "seed-rows": {
           "type": "array",
           "description": "Seed data rows to insert if not already present (checked by primary key)",
           "items": {
@@ -364,38 +380,14 @@
     "automationDefinition": {
       "oneOf": [
         {
-          "$ref": "#/definitions/standardAutomationDefinition"
+          "type": "string",
+          "pattern": "^(SUM|COUNT|MAX|MIN|LAST_VALUE|SNAPSHOT|SYNC|DOMINANT|QUEUEPOS)(\\([a-zA-Z_][a-zA-Z0-9_]*\\))?\\s+@[a-zA-Z_][a-zA-Z0-9_]*\\.[a-zA-Z_][a-zA-Z0-9_]*$",
+          "description": "Standard automation: 'TYPE @table.column' or 'TYPE(fk_name) @table.column' - Examples: 'SUM @transactions.amount', 'COUNT(customer_fk) @orders.id'"
         },
         {
           "$ref": "#/definitions/ruleMatchAutomationDefinition"
         }
       ]
-    },
-    "standardAutomationDefinition": {
-      "type": "object",
-      "description": "Standard automation types (aggregations and syncs)",
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": ["SUM", "COUNT", "MAX", "MIN", "LAST_VALUE", "SNAPSHOT", "SYNC", "DOMINANT", "QUEUEPOS"],
-          "description": "Automation type"
-        },
-        "table": {
-          "type": "string",
-          "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
-          "description": "Source/target table name - VALIDATION REQUIRED: Must exist in 'tables' section"
-        },
-        "foreign_key": {
-          "type": "string",
-          "description": "Foreign key name in the source/target table - VALIDATION REQUIRED: Must exist in table's foreign_keys section"
-        },
-        "column": {
-          "type": "string",
-          "description": "Column name in source table to aggregate/sync"
-        }
-      },
-      "required": ["type", "table", "foreign_key", "column"],
-      "additionalProperties": false
     },
     "ruleMatchAutomationDefinition": {
       "type": "object",

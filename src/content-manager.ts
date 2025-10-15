@@ -2,16 +2,16 @@ import type { GenLogicSchema } from './types.js';
 import type { ProcessedSchema, ProcessedTable } from './schema-processor.js';
 
 /**
- * ContentManager - Handles insertion of seed data from 'content' sections
+ * ContentManager - Handles insertion of seed data from 'seed-rows' sections
  *
- * Content rows are inserted only if they don't already exist (based on primary key check)
+ * Seed rows are inserted only if they don't already exist (based on primary key check)
  */
 export class ContentManager {
   /**
-   * Generate INSERT statements for content sections
+   * Generate INSERT statements for seed-rows sections
    * Only inserts rows that don't already exist based on primary key
    *
-   * NOTE: Content inserts run AFTER all schema changes are complete,
+   * NOTE: Seed row inserts run AFTER all schema changes are complete,
    * so we can safely assume all columns exist
    */
   generateContentInserts(schema: GenLogicSchema, processedSchema: ProcessedSchema): string[] {
@@ -22,25 +22,25 @@ export class ContentManager {
     }
 
     for (const [tableName, tableDef] of Object.entries(schema.tables)) {
-      if (!tableDef.content || tableDef.content.length === 0) {
+      if (!tableDef['seed-rows'] || tableDef['seed-rows'].length === 0) {
         continue;
       }
 
       const processedTable = processedSchema.tables[tableName];
       if (!processedTable) {
-        console.warn(`⚠️  Warning: Table ${tableName} not found in processed schema, skipping content insertion`);
+        console.warn(`⚠️  Warning: Table ${tableName} not found in processed schema, skipping seed-rows insertion`);
         continue;
       }
 
       // Find primary key columns
       const pkColumns = this.findPrimaryKeyColumns(processedTable);
       if (pkColumns.length === 0) {
-        console.warn(`⚠️  Warning: Table ${tableName} has no primary key, skipping content insertion`);
+        console.warn(`⚠️  Warning: Table ${tableName} has no primary key, skipping seed-rows insertion`);
         continue;
       }
 
       // Generate INSERT statements for each row
-      for (const row of tableDef.content) {
+      for (const row of tableDef['seed-rows']) {
         const statement = this.generateInsertStatement(tableName, row, pkColumns, processedTable);
         if (statement) {
           statements.push(statement);
@@ -102,7 +102,8 @@ export class ContentManager {
       conflictClause = `ON CONFLICT (${pkColumns.join(', ')}) DO NOTHING`;
     } else {
       // PK columns are missing (likely sequence) - look for unique columns
-      const allColumns = { ...processedTable.columns, ...processedTable.generatedColumns };
+      // All columns (including FK-generated) are now in processedTable.columns
+      const allColumns = processedTable.columns;
       const uniqueColumns = columns.filter(col => {
         const columnDef = allColumns[col];
         return columnDef?.unique === true;
@@ -200,36 +201,36 @@ export class ContentManager {
     }
 
     for (const [tableName, tableDef] of Object.entries(schema.tables)) {
-      if (!tableDef.content || tableDef.content.length === 0) {
+      if (!tableDef['seed-rows'] || tableDef['seed-rows'].length === 0) {
         continue;
       }
 
       const processedTable = processedSchema.tables[tableName];
       if (!processedTable) {
-        errors.push(`Table '${tableName}' has content but is not defined in processed schema`);
+        errors.push(`Table '${tableName}' has seed-rows but is not defined in processed schema`);
         continue;
       }
 
       // Include both explicitly defined columns AND generated FK columns
       const validColumns = new Set([
         ...Object.keys(processedTable.columns),
-        ...Object.keys(processedTable.generatedColumns)
+        // generatedColumns now merged into columns, no need to add separately
       ]);
 
       // Check each row
-      for (let i = 0; i < tableDef.content.length; i++) {
-        const row = tableDef.content[i];
+      for (let i = 0; i < tableDef['seed-rows'].length; i++) {
+        const row = tableDef['seed-rows'][i];
         const rowColumns = Object.keys(row);
 
         if (rowColumns.length === 0) {
-          errors.push(`Table '${tableName}' content row ${i} is empty`);
+          errors.push(`Table '${tableName}' seed-rows row ${i} is empty`);
           continue;
         }
 
         // Check all columns exist
         for (const col of rowColumns) {
           if (!validColumns.has(col)) {
-            errors.push(`Table '${tableName}' content row ${i} references non-existent column '${col}'`);
+            errors.push(`Table '${tableName}' seed-rows row ${i} references non-existent column '${col}'`);
           }
 
           // Validate $lookup references
@@ -239,7 +240,7 @@ export class ContentManager {
 
             // Validate $lookup structure
             if (!lookup.table || !lookup.column || !lookup.where) {
-              errors.push(`Table '${tableName}' content row ${i}, column '${col}': $lookup requires table, column, and where properties`);
+              errors.push(`Table '${tableName}' seed-rows row ${i}, column '${col}': $lookup requires table, column, and where properties`);
               continue;
             }
 
@@ -252,7 +253,7 @@ export class ContentManager {
               if (lookupTable) {
                 const lookupTableColumns = new Set([
                   ...Object.keys(lookupTable.columns),
-                  ...Object.keys(lookupTable.generatedColumns)
+                  // generatedColumns now merged into columns
                 ]);
 
                 if (!lookupTableColumns.has(lookup.column)) {
@@ -277,7 +278,8 @@ export class ContentManager {
         const pkColumns = this.findPrimaryKeyColumns(processedTable);
         for (const pkCol of pkColumns) {
           // Check if this PK column has a sequence
-          const allColumns = { ...processedTable.columns, ...processedTable.generatedColumns };
+          // All columns (including FK-generated) are now in processedTable.columns
+      const allColumns = processedTable.columns;
           const columnDef = allColumns[pkCol];
           const hasSequence = columnDef?.sequence === true;
 

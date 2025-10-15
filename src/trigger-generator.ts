@@ -1,6 +1,7 @@
-import type { GenLogicSchema, AutomationDefinition } from './types.js';
+import type { GenLogicSchema, AutomationDefinition, ParsedStandardAutomation } from './types.js';
 import type { ProcessedSchema } from './schema-processor.js';
 import { DataFlowGraphValidator } from './graph.js';
+import { resolveAutomation } from './automation-parser.js';
 
 // Types for consolidated trigger generation
 // One trigger per table handles all automations in sequence
@@ -166,17 +167,29 @@ export class TriggerGenerator {
     }
 
     // Collect automations and categorize them by table
-    for (const [targetTable, table] of Object.entries(schema.tables)) {
-      if (!table.columns) continue;
+    // Check processedSchema.columns (which now includes ALL columns - explicit + FK-generated)
+    for (const [targetTable, processedTable] of Object.entries(processedSchema.tables)) {
+      if (!processedTable.columns) continue;
 
-      for (const [targetColumn, column] of Object.entries(table.columns)) {
-        if (!column || typeof column !== 'object' || !('automation' in column)) continue;
+      for (const [targetColumn, columnDef] of Object.entries(processedTable.columns)) {
+        if (!columnDef.automation) continue;
 
-        const automation = (column as any).automation as AutomationDefinition;
-        if (!automation) continue;
+        const automationDef = columnDef.automation as AutomationDefinition;
 
+        // Parse and resolve the automation
+        let resolved;
+        try {
+          resolved = resolveAutomation(automationDef, targetTable, schema);
+        } catch (err: any) {
+          throw new Error(`Table '${targetTable}', column '${targetColumn}': ${err.message}`);
+        }
+
+        // Skip RULE_MATCH automations (handled separately)
+        if ('mode' in resolved) continue;
+
+        const automation = resolved as ParsedStandardAutomation;
         const sourceTable = automation.table;
-        const fkName = automation.foreign_key;
+        const fkName = automation.foreign_key!; // Always populated by resolveAutomation
         const sourceColumn = automation.column;
 
         if (['SUM', 'COUNT', 'MAX', 'MIN', 'LAST_VALUE'].includes(automation.type)) {
@@ -204,36 +217,38 @@ export class TriggerGenerator {
             childColumn: sourceColumn
           });
 
-        } else if (['SNAPSHOT', 'FOLLOW'].includes(automation.type)) {
-          // Cascade: sourceTable (parent) pushes to targetTable (child)
-          // Automation is DEFINED on targetTable (child) but TRIGGERS go on BOTH tables
+        } else if (['SNAPSHOT', 'SYNC'].includes(automation.type)) {
+          // Cascade: sourceTable (parent) provides values to targetTable (child)
+          // Automation is DEFINED on targetTable (child)
           // FK is FROM targetTable (child) TO sourceTable (parent)
           const fkColumns = this.getFKColumnNames(targetTable, sourceTable, fkName, processedSchema);
 
-          // Trigger on parent: pushToChildren (when parent updates, push to child)
-          let pushToChild = tableAutomations[sourceTable].pushToChildren.find(
-            p => p.childTable === targetTable && p.foreignKeyName === fkName
-          );
-          if (!pushToChild) {
-            // Get parent PK columns to know what the FK references
-            const parentPKColumns = this.getTablePrimaryKeys(sourceTable, processedSchema);
+          // SYNC only: Trigger on parent to push updates to children
+          if (automation.type === 'SYNC') {
+            let pushToChild = tableAutomations[sourceTable].pushToChildren.find(
+              p => p.childTable === targetTable && p.foreignKeyName === fkName
+            );
+            if (!pushToChild) {
+              // Get parent PK columns to know what the FK references
+              const parentPKColumns = this.getTablePrimaryKeys(sourceTable, processedSchema);
 
-            pushToChild = {
-              childTable: targetTable,
-              foreignKeyName: fkName,
-              fkColumns,
-              parentPKColumns,
-              columns: []
-            };
-            tableAutomations[sourceTable].pushToChildren.push(pushToChild);
+              pushToChild = {
+                childTable: targetTable,
+                foreignKeyName: fkName,
+                fkColumns,
+                parentPKColumns,
+                columns: []
+              };
+              tableAutomations[sourceTable].pushToChildren.push(pushToChild);
+            }
+            pushToChild.columns.push({
+              parentColumn: sourceColumn,
+              childColumn: targetColumn,
+              isFetchUpdates: true  // SYNC triggers on UPDATE
+            });
           }
-          pushToChild.columns.push({
-            parentColumn: sourceColumn,
-            childColumn: targetColumn,
-            isFetchUpdates: automation.type === 'FOLLOW'
-          });
 
-          // Trigger on child: pullFromParents (when FK changes, pull from new parent)
+          // Both SNAPSHOT and SYNC: Trigger on child to pull from parent (when FK changes or on INSERT)
           let pullFromParent = tableAutomations[targetTable].pullFromParents.find(
             p => p.parentTable === sourceTable && p.foreignKeyName === fkName
           );
@@ -359,13 +374,22 @@ export class TriggerGenerator {
   }
 
   /**
-   * Generate consolidated triggers for a table
-   * One BEFORE trigger per operation (INSERT/UPDATE/DELETE)
+   * Generate triggers for a table
+   * Split into BEFORE (modifies NEW) and AFTER (cascades) triggers
    */
   private generateConsolidatedTriggers(tableName: string, automations: TableAutomations, processedSchema: ProcessedSchema): string[] {
     const triggers: string[] = [];
 
-    // Determine which operations need triggers
+    // Determine which automations need BEFORE triggers (modify NEW row)
+    const needsBeforeInsert =
+      automations.pullFromParents.length > 0 ||
+      automations.calculatedColumns.length > 0;
+
+    const needsBeforeUpdate =
+      automations.pullFromParents.length > 0 ||
+      automations.calculatedColumns.length > 0;
+
+    // Determine which automations need AFTER triggers (cascade to other tables)
     const hasSyncInsert = automations.syncTargets.some(s => s.operations.includes('insert'));
     const hasSyncUpdate = automations.syncTargets.some(s => s.operations.includes('update'));
     const hasSyncDelete = automations.syncTargets.some(s => s.operations.includes('delete'));
@@ -374,30 +398,37 @@ export class TriggerGenerator {
     const hasSpreadUpdate = automations.spreadTargets.some(s => s.operations.includes('update'));
     const hasSpreadDelete = automations.spreadTargets.some(s => s.operations.includes('delete'));
 
-    const needsInsert = automations.pushToChildren.length > 0 ||
-                        automations.pullFromParents.length > 0 ||
-                        automations.calculatedColumns.length > 0 ||
-                        automations.pushToParents.length > 0 ||
-                        hasSyncInsert ||
-                        hasSpreadInsert;
+    const needsAfterInsert =
+      automations.pushToChildren.length > 0 ||
+      automations.pushToParents.length > 0 ||
+      hasSyncInsert ||
+      hasSpreadInsert;
 
-    const needsUpdate = automations.pushToChildren.length > 0 ||
-                        automations.pullFromParents.length > 0 ||
-                        automations.calculatedColumns.length > 0 ||
-                        automations.pushToParents.length > 0 ||
-                        hasSyncUpdate ||
-                        hasSpreadUpdate;
+    const needsAfterUpdate =
+      automations.pushToChildren.length > 0 ||
+      automations.pushToParents.length > 0 ||
+      hasSyncUpdate ||
+      hasSpreadUpdate;
 
     const needsDelete = automations.pushToParents.length > 0 || hasSyncDelete || hasSpreadDelete;
 
-    if (needsInsert) {
-      triggers.push(this.generateConsolidatedInsertTrigger(tableName, automations, processedSchema));
+    // Generate INSERT triggers
+    if (needsBeforeInsert) {
+      triggers.push(this.generateBeforeInsertTrigger(tableName, automations, processedSchema));
+    }
+    if (needsAfterInsert) {
+      triggers.push(this.generateAfterInsertTrigger(tableName, automations, processedSchema));
     }
 
-    if (needsUpdate) {
-      triggers.push(this.generateConsolidatedUpdateTrigger(tableName, automations, processedSchema));
+    // Generate UPDATE triggers
+    if (needsBeforeUpdate) {
+      triggers.push(this.generateBeforeUpdateTrigger(tableName, automations, processedSchema));
+    }
+    if (needsAfterUpdate) {
+      triggers.push(this.generateAfterUpdateTrigger(tableName, automations, processedSchema));
     }
 
+    // Generate DELETE trigger (stays BEFORE - no serial value issue)
     if (needsDelete) {
       triggers.push(this.generateConsolidatedDeleteTrigger(tableName, automations, processedSchema));
     }
@@ -406,39 +437,24 @@ export class TriggerGenerator {
   }
 
   /**
-   * Generate consolidated BEFORE INSERT trigger
+   * Generate BEFORE INSERT trigger (modifies NEW row)
+   * Steps that must execute BEFORE row is written (to modify NEW)
    */
-  private generateConsolidatedInsertTrigger(tableName: string, automations: TableAutomations, processedSchema: ProcessedSchema): string {
+  private generateBeforeInsertTrigger(tableName: string, automations: TableAutomations, processedSchema: ProcessedSchema): string {
     const functionName = `${tableName}_before_insert_genlogic`;
     const triggerName = `${tableName}_before_insert_genlogic`;
 
     const sections: string[] = [];
 
-    // Step 1: PULL from parents (get initial values FIRST)
+    // Step 1: PULL from parents (fetch values into NEW)
     const pulls = this.generatePullFromParents(automations, 'INSERT', processedSchema);
     if (pulls) sections.push(pulls);
 
-    // Step 2: PUSH to children (SNAPSHOT and FOLLOW both trigger on INSERT)
-    const fetchPushes = this.generatePushToChildren(automations, 'INSERT');
-    if (fetchPushes) sections.push(fetchPushes);
-
-    // Step 3: Calculate calculated columns
+    // Step 2: Calculate columns (compute values into NEW)
     const calcs = this.generateCalculatedColumns(automations);
     if (calcs) sections.push(calcs);
 
-    // Step 4: PUSH to parents (aggregations)
-    const pushes = this.generatePushToParents(automations, 'INSERT', processedSchema);
-    if (pushes) sections.push(pushes);
-
-    // Step 5: SYNC to other tables
-    const syncs = this.generateSyncOperations(automations, 'INSERT');
-    if (syncs) sections.push(syncs);
-
-    // Step 6: SPREAD to other tables (generate multiple rows)
-    const spreads = this.generateSpreadOperations(automations, 'INSERT', tableName, processedSchema);
-    if (spreads) sections.push(spreads);
-
-    const functionBody = sections.length > 0 ? sections.join('\n\n') : '  -- No automations for INSERT';
+    const functionBody = sections.length > 0 ? sections.join('\n\n') : '  -- No automations for BEFORE INSERT';
 
     return `
 CREATE OR REPLACE FUNCTION ${functionName}()
@@ -457,39 +473,68 @@ CREATE TRIGGER ${triggerName}
   }
 
   /**
-   * Generate consolidated BEFORE UPDATE trigger
+   * Generate AFTER INSERT trigger (cascades to other tables)
+   * Steps that cascade operations AFTER row is written (serial values available)
    */
-  private generateConsolidatedUpdateTrigger(tableName: string, automations: TableAutomations, processedSchema: ProcessedSchema): string {
+  private generateAfterInsertTrigger(tableName: string, automations: TableAutomations, processedSchema: ProcessedSchema): string {
+    const functionName = `${tableName}_after_insert_genlogic`;
+    const triggerName = `${tableName}_after_insert_genlogic`;
+
+    const sections: string[] = [];
+
+    // Step 3: PUSH to children (SYNC cascade)
+    const fetchPushes = this.generatePushToChildren(automations, 'INSERT');
+    if (fetchPushes) sections.push(fetchPushes);
+
+    // Step 4: PUSH to parents (aggregations)
+    const pushes = this.generatePushToParents(automations, 'INSERT', processedSchema);
+    if (pushes) sections.push(pushes);
+
+    // Step 5: SYNC to other tables
+    const syncs = this.generateSyncOperations(automations, 'INSERT');
+    if (syncs) sections.push(syncs);
+
+    // Step 6: SPREAD to other tables (generate multiple rows - NOW HAS SERIAL PK!)
+    const spreads = this.generateSpreadOperations(automations, 'INSERT', tableName, processedSchema);
+    if (spreads) sections.push(spreads);
+
+    const functionBody = sections.length > 0 ? sections.join('\n\n') : '  -- No automations for AFTER INSERT';
+
+    return `
+CREATE OR REPLACE FUNCTION ${functionName}()
+RETURNS TRIGGER AS $$
+BEGIN
+${functionBody}
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER ${triggerName}
+  AFTER INSERT ON ${tableName}
+  FOR EACH ROW EXECUTE FUNCTION ${functionName}();
+`;
+  }
+
+  /**
+   * Generate BEFORE UPDATE trigger (modifies NEW row)
+   * Steps that must execute BEFORE row is written (to modify NEW)
+   */
+  private generateBeforeUpdateTrigger(tableName: string, automations: TableAutomations, processedSchema: ProcessedSchema): string {
     const functionName = `${tableName}_before_update_genlogic`;
     const triggerName = `${tableName}_before_update_genlogic`;
 
     const sections: string[] = [];
 
-    // Step 1: PULL from parents (if FK changed, get new values FIRST)
+    // Step 1: PULL from parents (if FK changed, fetch values into NEW)
     const pulls = this.generatePullFromParents(automations, 'UPDATE', processedSchema);
     if (pulls) sections.push(pulls);
 
-    // Step 2: PUSH to children (FOLLOW only, with change detection)
-    const pushes = this.generatePushToChildren(automations, 'UPDATE');
-    if (pushes) sections.push(pushes);
-
-    // Step 3: Calculate calculated columns
+    // Step 2: Calculate columns (compute values into NEW)
     const calcs = this.generateCalculatedColumns(automations);
     if (calcs) sections.push(calcs);
 
-    // Step 4: PUSH to parents (aggregations with change detection)
-    const parentPushes = this.generatePushToParents(automations, 'UPDATE', processedSchema);
-    if (parentPushes) sections.push(parentPushes);
-
-    // Step 5: SYNC to other tables
-    const syncs = this.generateSyncOperations(automations, 'UPDATE');
-    if (syncs) sections.push(syncs);
-
-    // Step 6: SPREAD to other tables (regenerate if dates changed)
-    const spreads = this.generateSpreadOperations(automations, 'UPDATE', tableName, processedSchema);
-    if (spreads) sections.push(spreads);
-
-    const functionBody = sections.length > 0 ? sections.join('\n\n') : '  -- No automations for UPDATE';
+    const functionBody = sections.length > 0 ? sections.join('\n\n') : '  -- No automations for BEFORE UPDATE';
 
     return `
 CREATE OR REPLACE FUNCTION ${functionName}()
@@ -503,6 +548,50 @@ $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER ${triggerName}
   BEFORE UPDATE ON ${tableName}
+  FOR EACH ROW EXECUTE FUNCTION ${functionName}();
+`;
+  }
+
+  /**
+   * Generate AFTER UPDATE trigger (cascades to other tables)
+   * Steps that cascade operations AFTER row is written
+   */
+  private generateAfterUpdateTrigger(tableName: string, automations: TableAutomations, processedSchema: ProcessedSchema): string {
+    const functionName = `${tableName}_after_update_genlogic`;
+    const triggerName = `${tableName}_after_update_genlogic`;
+
+    const sections: string[] = [];
+
+    // Step 3: PUSH to children (SYNC cascade with change detection)
+    const pushes = this.generatePushToChildren(automations, 'UPDATE');
+    if (pushes) sections.push(pushes);
+
+    // Step 4: PUSH to parents (aggregations with change detection)
+    const parentPushes = this.generatePushToParents(automations, 'UPDATE', processedSchema);
+    if (parentPushes) sections.push(parentPushes);
+
+    // Step 5: SYNC to other tables
+    const syncs = this.generateSyncOperations(automations, 'UPDATE');
+    if (syncs) sections.push(syncs);
+
+    // Step 6: SPREAD to other tables (regenerate if dates changed)
+    const spreads = this.generateSpreadOperations(automations, 'UPDATE', tableName, processedSchema);
+    if (spreads) sections.push(spreads);
+
+    const functionBody = sections.length > 0 ? sections.join('\n\n') : '  -- No automations for AFTER UPDATE';
+
+    return `
+CREATE OR REPLACE FUNCTION ${functionName}()
+RETURNS TRIGGER AS $$
+BEGIN
+${functionBody}
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER ${triggerName}
+  AFTER UPDATE ON ${tableName}
   FOR EACH ROW EXECUTE FUNCTION ${functionName}();
 `;
   }
@@ -547,7 +636,7 @@ CREATE TRIGGER ${triggerName}
   }
 
   /**
-   * Generate PUSH to children logic (SNAPSHOT/FOLLOW)
+   * Generate PUSH to children logic (SYNC only)
    */
   private generatePushToChildren(automations: TableAutomations, operation: 'INSERT' | 'UPDATE'): string | null {
     if (automations.pushToChildren.length === 0) return null;
@@ -560,8 +649,7 @@ CREATE TRIGGER ${triggerName}
       const changedColumns: string[] = [];
 
       for (const col of push.columns) {
-        // SNAPSHOT: only on INSERT (one-time copy)
-        // FOLLOW: on both INSERT and UPDATE (keep synchronized)
+        // SYNC: triggers on both INSERT and UPDATE (keep synchronized)
         if (operation === 'INSERT' || col.isFetchUpdates) {
           setStatements.push(`${col.childColumn} = NEW.${col.parentColumn}`);
           changedColumns.push(col.parentColumn);
@@ -655,79 +743,14 @@ CREATE TRIGGER ${triggerName}
   }
 
   /**
-   * Qualify column references in expressions with NEW. prefix
-   * Converts: "debits - credits" to "NEW.debits - NEW.credits"
-   * Preserves: literals, functions, keywords
+   * Convert @column references to NEW.column in generated expressions
+   * Converts: "@debits - @credits" to "NEW.debits - NEW.credits"
+   * Preserves: everything else (literals, functions, keywords, SQL syntax)
    */
   private qualifyColumnReferences(expression: string, tableName: string): string {
-    // For now, use a simple regex approach
-    // Match identifiers that could be column names
-    // Avoid matching SQL keywords and function names
-
-    const sqlKeywords = new Set([
-      'CASE', 'WHEN', 'THEN', 'ELSE', 'END', 'AND', 'OR', 'NOT', 'NULL',
-      'TRUE', 'FALSE', 'IS', 'IN', 'LIKE', 'BETWEEN', 'EXISTS',
-      'COALESCE', 'NULLIF', 'CAST', 'EXTRACT', 'SUBSTRING', 'TRIM',
-      'UPPER', 'LOWER', 'LENGTH', 'CONCAT', 'REPLACE',
-      'SUM', 'COUNT', 'AVG', 'MAX', 'MIN', 'ABS', 'ROUND', 'CEIL', 'FLOOR'
-    ]);
-
-    // Split by quotes to preserve string literals
-    const parts: string[] = [];
-    let inString = false;
-    let currentPart = '';
-    let quoteChar = '';
-
-    for (let i = 0; i < expression.length; i++) {
-      const char = expression[i];
-      if ((char === "'" || char === '"') && (i === 0 || expression[i - 1] !== '\\')) {
-        if (!inString) {
-          // Entering a string
-          parts.push(currentPart);
-          currentPart = char;
-          inString = true;
-          quoteChar = char;
-        } else if (char === quoteChar) {
-          // Exiting a string
-          currentPart += char;
-          parts.push(currentPart);
-          currentPart = '';
-          inString = false;
-          quoteChar = '';
-        } else {
-          currentPart += char;
-        }
-      } else {
-        currentPart += char;
-      }
-    }
-    if (currentPart) parts.push(currentPart);
-
-    // Process each part - only qualify identifiers outside of strings
-    return parts.map((part, index) => {
-      // If this part is a quoted string, don't process it
-      if (part.startsWith("'") || part.startsWith('"')) {
-        return part;
-      }
-
-      // Replace identifiers that are not keywords or already qualified
-      return part.replace(/\b([a-zA-Z_][a-zA-Z0-9_]*)\b/g, (match, identifier) => {
-        // Don't qualify if it's a SQL keyword
-        if (sqlKeywords.has(identifier.toUpperCase())) {
-          return match;
-        }
-
-        // Don't qualify if already qualified with NEW., OLD., or table prefix
-        if (expression.includes(`NEW.${identifier}`) ||
-            expression.includes(`OLD.${identifier}`) ||
-            expression.includes(`${tableName}.${identifier}`)) {
-          return match;
-        }
-
-        // Qualify with NEW.
-        return `NEW.${identifier}`;
-      });
-    }).join('');
+    // Simple transformation: replace @column_name with NEW.column_name
+    // The @ sigil is our contract with the user - it marks column references unambiguously
+    return expression.replace(/@(\w+)/g, 'NEW.$1');
   }
 
   /**
@@ -748,11 +771,8 @@ CREATE TRIGGER ${triggerName}
           sections.push(this.generateAggregationInsert(agg, push, row, processedSchema));
 
         } else if (operation === 'UPDATE') {
-          // UPDATE: Check if source column changed, then adjust
-          const changeDetection = this.generateChangeDetection(agg.childColumn);
-          sections.push(`  IF ${changeDetection} THEN`);
+          // UPDATE: Handle both FK changes and value changes
           sections.push(this.generateAggregationUpdate(agg, push, processedSchema));
-          sections.push(`  END IF;`);
 
         } else if (operation === 'DELETE') {
           // DELETE: Decrement
@@ -772,7 +792,8 @@ CREATE TRIGGER ${triggerName}
     if (!table) return ['id']; // Fallback to 'id'
 
     const pkColumns: string[] = [];
-    const allColumns = { ...table.columns, ...table.generatedColumns };
+    // All columns (including FK-generated) are now in table.columns
+    const allColumns = table.columns;
 
     for (const [colName, colDef] of Object.entries(allColumns)) {
       if (colDef.primary_key) {
@@ -785,8 +806,8 @@ CREATE TRIGGER ${triggerName}
 
   /**
    * Generate aggregation INSERT logic
-   * NOTE: Aggregation columns have DEFAULT 0, so COALESCE not needed on parent columns
-   * Child columns still need COALESCE as they may be NULL
+   * Uses COALESCE to handle NULL parent columns defensively
+   * Even with DEFAULT 0, parent columns may be manually set to NULL
    */
   private generateAggregationInsert(agg: any, push: any, row: string, processedSchema: ProcessedSchema): string {
     const fkCol = push.fkColumns[0]; // Assume single FK column
@@ -794,13 +815,13 @@ CREATE TRIGGER ${triggerName}
 
     switch (agg.aggregationType) {
       case 'SUM':
-        return `    UPDATE ${push.parentTable} SET ${agg.parentColumn} = ${agg.parentColumn} + COALESCE(${row}.${agg.childColumn}, 0) WHERE ${parentPK} = ${row}.${fkCol};`;
+        return `    UPDATE ${push.parentTable} SET ${agg.parentColumn} = COALESCE(${agg.parentColumn}, 0) + COALESCE(${row}.${agg.childColumn}, 0) WHERE ${parentPK} = ${row}.${fkCol};`;
       case 'COUNT':
-        return `    UPDATE ${push.parentTable} SET ${agg.parentColumn} = ${agg.parentColumn} + 1 WHERE ${parentPK} = ${row}.${fkCol};`;
+        return `    UPDATE ${push.parentTable} SET ${agg.parentColumn} = COALESCE(${agg.parentColumn}, 0) + 1 WHERE ${parentPK} = ${row}.${fkCol};`;
       case 'MAX':
-        return `    UPDATE ${push.parentTable} SET ${agg.parentColumn} = GREATEST(${agg.parentColumn}, COALESCE(${row}.${agg.childColumn}, ${agg.parentColumn})) WHERE ${parentPK} = ${row}.${fkCol};`;
+        return `    UPDATE ${push.parentTable} SET ${agg.parentColumn} = COALESCE(GREATEST(${agg.parentColumn}, ${row}.${agg.childColumn}), ${row}.${agg.childColumn}, ${agg.parentColumn}) WHERE ${parentPK} = ${row}.${fkCol};`;
       case 'MIN':
-        return `    UPDATE ${push.parentTable} SET ${agg.parentColumn} = LEAST(${agg.parentColumn}, COALESCE(${row}.${agg.childColumn}, ${agg.parentColumn})) WHERE ${parentPK} = ${row}.${fkCol};`;
+        return `    UPDATE ${push.parentTable} SET ${agg.parentColumn} = COALESCE(LEAST(${agg.parentColumn}, ${row}.${agg.childColumn}), ${row}.${agg.childColumn}, ${agg.parentColumn}) WHERE ${parentPK} = ${row}.${fkCol};`;
       case 'LAST_VALUE':
         return `    UPDATE ${push.parentTable} SET ${agg.parentColumn} = ${row}.${agg.childColumn} WHERE ${parentPK} = ${row}.${fkCol};`;
       default:
@@ -810,8 +831,8 @@ CREATE TRIGGER ${triggerName}
 
   /**
    * Generate aggregation UPDATE logic (incremental)
-   * NOTE: Aggregation columns have DEFAULT 0, so COALESCE not needed on parent columns
-   * Child columns still need COALESCE as they may be NULL
+   * Uses COALESCE to handle NULL parent columns defensively
+   * Handles FK changes: NULL=>Value, old_value=>new_value, value=>NULL
    */
   private generateAggregationUpdate(agg: any, push: any, processedSchema: ProcessedSchema): string {
     const fkCol = push.fkColumns[0];
@@ -819,15 +840,46 @@ CREATE TRIGGER ${triggerName}
 
     switch (agg.aggregationType) {
       case 'SUM':
-        return `    UPDATE ${push.parentTable} SET ${agg.parentColumn} = ${agg.parentColumn} - COALESCE(OLD.${agg.childColumn}, 0) + COALESCE(NEW.${agg.childColumn}, 0) WHERE ${parentPK} = NEW.${fkCol};`;
+        // Handle both FK changes and value changes
+        return `  -- Handle FK changes and value changes for SUM
+  IF OLD.${fkCol} IS DISTINCT FROM NEW.${fkCol} THEN
+    -- FK changed: subtract from old parent, add to new parent
+    IF OLD.${fkCol} IS NOT NULL THEN
+      UPDATE ${push.parentTable} SET ${agg.parentColumn} = COALESCE(${agg.parentColumn}, 0) - COALESCE(OLD.${agg.childColumn}, 0) WHERE ${parentPK} = OLD.${fkCol};
+    END IF;
+    IF NEW.${fkCol} IS NOT NULL THEN
+      UPDATE ${push.parentTable} SET ${agg.parentColumn} = COALESCE(${agg.parentColumn}, 0) + COALESCE(NEW.${agg.childColumn}, 0) WHERE ${parentPK} = NEW.${fkCol};
+    END IF;
+  ELSIF OLD.${agg.childColumn} IS DISTINCT FROM NEW.${agg.childColumn} THEN
+    -- Value changed but FK stayed the same
+    IF NEW.${fkCol} IS NOT NULL THEN
+      UPDATE ${push.parentTable} SET ${agg.parentColumn} = COALESCE(${agg.parentColumn}, 0) - COALESCE(OLD.${agg.childColumn}, 0) + COALESCE(NEW.${agg.childColumn}, 0) WHERE ${parentPK} = NEW.${fkCol};
+    END IF;
+  END IF;`;
       case 'COUNT':
-        return `    -- COUNT doesn't change on UPDATE unless NULL transition`;
+        // Handle FK changes for COUNT
+        return `  -- Handle FK changes for COUNT
+  IF OLD.${fkCol} IS DISTINCT FROM NEW.${fkCol} THEN
+    -- FK changed: decrement old parent, increment new parent
+    IF OLD.${fkCol} IS NOT NULL THEN
+      UPDATE ${push.parentTable} SET ${agg.parentColumn} = GREATEST(COALESCE(${agg.parentColumn}, 0) - 1, 0) WHERE ${parentPK} = OLD.${fkCol};
+    END IF;
+    IF NEW.${fkCol} IS NOT NULL THEN
+      UPDATE ${push.parentTable} SET ${agg.parentColumn} = COALESCE(${agg.parentColumn}, 0) + 1 WHERE ${parentPK} = NEW.${fkCol};
+    END IF;
+  END IF;`;
       case 'MAX':
         return `    -- MAX: recalculate if needed (full scan fallback)`;
       case 'MIN':
         return `    -- MIN: recalculate if needed (full scan fallback)`;
       case 'LAST_VALUE':
-        return `    UPDATE ${push.parentTable} SET ${agg.parentColumn} = NEW.${agg.childColumn} WHERE ${parentPK} = NEW.${fkCol};`;
+        // LAST_VALUE also needs to handle FK changes
+        return `  -- Handle FK changes for LAST_VALUE
+  IF OLD.${fkCol} IS DISTINCT FROM NEW.${fkCol} OR OLD.${agg.childColumn} IS DISTINCT FROM NEW.${agg.childColumn} THEN
+    IF NEW.${fkCol} IS NOT NULL THEN
+      UPDATE ${push.parentTable} SET ${agg.parentColumn} = NEW.${agg.childColumn} WHERE ${parentPK} = NEW.${fkCol};
+    END IF;
+  END IF;`;
       default:
         return `    -- Unsupported aggregation type: ${agg.aggregationType}`;
     }
@@ -835,8 +887,7 @@ CREATE TRIGGER ${triggerName}
 
   /**
    * Generate aggregation DELETE logic
-   * NOTE: Aggregation columns have DEFAULT 0, so COALESCE not needed on parent columns
-   * Child columns still need COALESCE as they may be NULL
+   * Uses COALESCE to handle NULL parent columns defensively
    */
   private generateAggregationDelete(agg: any, push: any, row: string, processedSchema: ProcessedSchema): string {
     const fkCol = push.fkColumns[0];
@@ -844,9 +895,9 @@ CREATE TRIGGER ${triggerName}
 
     switch (agg.aggregationType) {
       case 'SUM':
-        return `  UPDATE ${push.parentTable} SET ${agg.parentColumn} = ${agg.parentColumn} - COALESCE(${row}.${agg.childColumn}, 0) WHERE ${parentPK} = ${row}.${fkCol};`;
+        return `  UPDATE ${push.parentTable} SET ${agg.parentColumn} = COALESCE(${agg.parentColumn}, 0) - COALESCE(${row}.${agg.childColumn}, 0) WHERE ${parentPK} = ${row}.${fkCol};`;
       case 'COUNT':
-        return `  UPDATE ${push.parentTable} SET ${agg.parentColumn} = GREATEST(${agg.parentColumn} - 1, 0) WHERE ${parentPK} = ${row}.${fkCol};`;
+        return `  UPDATE ${push.parentTable} SET ${agg.parentColumn} = GREATEST(COALESCE(${agg.parentColumn}, 0) - 1, 0) WHERE ${parentPK} = ${row}.${fkCol};`;
       case 'MAX':
         return `  -- MAX: recalculate (full scan fallback)`;
       case 'MIN':

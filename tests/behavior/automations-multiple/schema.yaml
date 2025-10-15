@@ -5,25 +5,13 @@ tables:
       name: varchar(50)
       total_amount:
         type: numeric(10,2)
-        automation:
-          type: SUM
-          table: transactions
-          foreign_key: account
-          column: amount
+        automation: SUM @transactions.amount
       transaction_count:
         type: integer
-        automation:
-          type: COUNT
-          table: transactions
-          foreign_key: account
-          column: id
+        automation: COUNT @transactions.id
       max_transaction:
         type: numeric(10,2)
-        automation:
-          type: MAX
-          table: transactions
-          foreign_key: account
-          column: amount
+        automation: MAX @transactions.amount
 
   transactions:
     columns:

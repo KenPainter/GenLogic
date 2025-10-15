@@ -18,21 +18,13 @@ export class DatabaseManager {
   private db: SQL;
 
   constructor(config: DatabaseConfig) {
-    // For peer authentication (Unix socket), omit password entirely
-    const connectionConfig: any = {
+    this.db = new SQL({
       hostname: config.host,
       port: config.port,
       database: config.database,
       username: config.user,
-    };
-
-    // Only include password if it's provided (needed for password auth)
-    // Omit for peer authentication (empty string means use peer auth)
-    if (config.password) {
-      connectionConfig.password = config.password;
-    }
-
-    this.db = new SQL(connectionConfig);
+      password: config.password
+    });
   }
 
   /**

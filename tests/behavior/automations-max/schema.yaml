@@ -5,11 +5,7 @@ tables:
       name: varchar(50)
       max_investment:
         type: numeric(10,2)
-        automation:
-          type: MAX
-          table: investments
-          foreign_key: portfolio
-          column: amount
+        automation: MAX @investments.amount
 
   investments:
     columns:

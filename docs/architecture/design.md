@@ -63,8 +63,8 @@ YAML files may contain:
 - LATEST - Most recent value from most recently updated child
 
 ### Cascades (Parent → Child)
-- SNAPSHOT - Copy value once on row INSERT
-- FOLLOW - Copy from parent to child and keep synchronized on parent UPDATE
+- SNAPSHOT - Copy value once on child INSERT (pull from parent)
+- SYNC - Copy value on child INSERT and keep synchronized when parent updates (bidirectional)
 
 ### Within Row
 - Calculated columns using PostgreSQL expressions

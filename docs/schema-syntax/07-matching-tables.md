@@ -1,4 +1,4 @@
-Previous: [Moving Values from Child to Parent](06-child-to-parent.md) | Next: [CLI Usage](../building-database/01-cli-usage.md)
+Previous: [Moving Values from Child to Parent](06-child-to-parent.md) | Next: [Indexes and Unique Constraints](08-indexes-and-constraints.md)
 
 # Pattern Matching Tables
 
@@ -275,4 +275,4 @@ Pattern matching tables are useful for:
 
 ---
 
-Previous: [Moving Values from Child to Parent](06-child-to-parent.md) | Next: [CLI Usage](../building-database/01-cli-usage.md)
+Previous: [Moving Values from Child to Parent](06-child-to-parent.md) | Next: [Indexes and Unique Constraints](08-indexes-and-constraints.md)

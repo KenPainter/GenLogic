@@ -1,0 +1,8 @@
+columns:
+  description: varchar(50)
+
+tables:
+  test_table:
+    columns:
+      id: serial primary key
+      description: null

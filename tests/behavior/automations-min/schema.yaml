@@ -5,11 +5,7 @@ tables:
       name: varchar(50)
       min_price:
         type: numeric(10,2)
-        automation:
-          type: MIN
-          table: prices
-          foreign_key: product
-          column: amount
+        automation: MIN @prices.amount
 
   prices:
     columns:

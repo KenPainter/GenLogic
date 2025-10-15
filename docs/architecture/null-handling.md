@@ -24,7 +24,7 @@ This replaces the ambiguous `nullable` field with precise information for both r
 
 `true` - The UI may see NULL when reading this column:
 - Regular columns (nullable by default)
-- SNAPSHOT/FOLLOW automations (NULL = not fetched yet)
+- SNAPSHOT/SYNC automations (NULL = not fetched yet)
 - LATEST automations (NULL = no children yet)
 - Calculated columns (depends on expression)
 - Foreign key columns

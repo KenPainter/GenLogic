@@ -1,6 +1,7 @@
 import Ajv from 'ajv';
 import type { GenLogicSchema, ValidationResult } from './types';
 import { DataFlowGraphValidator } from './graph.js';
+import { parseAutomationString, inferForeignKey } from './automation-parser.js';
 import jsonSchema from './genlogic-schema.json' assert { type: 'json' };
 
 export class SchemaValidator {
@@ -99,7 +100,10 @@ export class SchemaValidator {
 
     // Get available column and table names
     const reusableColumns = new Set(Object.keys(schema.columns || {}));
-    const tableNames = new Set(Object.keys(schema.tables || {}));
+    const tableNames = new Set([
+      ...Object.keys(schema.tables || {}),
+      ...Object.keys(schema.matching_tables || {})
+    ]);
 
     // Validate reusable column references (columns that inherit from other columns)
     if (schema.columns) {
@@ -138,7 +142,7 @@ export class SchemaValidator {
             if (typeof column === 'string') {
               // Detect if it's a SQL type string by checking for common patterns
               // SQL type strings contain: parentheses, spaces, or SQL keywords
-              const isSQLType = /[\(\)\s]|^(serial|bigserial|smallserial|varchar|numeric|integer|bigint|smallint|text|date|timestamp|boolean)/i.test(column);
+              const isSQLType = /[\(\)\s]|^(serial|bigserial|smallserial|varchar|char|numeric|decimal|integer|bigint|smallint|text|date|timestamp|timestamptz|boolean|real|uuid|bit|json|jsonb|double\s+precision)/i.test(column);
 
               if (!isSQLType && !reusableColumns.has(column)) {
                 errors.push(`Table '${tableName}', column '${columnName}': reference '${column}' does not exist in reusable columns`);
@@ -152,8 +156,21 @@ export class SchemaValidator {
 
             // Check automation references
             if (column && typeof column === 'object' && 'automation' in column) {
-              const automation = (column as any).automation;
-              if (automation) {
+              const automationDef = (column as any).automation;
+              if (automationDef) {
+                // Parse string automation to get the table/column/type
+                let automation;
+                if (typeof automationDef === 'string') {
+                  try {
+                    automation = parseAutomationString(automationDef);
+                  } catch (err: any) {
+                    errors.push(`Table '${tableName}', column '${columnName}': ${err.message}`);
+                    continue;
+                  }
+                } else {
+                  automation = automationDef;
+                }
+
                 // Handle RULE_MATCH automation differently
                 if (automation.type === 'RULE_MATCH') {
                   // Validate source_table reference
@@ -188,24 +205,27 @@ export class SchemaValidator {
                     errors.push(`Table '${tableName}', column '${columnName}': automation table '${automation.table}' does not exist`);
                   }
 
-                  // Validate foreign_key reference
-                  // For aggregations (SUM/COUNT/MAX/MIN/LATEST): FK is in source table (child)
-                  // For cascades/follows (SNAPSHOT/FOLLOW): FK is in current table (child)
-                  const isAggregation = ['SUM', 'COUNT', 'MAX', 'MIN', 'LATEST'].includes(automation.type);
-                  const isCascade = ['SNAPSHOT', 'FOLLOW'].includes(automation.type);
+                  // Validate foreign_key reference if explicitly provided
+                  // For aggregations (SUM/COUNT/MAX/MIN/LAST_VALUE): FK is in source table (child)
+                  // For cascades/follows (SNAPSHOT/SYNC): FK is in current table (child)
+                  const isAggregation = ['SUM', 'COUNT', 'MAX', 'MIN', 'LAST_VALUE'].includes(automation.type);
+                  const isCascade = ['SNAPSHOT', 'SYNC'].includes(automation.type);
 
-                  if (isAggregation) {
-                    // FK must exist in source table (child)
-                    const sourceTable = schema.tables?.[automation.table];
-                    if (sourceTable?.foreign_keys && !sourceTable.foreign_keys[automation.foreign_key]) {
-                      errors.push(`Table '${tableName}', column '${columnName}': automation foreign_key '${automation.foreign_key}' does not exist in table '${automation.table}'`);
-                    }
-                  } else if (isCascade) {
-                    // FK must exist in current table (child)
-                    if (table.foreign_keys && !table.foreign_keys[automation.foreign_key]) {
-                      errors.push(`Table '${tableName}', column '${columnName}': automation foreign_key '${automation.foreign_key}' does not exist in current table`);
+                  if (automation.foreign_key) {
+                    if (isAggregation) {
+                      // FK must exist in source table (child)
+                      const sourceTable = schema.tables?.[automation.table];
+                      if (sourceTable?.foreign_keys && !sourceTable.foreign_keys[automation.foreign_key]) {
+                        errors.push(`Table '${tableName}', column '${columnName}': automation foreign_key '${automation.foreign_key}' does not exist in table '${automation.table}'`);
+                      }
+                    } else if (isCascade) {
+                      // FK must exist in current table (child)
+                      if (table.foreign_keys && !table.foreign_keys[automation.foreign_key]) {
+                        errors.push(`Table '${tableName}', column '${columnName}': automation foreign_key '${automation.foreign_key}' does not exist in current table`);
+                      }
                     }
                   }
+                  // Note: If FK not provided, it will be inferred later by resolveAutomation in trigger-generator
                 }
               }
             }
@@ -255,6 +275,178 @@ export class SchemaValidator {
   }
 
   /**
+   * PHASE 2.3: Validate generated column references
+   * This must run AFTER schema processing, when all columns are defined
+   * Requires @column_name syntax in generated expressions
+   */
+  validateGeneratedColumnReferences(processedSchema: any): ValidationResult {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+
+    if (!processedSchema.tables) {
+      return { isValid: true, errors: [], warnings: [] };
+    }
+
+    for (const [tableName, table] of Object.entries(processedSchema.tables)) {
+      const tableObj = table as any;
+
+      // All columns are now in a single location (FK columns have been merged)
+      const allColumns = new Set<string>(Object.keys(tableObj.columns || {}));
+
+      // Check all columns for generated expressions
+      for (const [columnName, columnDef] of Object.entries(tableObj.columns || {})) {
+        const colDef = columnDef as any;
+
+        if (colDef.generated) {
+          const generatedExpr = colDef.generated;
+
+          // Extract @column_name references
+          const atMatches = generatedExpr.match(/@(\w+)/g) || [];
+          const referencedCols = atMatches.map((m: string) => m.substring(1)); // Remove "@"
+
+          // Require at least one @ reference
+          if (atMatches.length === 0) {
+            errors.push(
+              `Table '${tableName}', column '${columnName}': ` +
+              `generated expression must reference at least one column using '@column_name' syntax`
+            );
+            continue; // Skip further validation for this expression
+          }
+
+          // Validate each referenced column exists
+          for (const refCol of referencedCols) {
+            if (!allColumns.has(refCol)) {
+              errors.push(
+                `Table '${tableName}', column '${columnName}': ` +
+                `generated expression references non-existent column '@${refCol}'`
+              );
+            }
+          }
+
+          // Check for bare identifiers that match column names (user forgot @ sigil)
+          // Use negative lookbehind to exclude identifiers preceded by @
+          const allIdentifiers = generatedExpr.match(/(?<!@)\b([a-z_][a-z0-9_]*)\b/gi) || [];
+
+          // SQL keywords that are OK to appear bare
+          const sqlKeywords = new Set([
+            'CASE', 'WHEN', 'THEN', 'ELSE', 'END', 'AND', 'OR', 'NOT', 'NULL',
+            'TRUE', 'FALSE', 'IS', 'IN', 'LIKE', 'BETWEEN', 'EXISTS',
+            'COALESCE', 'NULLIF', 'CAST', 'EXTRACT', 'SUBSTRING', 'TRIM',
+            'UPPER', 'LOWER', 'LENGTH', 'CONCAT', 'REPLACE',
+            'SUM', 'COUNT', 'AVG', 'MAX', 'MIN', 'ABS', 'ROUND', 'CEIL', 'FLOOR',
+            'GREATEST', 'LEAST', 'DATE', 'TIME', 'TIMESTAMP', 'INTERVAL'
+          ]);
+
+          // Find bare identifiers that are actually column names
+          const bareColumnRefs: string[] = [];
+          for (const id of allIdentifiers) {
+            if (sqlKeywords.has(id.toUpperCase())) {
+              continue; // Skip SQL keywords
+            }
+            if (allColumns.has(id)) {
+              bareColumnRefs.push(id);
+            }
+          }
+
+          if (bareColumnRefs.length > 0) {
+            errors.push(
+              `Table '${tableName}', column '${columnName}': ` +
+              `generated expression contains bare column reference(s) without '@' sigil: ${bareColumnRefs.join(', ')}. ` +
+              `Use '@column_name' syntax for all column references.`
+            );
+          }
+        }
+      }
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+      warnings
+    };
+  }
+
+  /**
+   * PHASE 2.4: Validate automation foreign key inference
+   * This must run BEFORE trigger generation to catch ambiguous FK references early
+   */
+  validateAutomationInference(schema: GenLogicSchema): ValidationResult {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+
+    if (!schema.tables) {
+      return { isValid: true, errors: [], warnings: [] };
+    }
+
+    for (const [tableName, table] of Object.entries(schema.tables)) {
+      if (!table.columns) continue;
+
+      for (const [columnName, column] of Object.entries(table.columns)) {
+        // Check for automation in all column definition types
+        if (!column || typeof column !== 'object' || !('automation' in column)) {
+          continue;
+        }
+
+        const automationDef = (column as any).automation;
+        if (!automationDef) continue;
+
+        // Parse automation string
+        let automation;
+        if (typeof automationDef === 'string') {
+          try {
+            automation = parseAutomationString(automationDef);
+          } catch (err: any) {
+            // Already caught in cross-reference validation
+            continue;
+          }
+        } else {
+          automation = automationDef;
+        }
+
+        // Skip RULE_MATCH automations - they don't use FK inference
+        if ('mode' in automation) {
+          continue;
+        }
+
+        // If FK is already specified, skip inference check
+        if (automation.foreign_key) {
+          continue;
+        }
+
+        // Determine which table has the FK
+        const isAggregation = ['SUM', 'COUNT', 'MAX', 'MIN', 'LAST_VALUE'].includes(automation.type);
+        let childTableName: string;
+        let parentTableName: string;
+
+        if (isAggregation) {
+          // Aggregation: tableWithAutomation is parent, referencedTable is child
+          childTableName = automation.table;
+          parentTableName = tableName;
+        } else {
+          // SYNC/SNAPSHOT: tableWithAutomation is child, referencedTable is parent
+          childTableName = tableName;
+          parentTableName = automation.table;
+        }
+
+        // Try to infer FK - this will throw if ambiguous or missing
+        try {
+          inferForeignKey(childTableName, parentTableName, schema);
+        } catch (err: any) {
+          errors.push(
+            `Table '${tableName}', column '${columnName}': ${err.message}`
+          );
+        }
+      }
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+      warnings
+    };
+  }
+
+  /**
    * PHASE 2.5: Validate auto_create definitions against processed schema
    * This must run AFTER schema processing, when FK columns are expanded
    */
@@ -277,9 +469,7 @@ export class SchemaValidator {
         allColumns.add(col);
       }
       // Add FK-generated columns
-      for (const col of Object.keys(table.generatedColumns || {})) {
-        allColumns.add(col);
-      }
+      // generatedColumns are now merged into columns, no need to check separately
       return allColumns;
     };
 
@@ -328,6 +518,69 @@ export class SchemaValidator {
           for (const childCol of Object.keys(ac.literals)) {
             if (!childColumns.has(childCol)) {
               errors.push(`Table '${childTableName}', foreign_key '${fkName}': auto_create.literals child column '${childCol}' does not exist in child table`);
+            }
+          }
+        }
+      }
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+      warnings
+    };
+  }
+
+  /**
+   * PHASE 2.6: Validate indexes and unique_constraints column references
+   * This must run AFTER schema processing, when FK columns are expanded
+   */
+  validateIndexesAndConstraints(schema: GenLogicSchema, processedSchema: any): ValidationResult {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+
+    if (!schema.tables) {
+      return { isValid: true, errors: [], warnings: [] };
+    }
+
+    for (const [tableName, table] of Object.entries(schema.tables)) {
+      const processedTable = processedSchema.tables?.[tableName];
+      if (!processedTable) continue;
+
+      // Get all available columns (including FK-generated)
+      const availableColumns = new Set(Object.keys(processedTable.columns || {}));
+
+      // Validate unique_constraints
+      if (table.unique_constraints) {
+        for (let i = 0; i < table.unique_constraints.length; i++) {
+          const columns = table.unique_constraints[i];
+
+          if (columns.length === 0) {
+            errors.push(`Table '${tableName}', unique_constraints[${i}]: constraint must have at least one column`);
+            continue;
+          }
+
+          for (const colName of columns) {
+            if (!availableColumns.has(colName)) {
+              errors.push(`Table '${tableName}', unique_constraints[${i}]: column '${colName}' does not exist`);
+            }
+          }
+        }
+      }
+
+      // Validate indexes
+      if (table.indexes) {
+        for (let i = 0; i < table.indexes.length; i++) {
+          const columns = table.indexes[i];
+
+          if (columns.length === 0) {
+            errors.push(`Table '${tableName}', indexes[${i}]: index must have at least one column`);
+            continue;
+          }
+
+          for (const colName of columns) {
+            if (!availableColumns.has(colName)) {
+              errors.push(`Table '${tableName}', indexes[${i}]: column '${colName}' does not exist`);
             }
           }
         }

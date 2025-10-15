@@ -35,20 +35,12 @@ tables:
       # Tracks the highest score achieved by this student
       highest_score:
         $ref: score
-        automation:
-          type: MAX
-          table: test_scores
-          foreign_key: student_fk
-          column: score
+        automation: MAX test_scores.score
 
       # Tracks the lowest score achieved by this student
       lowest_score:
         $ref: score
-        automation:
-          type: MIN
-          table: test_scores
-          foreign_key: student_fk
-          column: score
+        automation: MIN test_scores.score
 
   portfolios:
     columns:
@@ -62,20 +54,12 @@ tables:
       # Tracks the largest investment in this portfolio
       max_investment:
         $ref: amount
-        automation:
-          type: MAX
-          table: investments
-          foreign_key: portfolio_fk
-          column: amount
+        automation: MAX investments.amount
 
       # Tracks the smallest investment in this portfolio
       min_investment:
         $ref: amount
-        automation:
-          type: MIN
-          table: investments
-          foreign_key: portfolio_fk
-          column: amount
+        automation: MIN investments.amount
 
   test_scores:
     foreign_keys:

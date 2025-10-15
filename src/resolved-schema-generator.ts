@@ -1,4 +1,4 @@
-import type { GenLogicSchema, ColumnDefinition, AutomationDefinition } from './types.js';
+import type { GenLogicSchema, ColumnDefinition, AutomationDefinition, MatchingTableDefinition } from './types.js';
 import type { ProcessedSchema, ProcessedTable } from './schema-processor.js';
 
 /**
@@ -19,28 +19,34 @@ export class ResolvedSchemaGenerator {
   ): any {
     const resolved: any = {
       _metadata: this.generateMetadata(sourceFile, database),
-      tables: {}
+      tables: {},
+      matching_tables: {}
     };
 
-    if (!schema.tables || !processedSchema.tables) {
-      return resolved;
+    // Generate documentation for regular tables
+    if (schema.tables && processedSchema.tables) {
+      for (const [tableName, tableDefSrc] of Object.entries(schema.tables)) {
+        const processedTable = processedSchema.tables[tableName];
+        if (!processedTable) {
+          console.warn(`⚠️  Warning: Table '${tableName}' not found in processed schema during resolved schema generation`);
+          continue;
+        }
+
+        resolved.tables[tableName] = this.generateTableDoc(
+          tableName,
+          tableDefSrc,
+          processedTable,
+          schema,
+          processedSchema
+        );
+      }
     }
 
-    // Generate documentation for each table
-    for (const [tableName, tableDefSrc] of Object.entries(schema.tables)) {
-      const processedTable = processedSchema.tables[tableName];
-      if (!processedTable) {
-        console.warn(`⚠️  Warning: Table '${tableName}' not found in processed schema during resolved schema generation`);
-        continue;
+    // Generate documentation for matching tables
+    if (schema.matching_tables) {
+      for (const [tableName, definition] of Object.entries(schema.matching_tables)) {
+        resolved.matching_tables[tableName] = this.generateMatchingTableDoc(tableName, definition);
       }
-
-      resolved.tables[tableName] = this.generateTableDoc(
-        tableName,
-        tableDefSrc,
-        processedTable,
-        schema,
-        processedSchema
-      );
     }
 
     // Add usage guide at the end
@@ -79,7 +85,8 @@ export class ResolvedSchemaGenerator {
     };
 
     // Combine explicit columns and generated FK columns
-    const allColumns = { ...processedTable.columns, ...processedTable.generatedColumns };
+    // All columns (including FK-generated) are now in processedTable.columns
+    const allColumns = processedTable.columns;
 
     for (const [columnName, columnDef] of Object.entries(allColumns)) {
       tableDoc.columns[columnName] = this.generateColumnDoc(
@@ -126,128 +133,9 @@ export class ResolvedSchemaGenerator {
       }));
     }
 
-    // Process ui-notes if present
-    if (tableDefSrc['ui-notes'] && Array.isArray(tableDefSrc['ui-notes'])) {
-      const uiGuidance = this.expandUIGuidance(tableDefSrc['ui-notes']);
-      if (Object.keys(uiGuidance).length > 0) {
-        info.ui_guidance = uiGuidance;
-      }
-    }
-
     return info;
   }
 
-  /**
-   * Expand column-level ui-notes into UI guidance
-   */
-  private expandColumnUIGuidance(uiNotes: ('read-only' | 'hidden')[]): any {
-    const guidance: any = {};
-
-    for (const note of uiNotes) {
-      switch (note) {
-        case 'read-only':
-          guidance.read_only = {
-            editable: false,
-            description: 'This column should not be editable in the UI',
-            ui_behavior: [
-              'Display as read-only text or disabled input field',
-              'Do not allow user modifications',
-              'Show value but prevent editing'
-            ]
-          };
-          break;
-
-        case 'hidden':
-          guidance.hidden = {
-            visible: false,
-            description: 'This column should not be visible in the UI',
-            ui_behavior: [
-              'Do not display this column in forms or tables',
-              'Exclude from user-facing displays',
-              'May be used internally but hidden from users'
-            ]
-          };
-          break;
-      }
-    }
-
-    return guidance;
-  }
-
-  /**
-   * Expand ui-notes into detailed UI guidance
-   */
-  private expandUIGuidance(uiNotes: string[]): any {
-    const guidance: any = {};
-
-    for (const note of uiNotes) {
-      switch (note) {
-        case 'singleton':
-          guidance.row_expectations = {
-            type: 'singleton',
-            expected_rows: 'exactly_one',
-            description: 'This table should contain exactly one row',
-            ui_behavior: [
-              'Do not show "Add" or "New" buttons',
-              'Do not show "Delete" button',
-              'Present as a form, not a list',
-              'Load the single row on component mount',
-              'Show edit mode directly or with single "Edit" button'
-            ],
-            query_pattern: 'SELECT * FROM table_name LIMIT 1',
-            note: 'Always expect exactly one row. If no row exists, show error or create default.'
-          };
-          break;
-
-        case 'no-insert':
-          if (!guidance.crud_restrictions) {
-            guidance.crud_restrictions = {};
-          }
-          guidance.crud_restrictions.insert = {
-            allowed: false,
-            reason: 'Schema restricts INSERT operations',
-            ui_behavior: [
-              'Do not show "Add" or "New" buttons',
-              'Do not implement create/insert forms',
-              'Rows are managed by database or other processes'
-            ]
-          };
-          break;
-
-        case 'no-update':
-          if (!guidance.crud_restrictions) {
-            guidance.crud_restrictions = {};
-          }
-          guidance.crud_restrictions.update = {
-            allowed: false,
-            reason: 'Schema restricts UPDATE operations',
-            ui_behavior: [
-              'Do not show "Edit" buttons',
-              'Show all fields as read-only',
-              'Data is immutable after creation'
-            ]
-          };
-          break;
-
-        case 'no-delete':
-          if (!guidance.crud_restrictions) {
-            guidance.crud_restrictions = {};
-          }
-          guidance.crud_restrictions.delete = {
-            allowed: false,
-            reason: 'Schema restricts DELETE operations',
-            ui_behavior: [
-              'Do not show "Delete" buttons',
-              'Records cannot be removed once created',
-              'Consider soft-delete column if needed'
-            ]
-          };
-          break;
-      }
-    }
-
-    return guidance;
-  }
 
   /**
    * Generate documentation for a single column
@@ -270,6 +158,14 @@ export class ResolvedSchemaGenerator {
       doc.description = columnDef.description;
     }
 
+    // Add label and format if present
+    if (columnDef.label) {
+      doc.label = columnDef.label;
+    }
+    if (columnDef.format) {
+      doc.format = columnDef.format;
+    }
+
     // Add type parameters
     if (columnDef.size !== undefined) doc.size = columnDef.size;
     if (columnDef.decimal !== undefined) doc.decimal = columnDef.decimal;
@@ -281,8 +177,10 @@ export class ResolvedSchemaGenerator {
     doc.expect_null_on_read = nullHandling.expectNullOnRead;
     doc.can_write_null = nullHandling.canWriteNull;
 
-    // Determine if this is a generated FK column
-    const isGeneratedFK = columnName in processedTable.generatedColumns;
+    // Determine if this is a generated FK column (check fkColumnMapping)
+    const isGeneratedFK = Object.values(processedTable.fkColumnMapping || {})
+      .flat()
+      .includes(columnName);
 
     // Determine writability and behavior
     const writabilityInfo = this.determineWritability(
@@ -297,11 +195,6 @@ export class ResolvedSchemaGenerator {
     );
 
     Object.assign(doc, writabilityInfo);
-
-    // Add column-level UI notes if present
-    if (columnDef['ui-notes'] && Array.isArray(columnDef['ui-notes']) && columnDef['ui-notes'].length > 0) {
-      doc.ui_notes = this.expandColumnUIGuidance(columnDef['ui-notes']);
-    }
 
     return doc;
   }
@@ -552,14 +445,16 @@ export class ResolvedSchemaGenerator {
       info.aggregation_path = `${stdAutomation.table}.${stdAutomation.foreign_key} -> ${tableName}`;
       info.update_strategy = 'incremental';
       info.note = `Aggregates ${stdAutomation.type} from ${stdAutomation.table}.${stdAutomation.column}`;
-    } else if (['SNAPSHOT', 'FOLLOW'].includes(stdAutomation.type)) {
-      // SNAPSHOT/FOLLOW: trigger is on the parent table
-      info.trigger_name = `${stdAutomation.table}_before_update_genlogic`;
+    } else if (['SNAPSHOT', 'SYNC'].includes(stdAutomation.type)) {
+      // SNAPSHOT: pull-only on INSERT. SYNC: pull on INSERT, push from parent on UPDATE
+      info.trigger_name = stdAutomation.type === 'SYNC'
+        ? `${stdAutomation.table}_before_update_genlogic`
+        : `${tableName}_before_insert_genlogic`;
       info.cascade_path = `${stdAutomation.table} -> ${tableName}.${stdAutomation.foreign_key}`;
-      info.update_strategy = stdAutomation.type === 'FOLLOW' ? 'on_parent_change' : 'on_insert_only';
+      info.update_strategy = stdAutomation.type === 'SYNC' ? 'on_parent_change' : 'on_insert_only';
       info.note = stdAutomation.type === 'SNAPSHOT'
         ? `Snapshot from ${stdAutomation.table}.${stdAutomation.column} (captured on INSERT only)`
-        : `Follows ${stdAutomation.table}.${stdAutomation.column} (synchronized on parent UPDATE)`;
+        : `Syncs with ${stdAutomation.table}.${stdAutomation.column} (updated when parent changes)`;
     }
 
     return info;
@@ -584,6 +479,135 @@ export class ResolvedSchemaGenerator {
     }
 
     return null;
+  }
+
+  /**
+   * Generate documentation for a matching table
+   */
+  private generateMatchingTableDoc(tableName: string, definition: MatchingTableDefinition): any {
+    const resultColumn = definition.result_column_name;
+
+    return {
+      _table_info: {
+        type: 'pattern_matching_table',
+        description: `Auto-generated pattern matching table with fixed structure for categorization`,
+        has_stored_procedures: true,
+        writable: 'always',
+        note: 'This table uses fixed structure: id, string_match, result_column, range_low_bound, range_high_bound'
+      },
+
+      columns: {
+        id: {
+          type: 'SERIAL',
+          primary_key: true,
+          writable: 'never',
+          reason: 'auto_increment_sequence',
+          insert_behavior: 'omit',
+          update_behavior: 'immutable',
+          note: 'Auto-generated primary key'
+        },
+        string_match: {
+          type: 'VARCHAR(200)',
+          writable: 'always',
+          insert_behavior: 'required',
+          update_behavior: 'allowed',
+          note: 'Pattern with SQL LIKE wildcards (%, _) to match against descriptions',
+          example: '%starbucks%'
+        },
+        [resultColumn]: {
+          type: 'VARCHAR(100)',
+          writable: 'always',
+          insert_behavior: 'required',
+          update_behavior: 'allowed',
+          note: 'The categorization result value to return when this rule matches',
+          example: 'Coffee'
+        },
+        range_low_bound: {
+          type: 'NUMERIC(10,2)',
+          writable: 'always',
+          insert_behavior: 'optional',
+          update_behavior: 'allowed',
+          nullable: true,
+          note: 'Minimum numeric value constraint (NULL = no lower bound)',
+          example: '10.00'
+        },
+        range_high_bound: {
+          type: 'NUMERIC(10,2)',
+          writable: 'always',
+          insert_behavior: 'optional',
+          update_behavior: 'allowed',
+          nullable: true,
+          note: 'Maximum numeric value constraint (NULL = no upper bound)',
+          example: '50.00'
+        }
+      },
+
+      stored_procedures: {
+        match_best: {
+          name: `${tableName}_match_best`,
+          signature: '(p_inputs JSONB)',
+          returns: 'TABLE(input_id INTEGER, matched_id INTEGER, string_match VARCHAR, result_value VARCHAR, matched_column_count INTEGER, pattern_length INTEGER)',
+          description: 'Returns the best (most specific) match for each input based on matched column count and pattern length',
+          usage: `-- Match multiple inputs and get best match for each\nSELECT * FROM ${tableName}_match_best(\n  '[{"id": 1, "description": "STARBUCKS PURCHASE", "amount": 5.50},\n    {"id": 2, "description": "GROCERY STORE", "amount": 45.00}]'::jsonb\n);`,
+          input_format: {
+            required_fields: ['id (integer)', 'description (text)'],
+            optional_fields: ['amount (numeric)'],
+            example: '[{"id": 1, "description": "Transaction text", "amount": 25.50}]'
+          },
+          ranking_logic: {
+            primary: 'matched_column_count (higher is better)',
+            tiebreaker: 'pattern_length (longer is more specific)',
+            explanation: 'Pattern match = 1 point, range_low_bound match = +1 point, range_high_bound match = +1 point'
+          }
+        },
+        match_all: {
+          name: `${tableName}_match_all`,
+          signature: '(p_inputs JSONB)',
+          returns: 'TABLE(input_id INTEGER, matched_id INTEGER, string_match VARCHAR, result_value VARCHAR, matched_column_count INTEGER, pattern_length INTEGER, match_rank INTEGER)',
+          description: 'Returns ALL matches for each input, ranked by specificity (match_rank = 1 is best)',
+          usage: `-- Get all matching rules for review\nSELECT * FROM ${tableName}_match_all(\n  '[{"id": 1, "description": "COFFEE SHOP", "amount": 15.00}]'::jsonb\n)\nORDER BY input_id, match_rank;`,
+          use_case: 'Useful for debugging rules, showing users alternatives, or implementing custom selection logic'
+        }
+      },
+
+      usage_examples: {
+        insert_rules: {
+          simple_pattern: `-- Pattern-only rule (matches any amount)\nINSERT INTO ${tableName} (string_match, ${resultColumn}) VALUES\n  ('%coffee%', 'Beverage');`,
+
+          with_range: `-- Pattern with amount range\nINSERT INTO ${tableName} (string_match, ${resultColumn}, range_low_bound, range_high_bound) VALUES\n  ('%restaurant%', 'Dining - Expensive', 50.00, NULL),\n  ('%restaurant%', 'Dining - Moderate', 15.00, 50.00),\n  ('%restaurant%', 'Dining - Cheap', NULL, 15.00);`,
+
+          exact_amount: `-- Exact amount match (both bounds equal)\nINSERT INTO ${tableName} (string_match, ${resultColumn}, range_low_bound, range_high_bound) VALUES\n  ('%streaming%', 'Premium Subscription', 14.99, 14.99);`
+        },
+
+        call_functions: {
+          match_best: `-- Categorize new transactions\nSELECT \n  t.transaction_id,\n  t.description,\n  t.amount,\n  m.result_value AS ${resultColumn}\nFROM transactions t\nCROSS JOIN LATERAL (\n  SELECT result_value \n  FROM ${tableName}_match_best(\n    jsonb_build_array(jsonb_build_object(\n      'id', t.transaction_id,\n      'description', t.description,\n      'amount', t.amount\n    ))\n  )\n) m\nWHERE t.${resultColumn} IS NULL;`,
+
+          match_all: `-- Review all matching rules for debugging\nSELECT \n  input_id,\n  match_rank,\n  string_match,\n  result_value,\n  matched_column_count\nFROM ${tableName}_match_all(\n  '[{"id": 1, "description": "COFFEE SHOP PURCHASE", "amount": 7.50}]'::jsonb\n)\nORDER BY match_rank;`
+        }
+      },
+
+      specificity_examples: {
+        description: 'Rules are ranked by specificity: more matching constraints = higher rank',
+        examples: [
+          {
+            rule: '%coffee% with NO range constraints',
+            matched_column_count: 1,
+            specificity: 'low'
+          },
+          {
+            rule: '%coffee% with range_low_bound = 5.00',
+            matched_column_count: 2,
+            specificity: 'medium'
+          },
+          {
+            rule: '%coffee% with range_low_bound = 5.00 AND range_high_bound = 10.00',
+            matched_column_count: 3,
+            specificity: 'high'
+          }
+        ],
+        tiebreaker: 'If matched_column_count is equal, longer patterns win (more specific text match)'
+      }
+    };
   }
 
   /**

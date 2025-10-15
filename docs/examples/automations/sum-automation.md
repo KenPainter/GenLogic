@@ -32,11 +32,7 @@ tables:
       # This balance automatically maintains the SUM of all transaction amounts
       balance:
         $ref: amount
-        automation:
-          type: SUM
-          table: transactions      # Source table (child)
-          foreign_key: account_fk  # Foreign key in source table that points back to this table
-          column: amount           # Column in source table to sum
+        automation: SUM transactions.amount
 
   transactions:
     foreign_keys:

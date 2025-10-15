@@ -1,4 +1,4 @@
-Next: [Reusable Columns](02-reusable-columns.md)
+Previous: [What GenLogic Does](../building-database/20-what-genlogic-does.md) | Next: [Reusable Columns](02-reusable-columns.md)
 
 # Single Table Definition
 
@@ -99,11 +99,7 @@ Use object format when you need GenLogic-specific features like automation or ge
 columns:
   total_sales:
     type: numeric(12,2)
-    automation:
-      type: SUM
-      table: orders
-      foreign_key: customer_id
-      column: amount
+    automation: SUM @orders.amount
     comment: Total from all orders
 
   net_balance:
@@ -153,8 +149,7 @@ You can combine types with constraints:
 - unique - Ensures unique values
 - default value - Sets default value
 - primary key - Marks as primary key
-- check (condition) - Custom validation
 
 ---
 
-Next: [Reusable Columns](02-reusable-columns.md)
+Previous: [What GenLogic Does](../building-database/20-what-genlogic-does.md) | Next: [Reusable Columns](02-reusable-columns.md)

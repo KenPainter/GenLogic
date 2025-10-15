@@ -64,35 +64,62 @@ export class GenLogicProcessor {
       console.log('✅ Validating schema syntax...');
       const syntaxResult = this.validator.validateSyntax(schema);
       if (!syntaxResult.isValid) {
-        throw new Error(`Schema syntax validation failed:\\n${syntaxResult.errors.join('\\n')}`);
+        throw new Error(`Schema syntax validation failed:\n${syntaxResult.errors.join('\n')}`);
       }
 
       // PHASE 3: Cross-reference validation
       console.log('🔗 Validating cross-references...');
       const crossRefResult = this.validator.validateCrossReferences(schema);
       if (!crossRefResult.isValid) {
-        throw new Error(`Cross-reference validation failed:\\n${crossRefResult.errors.join('\\n')}`);
+        throw new Error(`Cross-reference validation failed:\n${crossRefResult.errors.join('\n')}`);
       }
 
       // PHASE 4: Data flow graph validation (CRITICAL SAFETY)
       console.log('🌐 Building data flow graph...');
       const graphResult = this.graphValidator.validateDataFlowSafety(schema);
       if (!graphResult.isValid) {
-        throw new Error(`Data flow validation failed:\\n${graphResult.errors.join('\\n')}`);
+        throw new Error(`Data flow validation failed:\n${graphResult.errors.join('\n')}`);
       }
       if (graphResult.warnings.length > 0) {
         console.log('⚠️  Warnings:', graphResult.warnings.join(', '));
       }
 
-      // PHASE 5: Schema processing and inheritance resolution
+      // PHASE 4.5: Assign table layers based on FK dependencies
+      const fkGraph = this.graphValidator.buildForeignKeyGraph(schema);
+      const tableLayers = this.graphValidator.assignTableLayers(fkGraph);
+
+      // PHASE 5: Schema processing and inheritance resolution (layer by layer)
       console.log('🔄 Processing schema inheritance...');
-      const processedSchema = this.schemaProcessor.processSchema(schema);
+      const processedSchema = this.schemaProcessor.processSchema(schema, tableLayers);
+
+      // PHASE 5.3: Validate generated column references
+      console.log('🔍 Validating generated column references...');
+      const generatedResult = this.validator.validateGeneratedColumnReferences(processedSchema);
+      if (!generatedResult.isValid) {
+        throw new Error(`Generated column validation failed:\n${generatedResult.errors.join('\n')}`);
+      }
+      if (generatedResult.warnings.length > 0) {
+        console.log('⚠️  Warnings:', generatedResult.warnings.join(', '));
+      }
+
+      // PHASE 5.4: Validate automation foreign key inference
+      console.log('🔍 Validating automation definitions...');
+      const automationResult = this.validator.validateAutomationInference(schema);
+      if (!automationResult.isValid) {
+        throw new Error(`Automation validation failed:\n${automationResult.errors.join('\n')}`);
+      }
 
       // PHASE 5.5: Validate sync definitions (must happen AFTER FK expansion)
       console.log('🔄 Validating sync definitions...');
       const syncResult = this.validator.validateSyncDefinitions(schema, processedSchema);
       if (!syncResult.isValid) {
         throw new Error(`Sync validation failed:\n${syncResult.errors.join('\n')}`);
+      }
+
+      // PHASE 5.5.1: Validate indexes and unique constraints
+      const indexResult = this.validator.validateIndexesAndConstraints(schema, processedSchema);
+      if (!indexResult.isValid) {
+        throw new Error(`Index/constraint validation failed:\n${indexResult.errors.join('\n')}`);
       }
 
       // PHASE 5.6: Validate content sections
@@ -111,26 +138,32 @@ export class GenLogicProcessor {
         const dropAllTriggersSQL = await this.database.generateDropAllGenLogicTriggersSQL();
 
         const currentSchema = await this.database.analyzeCurrentSchema();
-        const diff = this.diffEngine.generateDiff(processedSchema, currentSchema);
+        const diff = this.diffEngine.generateDiff(processedSchema, currentSchema, schema);
 
         // PHASE 7: SQL generation
         console.log('📝 Generating SQL statements...');
-        const ddlStatements = this.sqlGenerator.generateSQL(diff);
+        const ddlStatements = this.sqlGenerator.generateSQL(diff, processedSchema);
         const triggerStatements = this.triggerGenerator.generateTriggers(schema, processedSchema);
         const matchingStatements = this.matchingGenerator.generateMatchingSQL(schema, processedSchema);
         const contentStatements = this.contentManager.generateContentInserts(schema, processedSchema);
 
         // ROBUST EXECUTION ORDER:
         // 1. Drop ALL GenLogic triggers (clean slate)
-        // 2. Run all DDL (tables, columns, constraints)
-        // 3. Add comments (table and column descriptions)
-        // 4. Create ALL triggers (fresh from schema)
-        // 5. Create matching functions (pattern matching utilities)
-        // 6. Insert content (with complete schema and active triggers)
+        // 2. Run all DDL (tables, columns)
+        // 3. Modify existing columns (safe expansions only)
+        // 4. Clean up orphaned FK values (set NULL where parent doesn't exist)
+        // 5. Add FK constraints (after cleanup to avoid violations)
+        // 6. Create indexes
+        // 7. Add comments (table and column descriptions)
+        // 8. Create ALL triggers (fresh from schema)
+        // 9. Create matching functions (pattern matching utilities)
+        // 10. Insert content (with complete schema and active triggers)
         const allStatements = [
           ...dropAllTriggersSQL,
           ...ddlStatements.createTables,
           ...ddlStatements.addColumns,
+          ...ddlStatements.modifyColumns,
+          ...ddlStatements.cleanupForeignKeys,
           ...ddlStatements.addForeignKeys,
           ...ddlStatements.createIndexes,
           ...ddlStatements.addComments,
@@ -227,6 +260,13 @@ export class GenLogicProcessor {
       }
     }
 
+    if (diff.columnsToModify.length > 0) {
+      console.log(`\\n🔄 Columns to modify: ${diff.columnsToModify.length}`);
+      for (const column of diff.columnsToModify) {
+        console.log(`   - ${column.tableName}.${column.columnName}: ${column.reason}`);
+      }
+    }
+
     if (diff.foreignKeysToAdd.length > 0) {
       console.log(`\\n🔗 Foreign keys to add: ${diff.foreignKeysToAdd.length}`);
       for (const fk of diff.foreignKeysToAdd) {
@@ -265,13 +305,20 @@ export class GenLogicProcessor {
         this.config.database
       );
 
-      const outputPath = `${schemaPath}.resolved.yaml`;
-      const yamlContent = stringify(resolvedSchema, {
-        lineWidth: 0,  // Prevent line wrapping
-        indent: 2
-      });
+      // Generate TypeScript file instead of YAML
+      const outputPath = schemaPath.replace(/\.yaml$/, '.ts');
+      const jsonString = JSON.stringify(resolvedSchema, null, 2);
 
-      writeFileSync(outputPath, yamlContent, 'utf-8');
+      const tsContent = `// Generated by GenLogic - DO NOT EDIT
+// This file describes the actual database structure after GenLogic processing
+// Source: ${schemaPath}
+// Database: ${this.config.database}
+// Generated: ${new Date().toISOString()}
+
+export const schema = ${jsonString} as const;
+`;
+
+      writeFileSync(outputPath, tsContent, 'utf-8');
       console.log(`✅ Resolved schema written to: ${outputPath}`);
     } catch (error) {
       console.warn(`⚠️  Warning: Could not write resolved schema: ${error instanceof Error ? error.message : 'Unknown error'}`);

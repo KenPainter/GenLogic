@@ -1,20 +1,20 @@
-Previous: [CLI Usage](01-cli-usage.md) | Next: [Documentation Navigation Links](../development/01-navigation-links.md)
+Previous: [Label and Format](09-label-and-format.md) | Next: [Test Guide](../development/02-test-guide.md)
 
 # Seed Data
 
-Seed data can be included in schema definitions using `content` sections. The Content Manager handles insertion with idempotent behavior and foreign key resolution.
+Seed data can be included in schema definitions using `seed-rows` sections. The Content Manager handles insertion with idempotent behavior and foreign key resolution.
 
 ## Overview
 
-Content sections define seed data that should exist in the database:
+Seed-rows sections define seed data that should exist in the database:
 - Inserts data only if it doesn't already exist
 - Resolves foreign key references using $lookup
-- Validates content before insertion
+- Validates seed data before insertion
 - Handles complex data types including JSON
 
 ## Basic Usage
 
-### Simple Content Definition
+### Simple Seed Data Definition
 
 ```yaml
 tables:
@@ -23,7 +23,7 @@ tables:
       id: serial primary key
       name: varchar(100) unique
       description: text
-    content:
+    seed-rows:
       - name: Electronics
         description: Electronic devices and accessories
       - name: Books
@@ -32,7 +32,7 @@ tables:
         description: Apparel and accessories
 ```
 
-### Content with Primary Keys
+### Seed Data with Primary Keys
 
 When providing explicit primary keys:
 
@@ -43,7 +43,7 @@ tables:
       id: integer primary key
       name: varchar(50) unique
       permissions: jsonb
-    content:
+    seed-rows:
       - id: 1
         name: admin
         permissions: { read: true, write: true, delete: true }
@@ -65,7 +65,7 @@ tables:
       id: serial primary key
       account_code: varchar(20) unique
       name: varchar(100)
-    content:
+    seed-rows:
       - account_code: CASH
         name: Cash Account
       - account_code: REVENUE
@@ -79,7 +79,7 @@ tables:
       description: text
     foreign_keys:
       account: accounts
-    content:
+    seed-rows:
       - account_id:
           $lookup:
             table: accounts
@@ -92,7 +92,7 @@ tables:
 ### Complex $lookup with Multiple Conditions
 
 ```yaml
-content:
+seed-rows:
   - user_id:
       $lookup:
         table: users
@@ -379,4 +379,4 @@ tables:
 
 ---
 
-Previous: [CLI Usage](01-cli-usage.md) | Next: [Documentation Navigation Links](../development/01-navigation-links.md)
+Previous: [Label and Format](09-label-and-format.md) | Next: [Test Guide](../development/02-test-guide.md)

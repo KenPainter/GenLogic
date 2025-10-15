@@ -4,7 +4,7 @@ tables:
       id: integer primary key
       code: varchar(20)
       description: varchar(100)
-    content:
+    seed-rows:
       - id: 1
         code: "ACTIVE"
         description: "Active status"

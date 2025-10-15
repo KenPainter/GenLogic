@@ -1,0 +1,8 @@
+tables:
+  users:
+    columns:
+      id: serial primary key
+      email: varchar(100)
+
+    unique_constraints:
+      - [email, username]  # Should error - username doesn't exist

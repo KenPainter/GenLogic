@@ -1,6 +1,7 @@
 import type {
   DatabaseTable,
-  ColumnDefinition
+  ColumnDefinition,
+  GenLogicSchema
 } from './types.js';
 import type { ProcessedSchema, ProcessedTable } from './schema-processor.js';
 
@@ -17,11 +18,13 @@ export class DiffEngine {
    */
   generateDiff(
     desiredSchema: ProcessedSchema,
-    currentSchema: Record<string, DatabaseTable>
+    currentSchema: Record<string, DatabaseTable>,
+    originalSchema?: GenLogicSchema
   ): SchemaDiff {
     const diff: SchemaDiff = {
       tablesToCreate: [],
       columnsToAdd: [],
+      columnsToModify: [],
       indexesToCreate: [],
       foreignKeysToAdd: [],
       triggersToRecreate: []
@@ -52,6 +55,30 @@ export class DiffEngine {
             isUnique: false
           });
         }
+
+        // Create unique constraints from originalSchema
+        if (originalSchema?.tables?.[tableName]?.unique_constraints) {
+          for (const columns of originalSchema.tables[tableName].unique_constraints!) {
+            diff.indexesToCreate.push({
+              tableName,
+              indexName: `unique_${tableName}_${columns.join('_')}`,
+              columns,
+              isUnique: true
+            });
+          }
+        }
+
+        // Create indexes from originalSchema
+        if (originalSchema?.tables?.[tableName]?.indexes) {
+          for (const columns of originalSchema.tables[tableName].indexes!) {
+            diff.indexesToCreate.push({
+              tableName,
+              indexName: `idx_${tableName}_${columns.join('_')}`,
+              columns,
+              isUnique: false
+            });
+          }
+        }
       } else {
         // Table exists - check for new columns
         const newColumns = this.findNewColumns(desiredTable, currentTable);
@@ -61,6 +88,12 @@ export class DiffEngine {
             columnName: column.name,
             definition: column.definition
           });
+        }
+
+        // Check for modified columns (safe expansions only)
+        const modifiedColumns = this.findModifiedColumns(desiredTable, currentTable);
+        for (const column of modifiedColumns) {
+          diff.columnsToModify.push(column);
         }
 
         // Check for new foreign keys
@@ -74,13 +107,52 @@ export class DiffEngine {
             columnNames: fk.columnNames
           });
 
-          // Create index for the new FK column(s)
-          diff.indexesToCreate.push({
-            tableName,
-            indexName: `idx_${tableName}_${fk.columnNames.join('_')}`,
-            columns: fk.columnNames,
-            isUnique: false
-          });
+          // Create index for the new FK column(s) if it doesn't already exist
+          const indexName = `idx_${tableName}_${fk.columnNames.join('_')}`;
+          const indexExists = currentTable.indexes.some(idx => idx.name === indexName);
+
+          if (!indexExists) {
+            diff.indexesToCreate.push({
+              tableName,
+              indexName,
+              columns: fk.columnNames,
+              isUnique: false
+            });
+          }
+        }
+
+        // Check for new unique constraints from originalSchema
+        if (originalSchema?.tables?.[tableName]?.unique_constraints) {
+          for (const columns of originalSchema.tables[tableName].unique_constraints!) {
+            const indexName = `unique_${tableName}_${columns.join('_')}`;
+            const indexExists = currentTable.indexes.some(idx => idx.name === indexName);
+
+            if (!indexExists) {
+              diff.indexesToCreate.push({
+                tableName,
+                indexName,
+                columns,
+                isUnique: true
+              });
+            }
+          }
+        }
+
+        // Check for new indexes from originalSchema
+        if (originalSchema?.tables?.[tableName]?.indexes) {
+          for (const columns of originalSchema.tables[tableName].indexes!) {
+            const indexName = `idx_${tableName}_${columns.join('_')}`;
+            const indexExists = currentTable.indexes.some(idx => idx.name === indexName);
+
+            if (!indexExists) {
+              diff.indexesToCreate.push({
+                tableName,
+                indexName,
+                columns,
+                isUnique: false
+              });
+            }
+          }
         }
       }
 
@@ -97,13 +169,8 @@ export class DiffEngine {
   private getAllTableColumns(table: ProcessedTable): Array<{name: string, definition: ColumnDefinition}> {
     const columns: Array<{name: string, definition: ColumnDefinition}> = [];
 
-    // Add explicit columns
+    // Add all columns (explicit columns + FK-generated columns are merged)
     for (const [name, definition] of Object.entries(table.columns)) {
-      columns.push({ name, definition });
-    }
-
-    // Add generated FK columns
-    for (const [name, definition] of Object.entries(table.generatedColumns)) {
       columns.push({ name, definition });
     }
 
@@ -120,21 +187,205 @@ export class DiffEngine {
     const newColumns: Array<{name: string, definition: ColumnDefinition}> = [];
     const currentColumnNames = new Set(currentTable.columns.map(col => col.name));
 
-    // Check explicit columns
+    // Check all columns (FK columns are now merged into columns)
     for (const [name, definition] of Object.entries(desiredTable.columns)) {
       if (!currentColumnNames.has(name)) {
         newColumns.push({ name, definition });
       }
     }
 
-    // Check generated FK columns
-    for (const [name, definition] of Object.entries(desiredTable.generatedColumns)) {
-      if (!currentColumnNames.has(name)) {
-        newColumns.push({ name, definition });
+    return newColumns;
+  }
+
+  /**
+   * Find columns that need modification (safe expansions only)
+   * Supports: VARCHAR/CHAR size expansion, NUMERIC precision/scale expansion
+   */
+  private findModifiedColumns(
+    desiredTable: ProcessedTable,
+    currentTable: DatabaseTable
+  ): ColumnModification[] {
+    const modifications: ColumnModification[] = [];
+    const currentColumnMap = new Map(currentTable.columns.map(col => [col.name, col]));
+
+    for (const [name, desiredDef] of Object.entries(desiredTable.columns)) {
+      const currentCol = currentColumnMap.get(name);
+      if (!currentCol) continue; // New column, not a modification
+
+      const modification = this.detectSafeColumnModification(
+        currentTable.name,
+        name,
+        currentCol.type,
+        desiredDef
+      );
+
+      if (modification) {
+        modifications.push(modification);
       }
     }
 
-    return newColumns;
+    return modifications;
+  }
+
+  /**
+   * Detect if column modification is safe (expansion only)
+   * Returns ColumnModification if safe expansion detected, null otherwise
+   */
+  private detectSafeColumnModification(
+    tableName: string,
+    columnName: string,
+    currentType: string,
+    desiredDef: ColumnDefinition
+  ): ColumnModification | null {
+    // Parse current type
+    const currentParsed = this.parseColumnType(currentType);
+
+    // Build desired type from definition
+    const desiredType = this.buildTypeString(desiredDef);
+    const desiredParsed = this.parseColumnType(desiredType);
+
+    // Must be same base type (with normalization for PostgreSQL aliases)
+    const currentNormalized = this.normalizeTypeName(currentParsed.baseType);
+    const desiredNormalized = this.normalizeTypeName(desiredParsed.baseType);
+
+    if (currentNormalized !== desiredNormalized) {
+      return null;
+    }
+
+    // Check for safe expansions (using normalized type names)
+    if (currentNormalized === 'varchar') {
+      // VARCHAR expansion
+      if (desiredParsed.size && currentParsed.size && desiredParsed.size > currentParsed.size) {
+        return {
+          tableName,
+          columnName,
+          currentType,
+          newType: desiredType,
+          reason: `VARCHAR size expanded from ${currentParsed.size} to ${desiredParsed.size}`
+        };
+      }
+    } else if (currentNormalized === 'char') {
+      // CHAR expansion
+      if (desiredParsed.size && currentParsed.size && desiredParsed.size > currentParsed.size) {
+        return {
+          tableName,
+          columnName,
+          currentType,
+          newType: desiredType,
+          reason: `CHAR size expanded from ${currentParsed.size} to ${desiredParsed.size}`
+        };
+      }
+    } else if (currentNormalized === 'numeric') {
+      // NUMERIC expansion - both precision and scale can increase
+      const precisionExpanded = desiredParsed.precision && currentParsed.precision &&
+                                desiredParsed.precision > currentParsed.precision;
+      const scaleExpanded = desiredParsed.scale !== undefined && currentParsed.scale !== undefined &&
+                           desiredParsed.scale > currentParsed.scale;
+
+      // Allow if precision expanded OR scale expanded (both are safe)
+      if (precisionExpanded || scaleExpanded) {
+        // Scale cannot decrease
+        if (currentParsed.scale !== undefined && desiredParsed.scale !== undefined &&
+            desiredParsed.scale < currentParsed.scale) {
+          return null; // UNSAFE: scale decrease
+        }
+
+        const changes: string[] = [];
+        if (precisionExpanded) {
+          changes.push(`precision ${currentParsed.precision} → ${desiredParsed.precision}`);
+        }
+        if (scaleExpanded) {
+          changes.push(`scale ${currentParsed.scale} → ${desiredParsed.scale}`);
+        }
+
+        return {
+          tableName,
+          columnName,
+          currentType,
+          newType: desiredType,
+          reason: `NUMERIC expanded (${changes.join(', ')})`
+        };
+      }
+    }
+
+    return null; // No safe modification detected
+  }
+
+  /**
+   * Normalize PostgreSQL type names to their canonical forms
+   * Handles aliases like "character varying" -> "varchar", "character" -> "char"
+   */
+  private normalizeTypeName(typeName: string): string {
+    const normalized = typeName.toLowerCase();
+
+    // PostgreSQL type aliases
+    const typeMap: Record<string, string> = {
+      'character varying': 'varchar',
+      'character': 'char',
+      'int': 'integer',
+      'int4': 'integer',
+      'int8': 'bigint',
+      'int2': 'smallint',
+      'float8': 'double precision',
+      'float4': 'real',
+      'bool': 'boolean'
+    };
+
+    return typeMap[normalized] || normalized;
+  }
+
+  /**
+   * Parse PostgreSQL column type into components
+   */
+  private parseColumnType(type: string): {
+    baseType: string;
+    size?: number;
+    precision?: number;
+    scale?: number;
+  } {
+    // Extract base type and parameters
+    const match = type.match(/^(\w+(?:\s+\w+)?)\s*(?:\((\d+)(?:,(\d+))?\))?$/);
+
+    if (!match) {
+      return { baseType: type.toLowerCase() };
+    }
+
+    const baseType = match[1].toLowerCase();
+    const param1 = match[2] ? parseInt(match[2]) : undefined;
+    const param2 = match[3] ? parseInt(match[3]) : undefined;
+
+    if (baseType === 'numeric' && param1 !== undefined) {
+      return {
+        baseType,
+        precision: param1,
+        scale: param2 !== undefined ? param2 : 0
+      };
+    } else if (param1 !== undefined) {
+      return {
+        baseType,
+        size: param1
+      };
+    }
+
+    return { baseType };
+  }
+
+  /**
+   * Build type string from ColumnDefinition
+   */
+  private buildTypeString(def: ColumnDefinition): string {
+    const typeMatch = def.type.match(/^(\w+(?:\s+\w+)?)/);
+    const baseType = typeMatch ? typeMatch[1] : def.type;
+
+    if (def.size !== undefined && def.decimal !== undefined) {
+      // NUMERIC(precision, scale)
+      return `${baseType}(${def.size},${def.decimal})`;
+    } else if (def.size !== undefined) {
+      // VARCHAR(size) or CHAR(size)
+      return `${baseType}(${def.size})`;
+    }
+
+    return baseType;
   }
 
   /**
@@ -170,6 +421,7 @@ export class DiffEngine {
 export interface SchemaDiff {
   tablesToCreate: TableCreation[];
   columnsToAdd: ColumnAddition[];
+  columnsToModify: ColumnModification[];
   indexesToCreate: IndexCreation[];
   foreignKeysToAdd: ForeignKeyAddition[];
   triggersToRecreate: string[]; // Table names that need trigger recreation
@@ -186,6 +438,14 @@ export interface ColumnAddition {
   tableName: string;
   columnName: string;
   definition: ColumnDefinition;
+}
+
+export interface ColumnModification {
+  tableName: string;
+  columnName: string;
+  currentType: string;
+  newType: string;
+  reason: string;  // Description of what changed (e.g., "VARCHAR size expanded from 30 to 60")
 }
 
 export interface IndexCreation {

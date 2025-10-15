@@ -1,13 +1,41 @@
 tables:
   type_showcase:
     columns:
+      # Serial types (auto-increment)
       id: serial primary key
+      big_id: bigserial
+      small_id: smallserial
+
+      # Integer types
+      age: integer
+      stock_count: bigint
+      priority: smallint
+
+      # Text types
       name: varchar(100) not null
       email: varchar(255) unique
-      age: integer
-      salary: numeric(10,2)
-      is_active: boolean default true
-      created_at: timestamp default now()
+      code: char(10)
       bio: text
-      data:
-        type: jsonb
+
+      # Numeric types
+      salary: numeric(10,2)
+      price: decimal(8,3)
+      unlimited_precision: numeric
+
+      # Floating point
+      ratio: real
+      precise_ratio: double precision
+
+      # Boolean
+      is_active: boolean default true
+
+      # Date and time
+      birth_date: date
+      created_at: timestamp default now()
+      updated_at: timestamptz
+
+      # Other types
+      external_id: uuid
+      bit_flags: bit(8)
+      settings: json
+      metadata: jsonb

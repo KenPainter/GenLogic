@@ -36,20 +36,12 @@ tables:
       # Always contains the most recent status from device_logs
       current_status:
         $ref: status
-        automation:
-          type: LAST_VALUE
-          table: device_logs
-          foreign_key: device_fk
-          column: status
+        automation: LAST_VALUE device_logs.status
 
       # Always contains the most recent sensor reading
       last_reading:
         $ref: reading
-        automation:
-          type: LAST_VALUE
-          table: sensor_readings
-          foreign_key: device_fk
-          column: value
+        automation: LAST_VALUE sensor_readings.value
 
   orders:
     columns:
@@ -59,11 +51,7 @@ tables:
       # Tracks the latest status update for this order
       latest_status:
         $ref: status
-        automation:
-          type: LAST_VALUE
-          table: order_status_history
-          foreign_key: order_fk
-          column: status
+        automation: LAST_VALUE order_status_history.status
 
   device_logs:
     foreign_keys:

@@ -45,24 +45,14 @@ export class DataFlowGraphValidator {
 
   /**
    * Extract column names from a calculated expression
-   * Simple regex-based parser to find potential column references
+   * Uses @column_name syntax to identify column references
    */
   private extractColumnReferences(expression: string): string[] {
-    // Match SQL identifiers (letters, numbers, underscores)
-    // This will capture column names from expressions like "col1 + col2" or "case when col1 > 0 then col2 else col3 end"
-    const identifierRegex = /\b[a-zA-Z_][a-zA-Z0-9_]*\b/g;
-    const matches = expression.match(identifierRegex) || [];
+    // Extract @column_name references
+    const atMatches = expression.match(/@(\w+)/g) || [];
+    const columnRefs = atMatches.map(m => m.substring(1)); // Remove "@"
 
-    // Filter out SQL keywords to avoid false positives
-    const sqlKeywords = new Set([
-      'case', 'when', 'then', 'else', 'end', 'and', 'or', 'not', 'null', 'true', 'false',
-      'select', 'from', 'where', 'order', 'by', 'group', 'having', 'distinct',
-      'as', 'is', 'in', 'like', 'between', 'exists', 'all', 'any', 'some',
-      'union', 'intersect', 'except', 'join', 'inner', 'outer', 'left', 'right', 'full', 'cross',
-      'on', 'using', 'natural', 'asc', 'desc', 'limit', 'offset'
-    ]);
-
-    return matches.filter(match => !sqlKeywords.has(match.toLowerCase()));
+    return columnRefs;
   }
 
   /**
@@ -299,6 +289,69 @@ export class DataFlowGraphValidator {
     }
 
     return false;
+  }
+
+  /**
+   * Assign layer numbers to tables based on FK dependencies
+   * Layer 0 = tables with no FKs (no dependencies)
+   * Layer 1 = tables with FKs only to layer 0 tables
+   * Layer 2 = tables with FKs to layer 0 or 1 tables, etc.
+   *
+   * This ensures child tables are processed after parent tables
+   */
+  assignTableLayers(graph: DataFlowGraph): Map<string, number> {
+    const layers = new Map<string, number>();
+    const inDegree = new Map<string, number>();
+
+    // Calculate in-degrees: count how many OTHER tables each table depends on
+    // (number of outgoing FK edges FROM this table)
+    for (const node of graph.nodes) {
+      const outgoingEdges = graph.edges.get(node) || new Set();
+      inDegree.set(node, outgoingEdges.size);
+    }
+
+    // Topological sort by layers using Kahn's algorithm
+    let currentLayer = 0;
+    let processed = 0;
+
+    while (processed < graph.nodes.size) {
+      // Find all nodes with in-degree 0 (no remaining dependencies)
+      const currentLayerNodes: string[] = [];
+      for (const [node, degree] of inDegree) {
+        if (degree === 0 && !layers.has(node)) {
+          currentLayerNodes.push(node);
+        }
+      }
+
+      // If no nodes found but we haven't processed all, there's a cycle
+      if (currentLayerNodes.length === 0) {
+        // Assign remaining nodes to next layer (cycle detected earlier should prevent this)
+        for (const node of graph.nodes) {
+          if (!layers.has(node)) {
+            layers.set(node, currentLayer);
+          }
+        }
+        break;
+      }
+
+      // Assign current layer
+      for (const node of currentLayerNodes) {
+        layers.set(node, currentLayer);
+        processed++;
+
+        // Decrease in-degree for all nodes that depend on this node
+        // (nodes that have FK FROM them TO this node)
+        for (const [source, targets] of graph.edges) {
+          if (targets.has(node)) {
+            inDegree.set(source, (inDegree.get(source) || 0) - 1);
+          }
+        }
+      }
+
+      currentLayer++;
+    }
+
+    return layers;
   }
 
   /**

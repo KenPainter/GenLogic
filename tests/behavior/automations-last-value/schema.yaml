@@ -5,11 +5,7 @@ tables:
       name: varchar(50)
       last_reading:
         type: numeric(10,2)
-        automation:
-          type: LAST_VALUE
-          table: readings
-          foreign_key: device
-          column: value
+        automation: LAST_VALUE @readings.value
 
   readings:
     columns:

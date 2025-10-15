@@ -1,20 +1,8 @@
-Previous: [Pattern Matching Tables](../schema-syntax/07-matching-tables.md) | Next: [Seed Data](02-seed-data.md)
+Previous: [Installation](00-installation.md) | Next: [What GenLogic Does](20-what-genlogic-does.md)
 
 # CLI Usage
 
 GenLogic provides a command-line interface for processing schema definitions and applying them to PostgreSQL databases.
-
-## Installation
-
-GenLogic requires Bun runtime:
-
-```bash
-# Install dependencies
-bun install
-
-# Make CLI executable
-chmod +x src/cli.ts
-```
 
 ## Basic Usage
 
@@ -24,7 +12,7 @@ bun run src/cli.ts -d database_name -u username -w password -s schema.yaml
 
 ## Command Options
 
-### Required Options (unless in test mode)
+### Required Options
 
 - `-d, --database <database>` - PostgreSQL database name
 - `-u, --user <user>` - PostgreSQL username
@@ -36,7 +24,6 @@ bun run src/cli.ts -d database_name -u username -w password -s schema.yaml
 - `-p, --port <port>` - PostgreSQL port (default: `5432`)
 - `-s, --schema <path>` - Path to YAML schema file (default: `./schema.yaml`)
 - `--dry-run` - Show planned SQL changes without executing them
-- `--test-mode` - Skip database connection for validation testing
 - `--version` - Display version information
 - `--help` - Display help information
 
@@ -44,14 +31,14 @@ bun run src/cli.ts -d database_name -u username -w password -s schema.yaml
 
 ### Process a Schema
 
-Apply a schema to your database:
+Build your database:
 
 ```bash
 bun run src/cli.ts \
   -d myapp_db \
   -u postgres \
   -w mypassword \
-  -s schemas/production.yaml
+  -s /path/to/my-product.yaml
 ```
 
 ### Dry Run Mode
@@ -63,28 +50,11 @@ bun run src/cli.ts \
   -d myapp_db \
   -u postgres \
   -w mypassword \
-  -s schema.yaml \
+  -s /path/to/my-product.yaml
   --dry-run
 ```
 
 This outputs the SQL statements that would be executed without actually running them.
-
-### Test Mode
-
-Validate a schema without database connection:
-
-```bash
-bun run src/cli.ts \
-  -s schema.yaml \
-  --test-mode
-```
-
-This validates:
-- Schema syntax
-- Column inheritance references
-- Foreign key references
-- Automation configurations
-- Data flow graph for cycles
 
 ### Custom Host and Port
 
@@ -100,39 +70,26 @@ bun run src/cli.ts \
   -s schema.yaml
 ```
 
-## Environment Variables
-
-For security, you can use environment variables instead of command-line arguments:
-
-```bash
-export DB_HOST=localhost
-export DB_PORT=5432
-export DB_USER=postgres
-export DB_PASSWORD=mypassword
-
-bun run src/cli.ts -d myapp_db -s schema.yaml
-```
-
 ## Schema File Format
 
 GenLogic expects schemas in YAML format. Example:
 
 ```yaml
 columns:
-  id: { type: integer, primary_key: true, sequence: true }
-  name: { type: varchar, size: 100 }
-  created_at: { type: timestamp }
+  id: serial primary key
+  name: varchar(100)
+  created_at: timestamp
 
 tables:
   users:
     columns:
-      id: null
-      name: null
-      email: { type: varchar, size: 255, unique: true }
-      created_at: null
+      id:
+      name:
+      email: varchar(255) unique
+      created_at:
 ```
 
-See [examples](../examples/) for comprehensive schema examples.
+See schema syntax documentation for details.
 
 ## Exit Codes
 
@@ -144,15 +101,11 @@ See [examples](../examples/) for comprehensive schema examples.
 ### Initial Setup
 
 1. Create your schema file
-2. Validate with test mode:
-   ```bash
-   bun run src/cli.ts -s schema.yaml --test-mode
-   ```
-3. Preview changes with dry run:
+2. Preview changes with dry run:
    ```bash
    bun run src/cli.ts -d mydb -u user -w pass -s schema.yaml --dry-run
    ```
-4. Apply schema:
+3. Build/Update the database:
    ```bash
    bun run src/cli.ts -d mydb -u user -w pass -s schema.yaml
    ```
@@ -162,7 +115,7 @@ See [examples](../examples/) for comprehensive schema examples.
 When modifying an existing schema:
 
 1. Edit your schema file
-2. Preview changes with dry run to see what will be modified
+2. Preview changes with dry run to see what will be modified (if desired)
 3. Apply changes when satisfied
 
 ### Debugging
@@ -177,27 +130,18 @@ DEBUG_SQL=1 bun run src/cli.ts -d mydb -u user -w pass -s schema.yaml
 
 Common error messages and solutions:
 
-- **"Database name is required"** - Provide `-d` option or use test mode
-- **"Column 'x' references non-existent column 'y'"** - Fix column inheritance reference
-- **"Foreign key references non-existent table"** - Ensure referenced table exists
-- **"Cycle detected in data flow graph"** - Remove circular automation dependencies
-- **"Connection refused"** - Check PostgreSQL is running and credentials are correct
-
-## Performance Considerations
-
-- Use `--dry-run` for large schemas to preview changes first
-- GenLogic processes schemas incrementally, only applying necessary changes
-- Triggers are consolidated for optimal performance
-- Pattern matching tables use indexed lookups
+- "Database name is required" - Provide `-d` option
+- "Username is required" - Provide `-u` option
+- "Column 'x' references non-existent column 'y'" - Fix column inheritance reference
+- "Foreign key references non-existent table" - Ensure referenced table exists
+- "Cycle detected in data flow graph" - Remove circular automation dependencies
+- "Connection refused" - Check PostgreSQL is running and credentials are correct
 
 ## Integration with CI/CD
 
 Example GitHub Actions workflow:
 
 ```yaml
-- name: Validate Schema
-  run: bun run src/cli.ts -s schema.yaml --test-mode
-
 - name: Apply Schema
   run: |
     bun run src/cli.ts \
@@ -205,6 +149,19 @@ Example GitHub Actions workflow:
       -u ${{ secrets.DB_USER }} \
       -w ${{ secrets.DB_PASSWORD }} \
       -s schema.yaml
+```
+
+For validation testing, use dry-run mode:
+
+```yaml
+- name: Validate Schema Changes
+  run: |
+    bun run src/cli.ts \
+      -d ${{ secrets.DB_NAME }} \
+      -u ${{ secrets.DB_USER }} \
+      -w ${{ secrets.DB_PASSWORD }} \
+      -s schema.yaml \
+      --dry-run
 ```
 
 ## Troubleshooting
@@ -220,19 +177,17 @@ If you cannot connect to the database:
 ### Schema Validation Errors
 
 If schema validation fails:
-1. Use `--test-mode` to get detailed validation errors
-2. Check YAML syntax with a YAML validator
-3. Verify all referenced columns and tables exist
-4. Review [Test Guide](../test-guide.md) for validation rules
+1. Check YAML syntax with a YAML validator
+2. Verify all referenced columns and tables exist
+3. Check for circular dependencies in automations
 
 ### Performance Issues
 
 For slow schema processing:
 1. Use `--dry-run` first to analyze changes
-2. Consider breaking large schemas into smaller files
-3. Review generated SQL with `DEBUG_SQL=1`
-4. Check PostgreSQL logs for slow queries
+2. Review generated SQL with `DEBUG_SQL=1`
+3. Check PostgreSQL logs for slow queries
 
 ---
 
-Previous: [Pattern Matching Tables](../schema-syntax/07-matching-tables.md) | Next: [Seed Data](02-seed-data.md)
+Previous: [Installation](00-installation.md) | Next: [What GenLogic Does](20-what-genlogic-does.md)

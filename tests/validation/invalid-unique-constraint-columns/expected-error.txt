@@ -1,0 +1,2 @@
+Index/constraint validation failed:
+Table 'users', unique_constraints[0]: column 'username' does not exist

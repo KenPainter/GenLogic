@@ -5,11 +5,7 @@ tables:
       name: varchar(50)
       order_count:
         type: integer
-        automation:
-          type: COUNT
-          table: orders
-          foreign_key: customer
-          column: id
+        automation: COUNT @orders.id
 
   orders:
     columns:

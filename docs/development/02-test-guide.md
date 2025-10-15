@@ -1,4 +1,4 @@
-Previous: [Documentation Navigation Links](01-navigation-links.md) | Next: [Test Coverage Matrix](03-test-coverage-matrix.md)
+Previous: [Seed Data](../schema-syntax/02-seed-data.md) | Next: [Documentation Navigation Links](01-navigation-links.md)
 
 # GenLogic Testing Guide
 
@@ -279,4 +279,4 @@ Exit code 0 = all tests passed, non-zero = failures occurred.
 
 ---
 
-Previous: [Documentation Navigation Links](01-navigation-links.md) | Next: [Test Coverage Matrix](03-test-coverage-matrix.md)
+Previous: [Seed Data](../schema-syntax/02-seed-data.md) | Next: [Documentation Navigation Links](01-navigation-links.md)

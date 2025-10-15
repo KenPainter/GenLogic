@@ -1,0 +1,100 @@
+# Test: Label and Format Propagation
+#
+# This test verifies that label and format properties:
+# 1. Can be defined on columns
+# 2. Propagate through foreign key relationships
+# 3. Propagate through SYNC automations
+# 4. Propagate through SNAPSHOT automations
+# 5. Can be overridden in reusable columns
+# 6. Can be overridden on FK columns
+
+columns:
+  currency_col:
+    type: numeric(10,2) not null default 0
+    label: Currency Amount
+    format: currency
+
+  email_col:
+    type: varchar(255) not null
+    label: Email Address
+    format: email
+
+tables:
+  users:
+    comment: Users with labeled columns
+    columns:
+      id:
+        type: serial primary key
+        label: User ID
+        format: id
+      name: varchar(100) not null
+      email: email_col  # Inherits label and format
+
+  accounts:
+    comment: Accounts - FK should get label/format from users.id
+    columns:
+      id:
+        type: serial primary key
+        label: Account ID
+        format: id
+      balance:
+        $ref: currency_col
+        label: Account Balance  # Override label
+      # user_id will be generated with label "User ID" and format "id"
+    foreign_keys:
+      user_id: users
+
+  transactions:
+    comment: Transactions - FK should get labels from both parent tables
+    columns:
+      id:
+        type: serial primary key
+        label: Transaction ID
+        format: id
+      amount:
+        $ref: currency_col
+        label: Transaction Amount
+      transaction_date:
+        type: timestamp not null default now()
+        label: Date
+        format: datetime
+      # account_id gets "Account ID" / "id"
+      # user_id gets "User ID" / "id" from the FK
+    foreign_keys:
+      account_id: accounts
+      user_id: users
+
+  ledger:
+    comment: Ledger with SNAPSHOT - should get label/format from source
+    columns:
+      id:
+        type: serial primary key
+        label: Ledger ID
+        format: id
+      # SNAPSHOT: Should get "Transaction Amount" / "currency" from transactions.amount
+      snapshot_amount:
+        type: numeric(10,2)
+        automation: SNAPSHOT @transactions.amount
+      # SYNC: Should get "Account Balance" / "currency" from accounts.balance
+      synced_balance:
+        type: numeric(10,2)
+        automation: SYNC @accounts.balance
+    foreign_keys:
+      transaction_id: transactions
+      account_id: accounts
+
+  summary:
+    comment: Summary table with aggregations (no label/format propagation)
+    columns:
+      id:
+        type: serial primary key
+        label: Summary ID
+        format: id
+      # Aggregations don't propagate label/format (different semantics)
+      total_amount:
+        type: numeric(10,2) not null default 0
+        automation: SUM(account_id) @transactions.amount
+        label: Total Amount
+        format: currency
+    foreign_keys:
+      account_id: accounts

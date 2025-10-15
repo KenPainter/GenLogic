@@ -31,20 +31,12 @@ tables:
       # Automatically counts the number of orders for this customer
       order_count:
         type: integer
-        automation:
-          type: COUNT
-          table: orders
-          foreign_key: customer_fk
-          column: order_id  # Column to count (usually the primary key)
+        automation: COUNT orders.order_id  # Column to count (usually the primary key)
 
       # Can also count non-null values of a specific column
       paid_order_count:
         type: integer
-        automation:
-          type: COUNT
-          table: orders
-          foreign_key: customer_fk
-          column: paid_amount  # Counts only orders where paid_amount IS NOT NULL
+        automation: COUNT orders.paid_amount  # Counts only orders where paid_amount IS NOT NULL
 
   orders:
     foreign_keys:

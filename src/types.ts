@@ -27,7 +27,8 @@ export interface ColumnDefinition {
   automation?: AutomationDefinition;
   generated?: string;
   comment?: string;
-  'ui-notes'?: ('read-only' | 'hidden')[];
+  label?: string;      // Human-readable label for UI display
+  format?: string;     // Format hint (e.g., 'currency', 'date', 'email')
   // Internal fields populated by SQL type parser:
   size?: number;
   decimal?: number;
@@ -40,13 +41,12 @@ export interface ColumnDefinition {
 
 export interface TableDefinition {
   comment?: string;
-  'ui-notes'?: UINote[];
   columns?: Record<string, TableColumnDefinition>;
   foreign_keys?: Record<string, ForeignKeyDefinition | string>;  // String = simple shorthand
-  content?: Record<string, any>[];
+  unique_constraints?: string[][];  // Array of column name arrays: [['col1', 'col2'], ['col3', 'col4']]
+  indexes?: string[][];  // Array of column name arrays: [['col1'], ['col2', 'col3']]
+  'seed-rows'?: Record<string, any>[];
 }
-
-export type UINote = 'singleton' | 'no-insert' | 'no-update' | 'no-delete';
 
 // Mixed inheritance syntax for table columns
 export type TableColumnDefinition =
@@ -83,13 +83,14 @@ export interface AutoCreateDefinition {
 }
 
 export type AutomationDefinition =
-  | StandardAutomationDefinition
+  | string  // New format: "SUM table.column" or "SUM(fk_name) table.column"
   | RuleMatchAutomationDefinition;
 
-export interface StandardAutomationDefinition {
+// Parsed/normalized automation definition (internal use)
+export interface ParsedStandardAutomation {
   type: 'SUM' | 'COUNT' | 'MAX' | 'MIN' | 'LAST_VALUE' | 'SNAPSHOT' | 'SYNC' | 'DOMINANT' | 'QUEUEPOS';
   table: string;      // VALIDATION REQUIRED: Must exist in 'tables' section
-  foreign_key: string; // VALIDATION REQUIRED: Must exist in specified table's foreign_keys section
+  foreign_key?: string; // VALIDATION REQUIRED: Must exist if specified, inferred if omitted
   column: string;
 }
 

@@ -1,4 +1,4 @@
-Previous: [Test Guide](02-test-guide.md) | Next: [Design Documentation](../architecture/design.md)
+Previous: [Documentation Navigation Links](01-navigation-links.md) | Next: [Design Documentation](../architecture/design.md)
 
 # Test Coverage Matrix
 
@@ -117,4 +117,4 @@ tests/
 
 ---
 
-Previous: [Test Guide](02-test-guide.md) | Next: [Design Documentation](../architecture/design.md)
+Previous: [Documentation Navigation Links](01-navigation-links.md) | Next: [Design Documentation](../architecture/design.md)

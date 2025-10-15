@@ -1,4 +1,4 @@
-Previous: [Foreign Keys](03-foreign-keys.md) | Next: [Calculating Values Within a Row](05-calculated-columns.md)
+Previous: [Foreign Keys](03-foreign-keys.md) | Next: [Generating Values Within a Row](05-generated-columns.md)
 
 # Moving Values from Parent to Child
 
@@ -144,13 +144,14 @@ tables:
 
 ## When Values Are Copied
 
-SNAPSHOT (not implemented yet):
-- INSERT: When a new child row is created
-- Value remains frozen even if parent changes
+SNAPSHOT:
+- INSERT: When a new child row is created (child pulls from parent)
+- Value remains frozen even if parent changes later
 
 SYNC:
-- INSERT: When a new child row is created
-- UPDATE: When parent value changes or foreign key value changes
+- INSERT: When a new child row is created (child pulls from parent)
+- UPDATE: When parent value changes (parent pushes to all children)
+- UPDATE: When child's foreign key changes (child pulls from new parent)
 - Child stays synchronized with parent
 
 ## Use Cases
@@ -167,4 +168,4 @@ SYNC is useful for:
 
 ---
 
-Previous: [Foreign Keys](03-foreign-keys.md) | Next: [Calculating Values Within a Row](05-calculated-columns.md)
+Previous: [Foreign Keys](03-foreign-keys.md) | Next: [Generating Values Within a Row](05-generated-columns.md)
