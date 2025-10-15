@@ -1,0 +1,6 @@
+tables:
+  test_serial:
+    columns:
+      id: serial primary key
+      big_id: bigserial
+      small_id: smallserial

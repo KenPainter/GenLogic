@@ -1,0 +1,14 @@
+columns:
+  base_col:
+    type: varchar(100)
+    label: Base Label
+    format: text
+
+tables:
+  test:
+    columns:
+      id: serial primary key
+      name:
+        $ref: base_col
+        label: Custom Label  # Override label
+        format: email        # Override format

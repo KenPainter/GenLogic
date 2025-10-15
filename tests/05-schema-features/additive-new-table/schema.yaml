@@ -1,0 +1,10 @@
+tables:
+  existing:
+    columns:
+      id: serial primary key
+      name: varchar(100)
+
+  new_table:
+    columns:
+      id: serial primary key
+      value: integer

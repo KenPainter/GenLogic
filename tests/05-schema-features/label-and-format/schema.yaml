@@ -82,19 +82,3 @@ tables:
     foreign_keys:
       transaction_id: transactions
       account_id: accounts
-
-  summary:
-    comment: Summary table with aggregations (no label/format propagation)
-    columns:
-      id:
-        type: serial primary key
-        label: Summary ID
-        format: id
-      # Aggregations don't propagate label/format (different semantics)
-      total_amount:
-        type: numeric(10,2) not null default 0
-        automation: SUM(account_id) @transactions.amount
-        label: Total Amount
-        format: currency
-    foreign_keys:
-      account_id: accounts

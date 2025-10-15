@@ -1,0 +1,11 @@
+tables:
+  test:
+    columns:
+      id: serial primary key
+      email: varchar(255)
+      username: varchar(50)
+      created_at: timestamp
+    indexes:
+      - [email]
+      - [username]
+      - [created_at]

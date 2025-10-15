@@ -1,0 +1,10 @@
+columns:
+  base_col: varchar(50)
+
+tables:
+  test:
+    columns:
+      id: serial primary key
+      name:
+        $ref: base_col
+        type: varchar(100)  # Override type

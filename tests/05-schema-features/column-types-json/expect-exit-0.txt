@@ -1,0 +1,1 @@
+# Test JSON types: JSON, JSONB

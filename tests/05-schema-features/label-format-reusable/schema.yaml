@@ -1,0 +1,11 @@
+columns:
+  email_col:
+    type: varchar(255)
+    label: Email Address
+    format: email
+
+tables:
+  test:
+    columns:
+      id: serial primary key
+      email: email_col  # Inherit label/format

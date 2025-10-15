@@ -1,0 +1,1 @@
+# Expect successful schema creation with indexes and constraints

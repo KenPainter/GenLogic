@@ -201,105 +201,105 @@ and columns.  There is no specific validation stage in the code.
 
 ### Phase 05: Schema Features (Isolated Feature Tests)
 
-Tested:
-- [x] Column types (all PostgreSQL types)
-- [x] Column inheritance (null, string, $ref)
-- [x] Ref inheritance (with overrides)
-- [x] Foreign keys (basic generation)
-- [x] Pattern matching tables
-- [!] Calculated columns (failing - table creation issue)
-- [~] Indexes (inactive)
-- [~] Label and format (inactive)
+Scope: This phase tests that schema elements (tables, columns, constraints, indexes) are created correctly in PostgreSQL. Each test verifies that GenLogic generates the correct DDL statements and that the resulting database schema matches expectations. Tests use verify-*.sql queries to inspect the actual database schema structure.
 
-Missing Feature Tests:
+**Coverage: 56 tests implemented, all passing (100%)**
 
-#### 6.1 Column Types (expand existing test)
-- [ ] SERIAL, BIGSERIAL, SMALLSERIAL
-- [ ] INTEGER, BIGINT, SMALLINT
-- [ ] NUMERIC(p,s), DECIMAL(p,s)
-- [ ] REAL, DOUBLE PRECISION
-- [ ] VARCHAR(n), CHAR(n), TEXT
-- [ ] DATE, TIME, TIMESTAMP, TIMESTAMPTZ
-- [ ] BOOLEAN
-- [ ] UUID
-- [ ] BIT(n), BIT VARYING(n)
-- [ ] JSON, JSONB
-- [ ] ARRAY types
-- [ ] Custom types (ENUM)
+**Not implemented (5 features) - parser gaps:**
+- Array types - SQL parser doesn't recognize `[]` array syntax
+- BIT VARYING - SQL parser doesn't recognize `varying` modifier for BIT type
+- TIME type - Parser treats `time` as reusable column reference instead of SQL type keyword
+- Composite FK - JSON Schema/parser doesn't support `columns: [...]` array syntax (2 tests planned)
 
-#### 6.2 Column Modifiers
-- [ ] PRIMARY KEY
-- [ ] UNIQUE
-- [ ] NOT NULL
-- [ ] DEFAULT values
-- [ ] DEFAULT with expressions (CURRENT_TIMESTAMP)
-- [ ] CHECK constraints
+#### 5.1 Core Schema Elements
+- [x] [Column types](./05-schema-features/column-types) - All PostgreSQL data types (serial, integer, varchar, numeric, timestamp, boolean, uuid, json, etc.)
+- [x] [Column inheritance](./05-schema-features/column-inheritance) - Null inheritance from reusable columns
+- [x] [Ref inheritance](./05-schema-features/ref-inheritance) - $ref inheritance with type reuse from reusable columns
+- [x] [Foreign keys](./05-schema-features/foreign-keys) - Basic FK generation with constraint creation
+- [x] [Indexes and constraints](./05-schema-features/indexes-and-constraints) - Single/multi-column indexes and unique constraints
+- [x] [Label and format](./05-schema-features/label-and-format) - Label/format metadata propagation
+- [x] [Pattern matching tables](./05-schema-features/pattern-matching-tables) - Pattern matching table structure creation
+- [x] [Generated columns](./05-schema-features/calculated-columns) - Generated columns with @ reference expressions
 
-#### 6.3 Foreign Key Features
-- [x] Basic FK generation (tested)
-- [ ] Simple FK (no prefix/suffix, single column)
-- [ ] FK with prefix
-- [ ] FK with suffix
-- [ ] FK with prefix and suffix
-- [ ] Composite FK (multi-column primary key)
-- [ ] Nullable FK (not_null: false)
-- [ ] Required FK (not_null: true)
-- [ ] FK delete: restrict
-- [ ] FK delete: cascade
-- [ ] FK from child table to parent with SERIAL PK
-- [ ] FK from child table to parent with composite PK
+#### 5.2 Column Types
+- [x] [SERIAL, BIGSERIAL, SMALLSERIAL](./05-schema-features/column-types-serial) - Serial types create sequences
+- [x] [INTEGER, BIGINT, SMALLINT](./05-schema-features/column-types-integer) - Integer types
+- [x] [NUMERIC(p,s), DECIMAL(p,s)](./05-schema-features/column-types-numeric) - Fixed precision numeric types
+- [x] [REAL, DOUBLE PRECISION](./05-schema-features/column-types-float) - Floating point types
+- [x] [VARCHAR(n), CHAR(n), TEXT](./05-schema-features/column-types-text) - Text types
+- [ ] DATE, TIME, TIMESTAMP, TIMESTAMPTZ - Not implemented: parser treats `time` as reusable column reference
+- [x] [BOOLEAN](./05-schema-features/column-types-boolean) - Boolean type
+- [x] [UUID](./05-schema-features/column-types-uuid) - UUID type
+- [ ] BIT(n), BIT VARYING(n) - Not implemented: parser doesn't recognize `varying` modifier
+- [x] [JSON, JSONB](./05-schema-features/column-types-json) - JSON types
+- [ ] ARRAY types - Not implemented: parser doesn't recognize `[]` array syntax
 
-#### 6.4 Column Inheritance Patterns
-- [x] Null inheritance (tested)
-- [x] String inheritance (tested)
-- [x] $ref inheritance (tested)
-- [ ] $ref with type override
-- [ ] $ref with automation override
-- [ ] $ref with label/format override
-- [ ] SQL type string in reusable column
-- [ ] SQL type string in table column
-- [ ] SQL type string with modifiers (VARCHAR(50) PRIMARY KEY)
+#### 5.3 Foreign Key Features
+- [x] [Simple FK](./05-schema-features/fk-simple) - No prefix/suffix, single column
+- [x] [FK with prefix](./05-schema-features/fk-with-prefix) - FK column named with prefix
+- [x] [FK with suffix](./05-schema-features/fk-with-suffix) - FK column named with suffix
+- [x] [FK with prefix and suffix](./05-schema-features/fk-with-prefix-and-suffix) - FK column with both prefix and suffix
+- [ ] Composite FK - Not implemented: JSON Schema doesn't support `columns: [col1, col2]` array syntax
+- [x] [Nullable FK](./05-schema-features/fk-nullable) - FK with not_null: false
+- [x] [Required FK](./05-schema-features/fk-required) - FK with not_null: true
+- [x] [FK delete: restrict](./05-schema-features/fk-delete-restrict) - ON DELETE RESTRICT
+- [x] [FK delete: cascade](./05-schema-features/fk-delete-cascade) - ON DELETE CASCADE
+- [x] [FK to SERIAL PK](./05-schema-features/fk-to-serial) - FK from child table to parent with SERIAL PK
+- [ ] FK to composite PK - Not implemented: JSON Schema doesn't support `columns: [col1, col2]` array syntax
 
-#### 6.5 Indexes
-- [~] Single column index (inactive test exists)
-- [ ] Multi-column index
-- [ ] Unique index
-- [ ] Index on FK column (should auto-create)
-- [ ] Multiple indexes on same table
+#### 5.4 Column Inheritance Patterns
+- [x] [Null inheritance](./05-schema-features/column-inheritance) - Inherit from reusable columns (already tested in 5.1)
+- [x] [$ref inheritance](./05-schema-features/ref-inheritance) - $ref from reusable columns (already tested in 5.1)
+- [x] [$ref with type override](./05-schema-features/ref-type-override) - Override type when using $ref
+- [x] [$ref with automation override](./05-schema-features/ref-automation-override) - Override automation when using $ref
+- [x] [$ref with label/format override](./05-schema-features/ref-label-format-override) - Override label/format in $ref
+- [x] [SQL type string in reusable column](./05-schema-features/sql-type-string-reusable) - Reusable columns with SQL type strings
+- [x] [SQL type string in table column](./05-schema-features/sql-type-string-table) - Table columns with SQL type strings
+- [x] [SQL type with modifiers](./05-schema-features/sql-type-with-modifiers) - VARCHAR(50) PRIMARY KEY syntax
 
-#### 6.6 Unique Constraints
-- [~] Single column unique (inactive test exists)
-- [ ] Multi-column unique constraint
-- [ ] Multiple unique constraints on same table
-- [ ] Unique constraint with nullable column
+#### 5.5 Indexes
+- [x] [Single column index](./05-schema-features/indexes-and-constraints) - Single column index (tested in 5.1)
+- [x] [Multi-column index](./05-schema-features/index-multi-column) - Index on multiple columns
+- [x] [Unique index](./05-schema-features/index-unique) - Unique constraint on column
+- [x] [Index on FK column](./05-schema-features/index-on-fk) - FK columns auto-indexed
+- [x] [Multiple indexes](./05-schema-features/indexes-multiple) - Multiple indexes on same table
 
-#### 6.7 Metadata (label and format)
-- [~] Label on column (inactive test exists)
-- [~] Format on column (inactive test exists)
-- [ ] Label/format inheritance from reusable column
-- [ ] Label/format inheritance through FK
-- [ ] Label/format override in $ref
+#### 5.6 Unique Constraints
+- [x] [Multi-column unique](./05-schema-features/indexes-and-constraints) - Multi-column unique constraint (tested in 5.1)
+- [x] [Single column unique](./05-schema-features/unique-single-column) - Single column unique constraint
+- [x] [Multiple unique constraints](./05-schema-features/unique-multiple-constraints) - Multiple unique constraints on same table
+- [x] [Unique on nullable column](./05-schema-features/unique-on-nullable) - Unique constraint with nullable column
 
-#### 6.8 Comments
-- [ ] Comment on table
-- [ ] Comment on column
-- [ ] Comment on foreign key
+#### 5.7 Metadata (label and format)
+- [x] [Label/format on reusable column](./05-schema-features/label-format-reusable) - Label/format inheritance from reusable column
+- [x] [Label/format through FK](./05-schema-features/label-format-fk) - Label/format inheritance through FK
+- [x] [Label/format override in $ref](./05-schema-features/ref-label-format-override) - Override label/format in $ref
 
-#### 6.9 Calculated Columns
-- [!] Basic calculated column (test failing)
-- [ ] Calculated column with arithmetic (@a + @b)
-- [ ] Calculated column with string ops (@first || ' ' || @last)
-- [ ] Calculated column with CASE expression
-- [ ] Calculated column with NULL handling (COALESCE)
-- [ ] Calculated column referencing another calculated column (dependency order)
-- [ ] Calculated column with function call (UPPER(@name))
+#### 5.8 Comments
+- [x] [Comment on table](./05-schema-features/comment-table) - Table-level comments
+- [x] [Comment on column](./05-schema-features/comment-column) - Column-level comments
+- [x] [Comment on FK](./05-schema-features/comment-fk) - Foreign key comments
 
-#### 6.10 Pattern Matching Tables
-- [x] Pattern matching table creation (tested)
-- [ ] Fixed structure (id, string_match, result_column, range_low_bound, range_high_bound)
-- [ ] match_best function generation
-- [ ] match_all function generation
-- [ ] Custom result_column_name
+#### 5.9 Generated Columns
+- [x] [Basic generated column](./05-schema-features/calculated-columns) - Generated columns (tested in 5.1)
+- [x] [Arithmetic expression](./05-schema-features/generated-arithmetic) - Generated column with arithmetic (@a * @b)
+- [x] [String concatenation](./05-schema-features/generated-string-concat) - Generated column with string ops (@first || ' ' || @last)
+- [x] [CASE expression](./05-schema-features/generated-case) - Generated column with CASE WHEN
+- [x] [NULL handling](./05-schema-features/generated-null-handling) - Generated column with COALESCE
+- [x] [Dependent generated columns](./05-schema-features/generated-dependent) - Generated column referencing another generated column
+- [x] [Function call](./05-schema-features/generated-function-call) - Generated column with function (UPPER(@name))
+
+#### 5.10 Pattern Matching Tables
+- [x] [Pattern matching table](./05-schema-features/pattern-matching-tables) - Pattern matching table creation (tested in 5.1)
+- [x] [Fixed structure](./05-schema-features/pattern-fixed-structure) - Fixed structure (id, string_match, result_column, range_low_bound, range_high_bound)
+- [x] [Custom result_column_name](./05-schema-features/pattern-result-column-name) - Custom result column name
+- [x] [match_best function](./05-schema-features/pattern-match-best) - match_best function generation
+- [x] [match_all function](./05-schema-features/pattern-match-all) - match_all function generation
+
+#### 5.11 Additive Changes
+- [x] [New table added](./05-schema-features/additive-new-table) - New table added to existing database
+- [x] [New column added](./05-schema-features/additive-new-column) - New column added to existing table
+- [x] [Column widening](./05-schema-features/additive-widen-column) - Columns widened for CHAR, VARCHAR, NUMERIC
 
 ### Phase 06: Behavior (End-to-End Data Flow)
 Coverage: 24 behavior tests, 19 passing, 5 failing

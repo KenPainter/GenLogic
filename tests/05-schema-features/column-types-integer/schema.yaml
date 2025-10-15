@@ -1,0 +1,7 @@
+tables:
+  test_integer:
+    columns:
+      id: serial primary key
+      age: integer
+      population: bigint
+      priority: smallint

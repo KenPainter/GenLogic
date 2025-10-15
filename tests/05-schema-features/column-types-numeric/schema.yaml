@@ -1,0 +1,7 @@
+tables:
+  test_numeric:
+    columns:
+      id: serial primary key
+      price: numeric(10,2)
+      amount: decimal(8,3)
+      unlimited: numeric

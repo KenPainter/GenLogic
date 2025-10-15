@@ -1,0 +1,1 @@
+# SQL type string in reusable column

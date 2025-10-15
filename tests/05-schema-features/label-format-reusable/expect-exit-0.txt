@@ -1,0 +1,1 @@
+# Label/format inheritance from reusable column

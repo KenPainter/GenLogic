@@ -1,0 +1,9 @@
+tables:
+  users:
+    columns:
+      id:
+        type: serial primary key
+        comment: Primary key identifier
+      email:
+        type: varchar(255)
+        comment: User email address

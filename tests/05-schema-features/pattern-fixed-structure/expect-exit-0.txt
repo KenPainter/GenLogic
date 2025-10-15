@@ -1,0 +1,1 @@
+# Fixed structure (id, string_match, result_column, range_low_bound, range_high_bound)

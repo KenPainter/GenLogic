@@ -1,0 +1,13 @@
+tables:
+  users:
+    columns:
+      id: integer primary key
+
+  posts:
+    columns:
+      id: integer primary key
+    foreign_keys:
+      creator:
+        table: users
+        prefix: created
+        suffix: by

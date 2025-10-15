@@ -1,0 +1,8 @@
+tables:
+  users:
+    columns:
+      id: serial primary key
+      name: varchar(100)
+      name_upper:
+        type: varchar(100)
+        generated: "UPPER(@name)"

@@ -1,0 +1,9 @@
+tables:
+  products:
+    columns:
+      id: serial primary key
+      price: numeric(10,2)
+      discount: numeric(10,2)
+      final_price:
+        type: numeric(10,2)
+        generated: "COALESCE(@price - @discount, @price)"

@@ -1,0 +1,8 @@
+tables:
+  orders:
+    columns:
+      id: serial primary key
+      status: varchar(20)
+      is_pending:
+        type: boolean
+        generated: "CASE WHEN @status = 'pending' THEN TRUE ELSE FALSE END"

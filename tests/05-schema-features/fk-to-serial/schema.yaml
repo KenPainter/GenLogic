@@ -1,0 +1,10 @@
+tables:
+  users:
+    columns:
+      id: serial primary key
+
+  posts:
+    columns:
+      id: serial primary key
+    foreign_keys:
+      user: users
