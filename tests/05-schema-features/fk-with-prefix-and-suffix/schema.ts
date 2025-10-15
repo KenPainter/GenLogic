@@ -2,11 +2,11 @@
 // This file describes the actual database structure after GenLogic processing
 // Source: /home/ken/hacking/genlogic/tests/05-schema-features/fk-with-prefix-and-suffix/schema.yaml
 // Database: genlogic_test_cli
-// Generated: 2025-10-15T21:13:54.412Z
+// Generated: 2025-10-15T21:28:09.408Z
 
 export const schema = {
   "_metadata": {
-    "generated_at": "2025-10-15T21:13:54.410Z",
+    "generated_at": "2025-10-15T21:28:09.407Z",
     "source_schema": "/home/ken/hacking/genlogic/tests/05-schema-features/fk-with-prefix-and-suffix/schema.yaml",
     "database": "genlogic_test_cli",
     "genlogic_version": "1.0.0",

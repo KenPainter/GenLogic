@@ -2,11 +2,11 @@
 // This file describes the actual database structure after GenLogic processing
 // Source: /home/ken/hacking/genlogic/tests/05-schema-features/ref-automation-override/schema.yaml
 // Database: genlogic_test_cli
-// Generated: 2025-10-15T21:14:04.780Z
+// Generated: 2025-10-15T21:28:17.654Z
 
 export const schema = {
   "_metadata": {
-    "generated_at": "2025-10-15T21:14:04.778Z",
+    "generated_at": "2025-10-15T21:28:17.653Z",
     "source_schema": "/home/ken/hacking/genlogic/tests/05-schema-features/ref-automation-override/schema.yaml",
     "database": "genlogic_test_cli",
     "genlogic_version": "1.0.0",

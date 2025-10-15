@@ -2,11 +2,11 @@
 // This file describes the actual database structure after GenLogic processing
 // Source: /home/ken/hacking/genlogic/tests/05-schema-features/column-types-numeric/schema.yaml
 // Database: genlogic_test_cli
-// Generated: 2025-10-15T21:13:47.546Z
+// Generated: 2025-10-15T21:28:03.706Z
 
 export const schema = {
   "_metadata": {
-    "generated_at": "2025-10-15T21:13:47.544Z",
+    "generated_at": "2025-10-15T21:28:03.705Z",
     "source_schema": "/home/ken/hacking/genlogic/tests/05-schema-features/column-types-numeric/schema.yaml",
     "database": "genlogic_test_cli",
     "genlogic_version": "1.0.0",

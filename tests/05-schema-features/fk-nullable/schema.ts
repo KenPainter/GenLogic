@@ -2,11 +2,11 @@
 // This file describes the actual database structure after GenLogic processing
 // Source: /home/ken/hacking/genlogic/tests/05-schema-features/fk-nullable/schema.yaml
 // Database: genlogic_test_cli
-// Generated: 2025-10-15T21:13:52.055Z
+// Generated: 2025-10-15T21:28:07.515Z
 
 export const schema = {
   "_metadata": {
-    "generated_at": "2025-10-15T21:13:52.054Z",
+    "generated_at": "2025-10-15T21:28:07.514Z",
     "source_schema": "/home/ken/hacking/genlogic/tests/05-schema-features/fk-nullable/schema.yaml",
     "database": "genlogic_test_cli",
     "genlogic_version": "1.0.0",

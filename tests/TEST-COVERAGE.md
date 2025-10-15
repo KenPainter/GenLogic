@@ -8,6 +8,37 @@ This document catalogs all testable behavior in GenLogic. It serves as:
 - Feature registry - All features must be registered here before implementation
 - Release readiness - View of what must be completed before release
 
+## Running Tests
+
+### Prerequisites
+
+1. **PostgreSQL database**: Tests require a test database
+2. **Database creation**: Create `genlogic_test_cli` database
+3. **Authentication**: Configure password OR pg_hba.conf for passwordless auth
+
+```bash
+# Create test database
+createdb genlogic_test_cli
+
+# Or using psql
+psql -U postgres -c "CREATE DATABASE genlogic_test_cli;"
+```
+
+### Password Configuration
+
+```bash
+export GENLOGIC_TEST_PASSWORD=your_password
+bun tests/run-cli-tests.ts
+```
+
+To run only one suite:
+
+```bash
+export GENLOGIC_TEST_PASSWORD=your_password
+bun tests/run-cli-tests.ts 02-schema
+```
+
+
 ## Test-Driven Development Workflow
 
 GenLogic follows strict test-first development. All features and bug fixes follow this workflow:
@@ -20,6 +51,7 @@ GenLogic follows strict test-first development. All features and bug fixes follo
 5. Verify - Run test, verify it passes (green)
 6. Document - Update code comments and link test in this document
 7. Mark complete - Change status from [ ] to [x] in this document
+8. Run `bun ./tests/find-mismatches.mjs` to ensure all tests are registered here
 
 ### Fixing a Bug
 1. Register - Add bug scenario to this document if not already covered
@@ -28,6 +60,7 @@ GenLogic follows strict test-first development. All features and bug fixes follo
 4. Fix - Repair the code
 5. Verify - Run test, verify it passes (green)
 6. Mark complete - Update status in this document
+7. Run `bun ./tests/find-mismatches.mjs` to ensure all tests are registered here
 
 ### Refactoring
 1. Verify coverage - All affected behaviors must have passing tests

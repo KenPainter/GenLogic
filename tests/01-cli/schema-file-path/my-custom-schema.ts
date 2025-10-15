@@ -2,11 +2,11 @@
 // This file describes the actual database structure after GenLogic processing
 // Source: tests/01-cli/schema-file-path/my-custom-schema.yaml
 // Database: genlogic_test_cli
-// Generated: 2025-10-15T21:13:24.145Z
+// Generated: 2025-10-15T21:34:20.628Z
 
 export const schema = {
   "_metadata": {
-    "generated_at": "2025-10-15T21:13:24.144Z",
+    "generated_at": "2025-10-15T21:34:20.627Z",
     "source_schema": "tests/01-cli/schema-file-path/my-custom-schema.yaml",
     "database": "genlogic_test_cli",
     "genlogic_version": "1.0.0",
