@@ -56,27 +56,27 @@ export class GenLogicProcessor {
     console.log('');
 
     try {
-      // PHASE 1: Database connection (fail fast)
-      console.log('🔌 Connecting to database...');
-      await this.database.connect();
-      console.log('✅ Database connection established');
-
-      // PHASE 2: Load and parse YAML
+      // PHASE 2: Load and parse YAML (fail fast on bad files)
       console.log('📄 Loading YAML schema...');
       const schema = this.loadYamlSchema(schemaPath);
 
-      // PHASE 3: Syntax validation using JSON Schema
+      // PHASE 3: Syntax validation using JSON Schema (fail fast on bad schemas)
       console.log('✅ Validating schema syntax...');
       const syntaxResult = this.validator.validateSyntax(schema);
       if (!syntaxResult.isValid) {
         throw new Error(`Schema syntax validation failed:\n${syntaxResult.errors.join('\n')}`);
       }
 
-      // PHASE 4: Build reusable columns store
+      // PHASE 4: Database connection (only after schema is valid)
+      console.log('🔌 Connecting to database...');
+      await this.database.connect();
+      console.log('✅ Database connection established');
+
+      // PHASE 5: Build reusable columns store
       console.log('📦 Building reusable columns...');
       const reusableColumns = this.schemaProcessor.buildReusableColumnsStore(schema);
 
-      // PHASE 5: Build FK graph and assign layers (FAIL FAST on cycles)
+      // PHASE 6: Build FK graph and assign layers (FAIL FAST on cycles)
       console.log('🌐 Building dependency graph...');
       const fkGraph = this.graphValidator.buildForeignKeyGraph(schema);
       const cycleResult = this.graphValidator.detectCycles(fkGraph);
@@ -86,7 +86,7 @@ export class GenLogicProcessor {
       const tableLayers = this.graphValidator.assignTableLayers(fkGraph);
       console.log(`   Tables organized into ${Math.max(...tableLayers.values()) + 1} layers`);
 
-      // PHASE 6: Process schema layer-by-layer with integrated validation
+      // PHASE 7: Process schema layer-by-layer with integrated validation
       console.log('🔄 Processing schema by layers...');
       const processedSchema = this.schemaProcessor.processSchemaByLayers(
         schema,
@@ -94,31 +94,31 @@ export class GenLogicProcessor {
         reusableColumns
       );
 
-      // PHASE 6.4: Validate automation foreign key inference
+      // PHASE 7.4: Validate automation foreign key inference
       console.log('🔍 Validating automation definitions...');
       const automationResult = this.validator.validateAutomationInference(schema);
       if (!automationResult.isValid) {
         throw new Error(`Automation validation failed:\n${automationResult.errors.join('\n')}`);
       }
 
-      // PHASE 6.6: Validate content sections
+      // PHASE 7.6: Validate content sections
       console.log('📦 Validating content sections...');
       const contentResult = this.contentManager.validateContent(schema, processedSchema);
       if (!contentResult.isValid) {
         throw new Error(`Content validation failed:\n${contentResult.errors.join('\n')}`);
       }
 
-      // PHASE 7: Database introspection and diffing
+      // PHASE 8: Database introspection and diffing
       console.log('🔍 Analyzing current database state...');
 
-      // PHASE 7.5: Drop ALL GenLogic triggers first for clean slate
+      // PHASE 8.5: Drop ALL GenLogic triggers first for clean slate
       console.log('🧹 Dropping all existing GenLogic triggers...');
       const dropAllTriggersSQL = await this.database.generateDropAllGenLogicTriggersSQL();
 
       const currentSchema = await this.database.analyzeCurrentSchema();
       const diff = this.diffEngine.generateDiff(processedSchema, currentSchema, schema);
 
-      // PHASE 8: SQL generation
+      // PHASE 9: SQL generation
       console.log('📝 Generating SQL statements...');
       const ddlStatements = this.sqlGenerator.generateSQL(diff, processedSchema);
       const triggerStatements = this.triggerGenerator.generateTriggers(schema, processedSchema);
@@ -150,7 +150,7 @@ export class GenLogicProcessor {
         ...contentStatements
       ].filter(sql => sql.trim().length > 0 && !sql.startsWith('--'));
 
-      // PHASE 9: Execution or dry-run reporting
+      // PHASE 10: Execution or dry-run reporting
       if (this.config.dryRun) {
         console.log('📋 DRY RUN - Planned changes:');
         this.reportPlannedChanges(diff, allStatements);
@@ -164,7 +164,7 @@ export class GenLogicProcessor {
         }
       }
 
-      // PHASE 10: Generate resolved schema documentation
+      // PHASE 11: Generate resolved schema documentation
       console.log('📝 Generating resolved schema documentation...');
       this.writeResolvedSchema(schemaPath, schema, processedSchema);
 

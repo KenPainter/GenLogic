@@ -64,7 +64,7 @@ Format: `- [x] [Feature name](./path/to/test) - Brief description`
 
 Examples:
 - [x] [SUM automation](./06-behavior/automations-sum) - Sum aggregation with INSERT/UPDATE/DELETE
-- [!] [Calculated columns](./06-schema-features/calculated-columns) - Basic calculated columns (FAILING)
+- [!] [Calculated columns](./05-schema-features/calculated-columns) - Basic calculated columns (FAILING)
 - [ ] SUM with NULL values - Not yet implemented
 
 This creates a direct link between the coverage document and the actual tests, eliminating scattered information.
@@ -116,31 +116,34 @@ required options, and error messages.
 - [x] [Custom schema path](./01-cli/schema-file-path) - Schema loaded from custom path
 - [x] [Non-existent schema file](./01-cli/nonexistent-schema-file) - Error: "no such file or directory"
 
+### Phase 02: Schema Validation
 
-### Phase 02: Database Connection
+Scope: This phase tests YAML parsing and JSON Schema validation. Validates that our
+genlogic-schema.json correctly defines the schema structure and rejects invalid input.
+**NO DATABASE CONNECTION** - these tests run before connecting to the database.
+
+- [x] [Valid minimal schema](./02-schema-validation/valid-minimal-schema) - Basic valid schema accepted
+- [x] [Invalid YAML syntax](./02-schema-validation/invalid-yaml) - Malformed YAML rejected
+- [3] [Unknown top-level key](./02-schema-validation/unknown-top-level-key) - JSON Schema rejects invalid properties
+- [3] [Invalid table name pattern](./02-schema-validation/invalid-table-name-pattern) - Table name must match pattern
+- [3] [Invalid column name pattern](./02-schema-validation/invalid-column-name-pattern) - Column name must match pattern
+- [3] [Table name exceeds 63 chars](./02-schema-validation/table-name-exceeds-63-chars) - PostgreSQL identifier length limit
+- [3] [Column name exceeds 63 chars](./02-schema-validation/column-name-exceeds-63-chars) - PostgreSQL identifier length limit
+- [3] [Reusable column name exceeds 63 chars](./02-schema-validation/reusable-column-name-exceeds-63-chars) - PostgreSQL identifier length limit
+- [3] [Invalid automation format](./02-schema-validation/invalid-automation-format) - Automation must match pattern
+- [3] [Missing required field](./02-schema-validation/missing-required-field-matching-table) - matching_table requires result_column_name
+
+### Phase 03: Database Connection
 
 Scope: This phase tests database connectivity before any schema processing. Test a
 sucessful connection and have a couple of tests to confirm user will get the
 error if connection fails.
 
-- [x] [Successful connection](./02-database-connection/successful-connection) - Database connects and disconnects cleanly
-- [x] [Authentication failure](./02-database-connection/authentication-failure) - Wrong password error reported
-- [x] [Database doesn't exist](./02-database-connection/database-does-not-exist) - Non-existent database error reported
+- [x] [Successful connection](./03-database-connection/successful-connection) - Database connects and disconnects cleanly
+- [x] [Authentication failure](./03-database-connection/authentication-failure) - Wrong password error reported
+- [x] [Database doesn't exist](./03-database-connection/database-does-not-exist) - Non-existent database error reported
 
 
-### Phase 03: Schema Loading
-
-Scope: This phase tests YAML parsing and JSON Schema validation. Validates that our
-genlogic-schema.json correctly defines the schema structure and rejects invalid input.
-
-- [x] [Valid minimal schema](./02-schema-loading/valid-minimal-schema) - Basic valid schema accepted
-- [x] [Invalid YAML syntax](./02-schema-loading/invalid-yaml) - Malformed YAML rejected
-- [x] [Missing schema file](./02-schema-loading/missing-schema-file) - Non-existent file error
-- [3] [Unknown top-level key](./02-schema-loading/unknown-top-level-key) - JSON Schema rejects invalid properties
-- [3] [Invalid table name pattern](./02-schema-loading/invalid-table-name-pattern) - Table name must match pattern
-- [3] [Invalid column name pattern](./02-schema-loading/invalid-column-name-pattern) - Column name must match pattern
-- [3] [Invalid automation format](./02-schema-loading/invalid-automation-format) - Automation must match pattern
-- [3] [Missing required field](./02-schema-loading/missing-required-field-matching-table) - matching_table requires result_column_name
 
 ### Phase 04: Validation
 Coverage: Partial - 7 tests, several inactive
@@ -151,28 +154,28 @@ Architecture Note: GenLogic validation happens in multiple layers:
 3. Integrated validation (`src/schema-processor.ts` - processTableWithValidation) - Internal GenLogic cross-reference validation during processing (needs tests)
 
 Tested:
-- [x] [Simple valid schema](./06-validation/simple-schema) - Valid basic schema passes validation
-- [x] [Invalid table names](./06-validation/invalid-table-name) - Malformed table names rejected
-- [x] [Invalid column names](./06-validation/invalid-column-name) - Malformed column names rejected
-- [x] [Invalid column references](./06-validation/invalid-column-reference) - Non-existent column references in automations
-- [x] [Circular FK dependencies](./06-validation/circular-foreign-keys) - Cycle detection in foreign key graph
+- [x] [Simple valid schema](./04-validation/simple-schema) - Valid basic schema passes validation
+- [x] [Invalid table names](./04-validation/invalid-table-name) - Malformed table names rejected
+- [x] [Invalid column names](./04-validation/invalid-column-name) - Malformed column names rejected
+- [x] [Invalid column references](./04-validation/invalid-column-reference) - Non-existent column references in automations
+- [x] [Circular FK dependencies](./04-validation/circular-foreign-keys) - Cycle detection in foreign key graph
 
 Inactive (exist but not enabled):
-- [~] [Invalid index columns](./06-validation/invalid-index-columns) - Test exists but inactive
-- [~] [Invalid unique constraint columns](./06-validation/invalid-unique-constraint-columns) - Test exists but inactive
+- [~] [Invalid index columns](./04-validation/invalid-index-columns) - Test exists but inactive
+- [~] [Invalid unique constraint columns](./04-validation/invalid-unique-constraint-columns) - Test exists but inactive
 
 Missing Critical Tests:
 
 #### 4.1 Table Name Validation
 - [x] Invalid table name (tested)
 - [3] Table name with invalid pattern (covered by JSON Schema)
-- [ ] Table name exceeding 63 characters (PostgreSQL limit, not JSON Schema limit)
+- [3] Table name exceeding 63 characters (covered by JSON Schema - see Phase 02)
 - [ ] Table name using PostgreSQL reserved words (not currently validated)
 
 #### 4.2 Column Name Validation
 - [x] Invalid column name (tested)
 - [3] Column name with invalid pattern (covered by JSON Schema)
-- [ ] Column name exceeding 63 characters (PostgreSQL limit, not JSON Schema limit)
+- [3] Column name exceeding 63 characters (covered by JSON Schema - see Phase 02)
 - [ ] Column name using PostgreSQL reserved words (not currently validated)
 
 #### 4.3 Column Reference Validation

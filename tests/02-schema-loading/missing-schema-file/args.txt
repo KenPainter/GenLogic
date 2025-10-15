@@ -1,2 +1,0 @@
---skip-common
--s nonexistent.yaml -d testdb -u testuser -w testpass --dry-run

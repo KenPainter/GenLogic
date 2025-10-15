@@ -1,0 +1,6 @@
+tables:
+  # This table name has exactly 64 characters (exceeds PostgreSQL 63-char limit)
+  table_name_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:
+    columns:
+      id:
+        type: serial primary key
