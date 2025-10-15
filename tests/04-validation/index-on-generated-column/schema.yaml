@@ -1,0 +1,15 @@
+tables:
+  products:
+    columns:
+      id:
+        type: serial primary key
+      price:
+        type: numeric(10,2)
+      quantity:
+        type: integer
+      total:
+        type: numeric(10,2)
+        generated: "@price * @quantity"
+    # Index on generated column (valid)
+    indexes:
+      - [total]

@@ -166,6 +166,11 @@ export class DataFlowGraphValidator {
       const edges = graph.edges.get(node);
       if (edges) {
         for (const neighbor of edges) {
+          // Skip self-loops - self-referential FKs are valid (e.g., employees.manager_id → employees.id)
+          if (neighbor === node) {
+            continue;
+          }
+
           if (!visited.has(neighbor)) {
             const newPath = [...path, neighbor];
             if (dfs(neighbor, newPath)) {
@@ -305,9 +310,17 @@ export class DataFlowGraphValidator {
 
     // Calculate in-degrees: count how many OTHER tables each table depends on
     // (number of outgoing FK edges FROM this table)
+    // Exclude self-references - self-referential FKs don't create dependencies
     for (const node of graph.nodes) {
       const outgoingEdges = graph.edges.get(node) || new Set();
-      inDegree.set(node, outgoingEdges.size);
+      // Count only edges to OTHER tables (exclude self-references)
+      let count = 0;
+      for (const target of outgoingEdges) {
+        if (target !== node) {
+          count++;
+        }
+      }
+      inDegree.set(node, count);
     }
 
     // Topological sort by layers using Kahn's algorithm

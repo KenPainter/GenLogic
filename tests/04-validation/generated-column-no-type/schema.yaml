@@ -1,0 +1,12 @@
+tables:
+  products:
+    columns:
+      id:
+        type: serial primary key
+      price:
+        type: numeric(10,2)
+      quantity:
+        type: integer
+      # ERROR: generated column without type or $ref
+      total:
+        generated: "@price * @quantity"

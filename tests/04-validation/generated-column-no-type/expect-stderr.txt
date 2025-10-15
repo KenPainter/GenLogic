@@ -1,0 +1,2 @@
+# Generated column must have type or $ref
+type

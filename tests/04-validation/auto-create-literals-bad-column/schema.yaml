@@ -1,0 +1,22 @@
+tables:
+  projects:
+    columns:
+      id:
+        type: serial primary key
+      name:
+        type: varchar(100)
+
+  tasks:
+    columns:
+      id:
+        type: serial primary key
+      task_name:
+        type: varchar(100)
+    foreign_keys:
+      project_id:
+        table: projects
+        auto_create:
+          on: [insert]
+          literals:
+            # Non-existent child column
+            nonexistent_column: "default_value"

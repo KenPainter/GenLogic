@@ -1,0 +1,24 @@
+tables:
+  categories:
+    columns:
+      id:
+        type: serial primary key
+      name:
+        type: varchar(100)
+
+  products:
+    columns:
+      id:
+        type: serial primary key
+      name:
+        type: varchar(100)
+    foreign_keys:
+      category_id: categories
+    seed-rows:
+      - id: 1
+        name: "Widget"
+        # $lookup to non-existent table
+        category_id_id:
+          $lookup:
+            table: nonexistent_table
+            where: {name: "Electronics"}

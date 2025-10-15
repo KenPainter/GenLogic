@@ -1,0 +1,19 @@
+tables:
+  users:
+    columns:
+      id:
+        type: serial primary key
+      name:
+        type: varchar(100)
+
+  orders:
+    columns:
+      id:
+        type: serial primary key
+      amount:
+        type: decimal(10,2)
+    foreign_keys:
+      # Multiple FKs to the same table without explicit names
+      # This creates ambiguous constraint names
+      customer_id: users
+      salesperson_id: users

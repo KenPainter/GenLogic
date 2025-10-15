@@ -215,7 +215,7 @@ export class SchemaProcessor {
       for (const [columnName, column] of Object.entries(table.columns)) {
         // Check if this is an FK extension (automation/generated only on FK column)
         if (typeof column === 'object' && column !== null && !('$ref' in column) && !('type' in column)) {
-          // No type field - might be an FK extension OR a SYNC/SNAPSHOT column
+          // No type field - might be an FK extension OR a SYNC/SNAPSHOT column OR a generated column
           const hasOnlyExtensions = Object.keys(column).every(k =>
             k === 'automation' || k === 'generated' || k === 'comment'
           );
@@ -235,6 +235,15 @@ export class SchemaProcessor {
                 ...(column.comment && { comment: column.comment })
               } as ColumnDefinition;
               continue;
+            }
+
+            // If it has 'generated' but no 'automation', it's a generated column (not an FK extension)
+            if (column.generated && !column.automation) {
+              // ERROR: Generated column must have type or $ref
+              throw new Error(
+                `Table '${_tableName}', column '${columnName}': ` +
+                `generated columns must specify a type or use $ref to inherit from a reusable column`
+              );
             }
 
             // Otherwise, it's an FK extension - save it for later
@@ -709,12 +718,18 @@ export class SchemaProcessor {
     reusableColumns: Map<string, ColumnDefinition>,
     processedTables: Map<string, ProcessedTable>
   ): ProcessedTable {
+    // Validate table name is not a reserved word
+    this.validateNotReservedWord(tableName, 'table');
+
     const columns = new Map<string, ColumnDefinition>();
     const fkExtensions: Record<string, { automation?: any, generated?: string }> = {};
 
     // Step 1: Resolve column inheritance
     if (table.columns) {
       for (const [columnName, column] of Object.entries(table.columns)) {
+        // Validate column name is not a reserved word
+        this.validateNotReservedWord(columnName, 'column');
+
         // Check if this is an FK extension (automation/generated only on FK column)
         if (typeof column === 'object' && column !== null && !('$ref' in column) && !('type' in column)) {
           const hasOnlyExtensions = Object.keys(column).every(k =>
@@ -735,6 +750,15 @@ export class SchemaProcessor {
                 ...(column.comment && { comment: column.comment })
               } as ColumnDefinition);
               continue;
+            }
+
+            // If it has 'generated' but no 'automation', it's a generated column (not an FK extension)
+            if (column.generated && !column.automation) {
+              // ERROR: Generated column must have type or $ref
+              throw new Error(
+                `Table '${tableName}', column '${columnName}': ` +
+                `generated columns must specify a type or use $ref to inherit from a reusable column`
+              );
             }
 
             // Otherwise, it's an FK extension
@@ -765,6 +789,26 @@ export class SchemaProcessor {
           ? { table: fkDef }
           : fkDef;
       }
+
+      // Validate no duplicate FK constraint names to the same table
+      // Group FKs by target table
+      const fksByTable = new Map<string, string[]>();
+      for (const [fkName, fk] of Object.entries(normalizedForeignKeys)) {
+        if (!fksByTable.has(fk.table)) {
+          fksByTable.set(fk.table, []);
+        }
+        fksByTable.get(fk.table)!.push(fkName);
+      }
+
+      // Check for multiple FKs to the same table
+      for (const [targetTable, fkNames] of fksByTable) {
+        if (fkNames.length > 1) {
+          throw new Error(
+            `Table '${tableName}' has multiple foreign keys to table '${targetTable}' (${fkNames.join(', ')}). ` +
+            `PostgreSQL requires unique constraint names - use explicit FK names or different target tables.`
+          );
+        }
+      }
     }
 
     // Step 2: Generate FK columns (parent tables already processed)
@@ -772,13 +816,37 @@ export class SchemaProcessor {
     const fkColumnMapping: Record<string, string[]> = {};
 
     for (const [fkName, fk] of Object.entries(normalizedForeignKeys)) {
-      const parentTable = processedTables.get(fk.table);
-      if (!parentTable) {
-        throw new Error(
-          `Table '${tableName}', FK '${fkName}': ` +
-          `parent table '${fk.table}' not yet processed ` +
-          `(this indicates layer calculation error)`
-        );
+      // Special case: self-referential FK (e.g., employees.manager_id → employees.id)
+      // The parent table is the current table being processed
+      let parentTable: ProcessedTable;
+      if (fk.table === tableName) {
+        // Self-referential FK - use current table's columns
+        parentTable = {
+          comment: table.comment,
+          columns: Object.fromEntries(columns),
+          foreignKeys: normalizedForeignKeys,
+          generatedColumns: {},
+          fkColumnMapping: {}
+        };
+      } else {
+        // Normal FK - parent must already be processed
+        const pt = processedTables.get(fk.table);
+        if (!pt) {
+          // Check if the table exists in the schema at all
+          if (!schema.tables || !schema.tables[fk.table]) {
+            throw new Error(
+              `Table '${tableName}', FK '${fkName}': ` +
+              `parent table '${fk.table}' does not exist in schema`
+            );
+          }
+          // Table exists but not yet processed - layer calculation error
+          throw new Error(
+            `Table '${tableName}', FK '${fkName}': ` +
+            `parent table '${fk.table}' not yet processed ` +
+            `(this indicates layer calculation error)`
+          );
+        }
+        parentTable = pt;
       }
 
       const primaryKeyColumns = this.findPrimaryKeyColumnsFromMap(parentTable);
@@ -1090,6 +1158,33 @@ export class SchemaProcessor {
           }
         }
       }
+    }
+  }
+
+  /**
+   * Validate that a name is not a PostgreSQL reserved word
+   */
+  private validateNotReservedWord(name: string, type: 'table' | 'column'): void {
+    // PostgreSQL reserved words that cannot be used as identifiers
+    const reservedWords = new Set([
+      'ALL', 'ANALYSE', 'ANALYZE', 'AND', 'ANY', 'ARRAY', 'AS', 'ASC',
+      'ASYMMETRIC', 'BOTH', 'CASE', 'CAST', 'CHECK', 'COLLATE', 'COLUMN',
+      'CONSTRAINT', 'CREATE', 'CURRENT_CATALOG', 'CURRENT_DATE',
+      'CURRENT_ROLE', 'CURRENT_TIME', 'CURRENT_TIMESTAMP', 'CURRENT_USER',
+      'DEFAULT', 'DEFERRABLE', 'DESC', 'DISTINCT', 'DO', 'ELSE', 'END',
+      'EXCEPT', 'FALSE', 'FETCH', 'FOR', 'FOREIGN', 'FROM', 'GRANT',
+      'GROUP', 'HAVING', 'IN', 'INITIALLY', 'INTERSECT', 'INTO', 'LATERAL',
+      'LEADING', 'LIMIT', 'LOCALTIME', 'LOCALTIMESTAMP', 'NOT', 'NULL',
+      'OFFSET', 'ON', 'ONLY', 'OR', 'ORDER', 'PLACING', 'PRIMARY',
+      'REFERENCES', 'RETURNING', 'SELECT', 'SESSION_USER', 'SOME',
+      'SYMMETRIC', 'TABLE', 'THEN', 'TO', 'TRAILING', 'TRUE', 'UNION',
+      'UNIQUE', 'USER', 'USING', 'VARIADIC', 'WHEN', 'WHERE', 'WINDOW', 'WITH'
+    ]);
+
+    if (reservedWords.has(name.toUpperCase())) {
+      throw new Error(
+        `${type === 'table' ? 'Table' : 'Column'} name '${name}' is a PostgreSQL reserved word and cannot be used`
+      );
     }
   }
 }

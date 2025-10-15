@@ -1,0 +1,8 @@
+tables:
+  products:
+    columns:
+      id:
+        type: serial primary key
+      # "where" is a PostgreSQL reserved word
+      where:
+        type: varchar(100)

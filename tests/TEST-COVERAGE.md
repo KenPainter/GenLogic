@@ -146,96 +146,60 @@ error if connection fails.
 
 
 ### Phase 04: Validation
-Coverage: Partial - 7 tests, several inactive
 
-Architecture Note: GenLogic validation happens in multiple layers:
-1. JSON Schema validation (`src/genlogic-schema.json` with AJV) - Third-party tool for structural/syntactic validation [3]
-2. Graph validation (`src/validation.ts` - validateDataFlowSafety) - Internal GenLogic code for cycle detection (needs tests)
-3. Integrated validation (`src/schema-processor.ts` - processTableWithValidation) - Internal GenLogic cross-reference validation during processing (needs tests)
+Scope: This phase tests validation logic that runs after schema parsing but before database operations.
 
-Tested:
+Validation itself happens at various stages during the topological processing of tables
+and columns.  There is no specific validation stage in the code.
+
+#### 4.1 Basic Schema Validation
 - [x] [Simple valid schema](./04-validation/simple-schema) - Valid basic schema passes validation
 - [x] [Invalid table names](./04-validation/invalid-table-name) - Malformed table names rejected
 - [x] [Invalid column names](./04-validation/invalid-column-name) - Malformed column names rejected
 - [x] [Invalid column references](./04-validation/invalid-column-reference) - Non-existent column references in automations
+
+#### 4.2 Reserved Words Validation
+- [x] [Table name reserved word](./04-validation/table-name-reserved-word) - PostgreSQL reserved words rejected in table names
+- [x] [Column name reserved word](./04-validation/column-name-reserved-word) - PostgreSQL reserved words rejected in column names
+
+#### 4.3 Foreign Key Validation
 - [x] [Circular FK dependencies](./04-validation/circular-foreign-keys) - Cycle detection in foreign key graph
+- [x] [FK to non-existent table](./04-validation/fk-to-nonexistent-table) - Error when FK references non-existent table
+- [x] [FK to table without primary key](./04-validation/fk-to-table-without-pk) - Error when FK references table with no PK
+- [x] [Multiple FKs without explicit name](./04-validation/fk-multiple-without-name) - Error when multiple FKs create naming conflict
+- [x] [Self-referential FK](./04-validation/fk-self-referential) - Self-referential FKs are valid (should pass)
 
-Inactive (exist but not enabled):
-- [~] [Invalid index columns](./04-validation/invalid-index-columns) - Test exists but inactive
-- [~] [Invalid unique constraint columns](./04-validation/invalid-unique-constraint-columns) - Test exists but inactive
+#### 4.4 Generated Column Validation
+- [x] [No @ references](./04-validation/generated-column-no-at-reference) - Error when generated column has no @ references
+- [x] [Non-existent column reference](./04-validation/generated-column-nonexistent-ref) - Error when @column doesn't exist
+- [x] [Bare column reference](./04-validation/generated-column-bare-reference) - Error when column referenced without @ sigil
+- [x] [Circular dependency](./04-validation/generated-column-circular) - Error when generated columns form cycle
+- [x] [No type specified](./04-validation/generated-column-no-type) - Error when generated column has no type or $ref
 
-Missing Critical Tests:
+#### 4.5 Index and Constraint Validation
+- [x] [Index on non-existent column](./04-validation/invalid-index-columns) - Error when index references non-existent column
+- [x] [Unique constraint on non-existent column](./04-validation/invalid-unique-constraint-columns) - Error when unique constraint references non-existent column
+- [x] [Index on generated column](./04-validation/index-on-generated-column) - Indexes on generated columns are valid (should pass)
+- [x] [Unique on nullable FK](./04-validation/unique-on-nullable-fk) - Unique constraints on nullable FKs are valid (should pass)
 
-#### 4.1 Table Name Validation
-- [x] Invalid table name (tested)
-- [3] Table name with invalid pattern (covered by JSON Schema)
-- [3] Table name exceeding 63 characters (covered by JSON Schema - see Phase 02)
-- [ ] Table name using PostgreSQL reserved words (not currently validated)
+#### 4.6 Seed Data Validation
+- [x] [Non-existent column](./04-validation/seed-data-nonexistent-column) - Error when seed data references non-existent column
+- [x] [$lookup to non-existent table](./04-validation/seed-data-lookup-nonexistent-table) - Error when $lookup references non-existent table
+- [x] [$lookup to non-existent column](./04-validation/seed-data-lookup-nonexistent-column) - Error when $lookup where clause references non-existent column
+- [x] [Missing required PK](./04-validation/seed-data-missing-pk) - Error when seed data missing required non-serial PK value
 
-#### 4.2 Column Name Validation
-- [x] Invalid column name (tested)
-- [3] Column name with invalid pattern (covered by JSON Schema)
-- [3] Column name exceeding 63 characters (covered by JSON Schema - see Phase 02)
-- [ ] Column name using PostgreSQL reserved words (not currently validated)
+#### 4.7 Auto-Create Validation
+- [x] [Spread bad start column](./04-validation/auto-create-spread-bad-start) - Error when spread.start column doesn't exist in parent
+- [x] [Spread bad end column](./04-validation/auto-create-spread-bad-end) - Error when spread.end column doesn't exist in parent
+- [x] [Copy_columns bad parent](./04-validation/auto-create-copy-bad-parent) - Error when copy_columns parent column doesn't exist
+- [x] [Copy_columns bad child](./04-validation/auto-create-copy-bad-child) - Error when copy_columns child column doesn't exist
+- [x] [Literals bad column](./04-validation/auto-create-literals-bad-column) - Error when literals references non-existent child column
 
-#### 4.3 Column Reference Validation
-- [x] Non-existent column reference (tested)
-- [ ] Non-existent table reference in automation (internal validation - should test)
-- [ ] Automation referencing own table (valid in some cases, invalid in others)
-- [ ] Automation with invalid FK name specified (internal validation - should test)
-
-#### 4.4 Foreign Key Validation
-- [x] Circular FK dependencies (tested - graph validator)
-- [ ] FK to non-existent table (internal validation - should test)
-- [ ] FK to table with no primary key (internal validation - should test)
-- [ ] Multiple FKs to same table without explicit FK name in automation (internal validation - should test)
-- [ ] Self-referential FK (valid - should test that it works)
-- [ ] Composite FK with mismatched column counts (need test)
-
-#### 4.5 Generated Column Validation
-- [ ] Generated column with no @ references (internal validation - should test)
-- [ ] Generated column referencing non-existent column (internal validation - should test)
-- [ ] Generated column with bare column reference (internal validation - should test)
-- [ ] Generated column with circular dependency (internal validation - should test)
-- [ ] Generated column referencing another generated column (dependency order - should test)
-
-#### 4.6 Automation Validation
-- [3] Invalid automation syntax (covered by JSON Schema pattern)
-- [3] Automation type that doesn't exist (covered by JSON Schema enum/pattern)
-- [ ] Automation with invalid configuration (e.g., malformed expression)
-- [ ] Automation on FK column to non-existent parent table (internal validation - should test)
-
-#### 4.7 Index and Constraint Validation
-- [~] Index on non-existent column (inactive - internal validation - should test)
-- [~] Unique constraint on non-existent column (inactive - internal validation - should test)
-- [3] Index with empty column list (covered by JSON Schema minItems: 1)
-- [3] Unique constraint with empty column list (covered by JSON Schema minItems: 1)
-- [ ] Index on generated column (should test - may be valid or invalid)
-- [ ] Unique constraint on nullable FK column (should test - valid but may warn)
-
-#### 4.8 Seed Data Validation
-- [ ] seed-rows with non-existent column (internal validation - should test)
-- [ ] seed-rows with $lookup to non-existent table (internal validation - should test)
-- [ ] seed-rows with $lookup to non-existent column (internal validation - should test)
-- [ ] seed-rows with $lookup where clause referencing non-existent column (internal validation - should test)
-- [ ] seed-rows missing required non-sequence PK column (should test)
-- [ ] seed-rows with invalid $lookup structure (internal validation - should test)
-
-#### 4.9 Pattern Matching Validation
+#### 4.8 Pattern Matching Validation
 - [3] matching_table without result_column_name (covered by JSON Schema - required field)
 - [3] matching_table with invalid result_column_name pattern (covered by JSON Schema pattern)
 
-#### 4.10 Auto-Create Validation
-- [ ] auto_create spread with non-existent start column (internal validation - should test)
-- [ ] auto_create spread with non-existent end column (internal validation - should test)
-- [ ] auto_create spread with non-existent interval column (internal validation - should test)
-- [ ] auto_create spread with non-existent generated_column (internal validation - should test)
-- [ ] auto_create copy_columns with non-existent parent column (internal validation - should test)
-- [ ] auto_create copy_columns with non-existent child column (internal validation - should test)
-- [ ] auto_create literals with non-existent child column (internal validation - should test)
-
 ### Phase 05: Schema Features (Isolated Feature Tests)
-Coverage: Partial - 7 feature tests, 2 inactive
 
 Tested:
 - [x] Column types (all PostgreSQL types)

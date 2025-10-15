@@ -1,0 +1,25 @@
+tables:
+  projects:
+    columns:
+      id:
+        type: serial primary key
+      name:
+        type: varchar(100)
+
+  tasks:
+    columns:
+      id:
+        type: serial primary key
+      date:
+        type: date
+    foreign_keys:
+      project_id:
+        table: projects
+        auto_create:
+          on: [insert]
+          spread:
+            # Non-existent start column
+            start: nonexistent_start
+            end: end_date
+            interval: day_interval
+            generated_column: date

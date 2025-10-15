@@ -1,0 +1,8 @@
+tables:
+  # "select" is a PostgreSQL reserved word
+  select:
+    columns:
+      id:
+        type: serial primary key
+      name:
+        type: varchar(100)

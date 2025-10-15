@@ -1,0 +1,16 @@
+tables:
+  # This table has no primary key
+  categories:
+    columns:
+      name:
+        type: varchar(100)
+
+  products:
+    columns:
+      id:
+        type: serial primary key
+      name:
+        type: varchar(100)
+    foreign_keys:
+      # References table without primary key
+      category_id: categories

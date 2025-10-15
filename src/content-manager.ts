@@ -230,7 +230,7 @@ export class ContentManager {
         // Check all columns exist
         for (const col of rowColumns) {
           if (!validColumns.has(col)) {
-            errors.push(`Table '${tableName}' seed-rows row ${i} references non-existent column '${col}'`);
+            errors.push(`Table '${tableName}' seed-rows row ${i}: column '${col}' does not exist`);
           }
 
           // Validate $lookup references
@@ -246,7 +246,7 @@ export class ContentManager {
 
             // Validate lookup table exists
             if (!schema.tables?.[lookup.table]) {
-              errors.push(`Table '${tableName}' content row ${i}, column '${col}': $lookup references non-existent table '${lookup.table}'`);
+              errors.push(`Table '${tableName}' content row ${i}, column '${col}': $lookup table '${lookup.table}' does not exist`);
             } else {
               // Validate lookup column exists in target table
               const lookupTable = processedSchema.tables[lookup.table];

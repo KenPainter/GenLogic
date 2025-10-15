@@ -1,0 +1,11 @@
+tables:
+  products:
+    columns:
+      # Non-serial PK requires explicit value
+      code:
+        type: varchar(20) primary key
+      name:
+        type: varchar(100)
+    seed-rows:
+      # Missing required PK column
+      - name: "Widget"

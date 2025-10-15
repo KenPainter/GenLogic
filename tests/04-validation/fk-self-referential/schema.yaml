@@ -1,0 +1,11 @@
+tables:
+  employees:
+    columns:
+      id:
+        type: serial primary key
+      name:
+        type: varchar(100)
+    foreign_keys:
+      # Self-referential FK (e.g., manager_id references employees.id)
+      # This is valid and should pass
+      manager_id: employees
