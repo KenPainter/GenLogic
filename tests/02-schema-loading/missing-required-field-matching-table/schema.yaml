@@ -1,0 +1,3 @@
+matching_tables:
+  test_matching:
+    comment: "Missing required result_column_name"

@@ -17,12 +17,8 @@ There are really only two requirements for a PR:
 - if it was worth doing, it is worth documenting
 - if it was worth doing, it is worth testing
 
-For documentation changes:
-- Add new files to .docs/toc.md in the appropriate section
-- Modify existing files in ./docs when necessary.
-- Run `bun add-navigation.mjs` from the docs directory to 
-  add the prev/next links to the documents.
-- Commit the navigation changes with your documentation
+The precise method of work is in 
+the [Test Coverage](./tests/TEST-COVERAGE.md) register.
 
 
 ## Documentation

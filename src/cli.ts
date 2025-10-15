@@ -2,7 +2,7 @@
 
 import { Command } from 'commander';
 import { GenLogicProcessor } from './processor.js';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 
 // Read version from package.json
@@ -44,6 +44,12 @@ program
 
       if (!options.schema) {
         console.error('Error: Schema file path is required (-s, --schema)');
+        process.exit(1);
+      }
+
+      // Validate schema file exists
+      if (!existsSync(options.schema)) {
+        console.error(`Error: Schema file not found: ${options.schema}`);
         process.exit(1);
       }
 

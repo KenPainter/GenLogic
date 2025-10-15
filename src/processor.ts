@@ -56,22 +56,27 @@ export class GenLogicProcessor {
     console.log('');
 
     try {
-      // PHASE 1: Load and parse YAML
+      // PHASE 1: Database connection (fail fast)
+      console.log('🔌 Connecting to database...');
+      await this.database.connect();
+      console.log('✅ Database connection established');
+
+      // PHASE 2: Load and parse YAML
       console.log('📄 Loading YAML schema...');
       const schema = this.loadYamlSchema(schemaPath);
 
-      // PHASE 2: Syntax validation using JSON Schema
+      // PHASE 3: Syntax validation using JSON Schema
       console.log('✅ Validating schema syntax...');
       const syntaxResult = this.validator.validateSyntax(schema);
       if (!syntaxResult.isValid) {
         throw new Error(`Schema syntax validation failed:\n${syntaxResult.errors.join('\n')}`);
       }
 
-      // PHASE 3: Build reusable columns store
+      // PHASE 4: Build reusable columns store
       console.log('📦 Building reusable columns...');
       const reusableColumns = this.schemaProcessor.buildReusableColumnsStore(schema);
 
-      // PHASE 4: Build FK graph and assign layers (FAIL FAST on cycles)
+      // PHASE 5: Build FK graph and assign layers (FAIL FAST on cycles)
       console.log('🌐 Building dependency graph...');
       const fkGraph = this.graphValidator.buildForeignKeyGraph(schema);
       const cycleResult = this.graphValidator.detectCycles(fkGraph);
@@ -81,7 +86,7 @@ export class GenLogicProcessor {
       const tableLayers = this.graphValidator.assignTableLayers(fkGraph);
       console.log(`   Tables organized into ${Math.max(...tableLayers.values()) + 1} layers`);
 
-      // PHASE 5: Process schema layer-by-layer with integrated validation
+      // PHASE 6: Process schema layer-by-layer with integrated validation
       console.log('🔄 Processing schema by layers...');
       const processedSchema = this.schemaProcessor.processSchemaByLayers(
         schema,
@@ -89,82 +94,77 @@ export class GenLogicProcessor {
         reusableColumns
       );
 
-      // PHASE 5.4: Validate automation foreign key inference
+      // PHASE 6.4: Validate automation foreign key inference
       console.log('🔍 Validating automation definitions...');
       const automationResult = this.validator.validateAutomationInference(schema);
       if (!automationResult.isValid) {
         throw new Error(`Automation validation failed:\n${automationResult.errors.join('\n')}`);
       }
 
-      // PHASE 5.6: Validate content sections
+      // PHASE 6.6: Validate content sections
       console.log('📦 Validating content sections...');
       const contentResult = this.contentManager.validateContent(schema, processedSchema);
       if (!contentResult.isValid) {
         throw new Error(`Content validation failed:\n${contentResult.errors.join('\n')}`);
       }
 
-      // PHASE 6: Database introspection and diffing
+      // PHASE 7: Database introspection and diffing
       console.log('🔍 Analyzing current database state...');
-      await this.database.connect();
-      try {
-        // PHASE 6.5: Drop ALL GenLogic triggers first for clean slate
-        console.log('🧹 Dropping all existing GenLogic triggers...');
-        const dropAllTriggersSQL = await this.database.generateDropAllGenLogicTriggersSQL();
 
-        const currentSchema = await this.database.analyzeCurrentSchema();
-        const diff = this.diffEngine.generateDiff(processedSchema, currentSchema, schema);
+      // PHASE 7.5: Drop ALL GenLogic triggers first for clean slate
+      console.log('🧹 Dropping all existing GenLogic triggers...');
+      const dropAllTriggersSQL = await this.database.generateDropAllGenLogicTriggersSQL();
 
-        // PHASE 7: SQL generation
-        console.log('📝 Generating SQL statements...');
-        const ddlStatements = this.sqlGenerator.generateSQL(diff, processedSchema);
-        const triggerStatements = this.triggerGenerator.generateTriggers(schema, processedSchema);
-        const matchingStatements = this.matchingGenerator.generateMatchingSQL(schema, processedSchema);
-        const contentStatements = this.contentManager.generateContentInserts(schema, processedSchema);
+      const currentSchema = await this.database.analyzeCurrentSchema();
+      const diff = this.diffEngine.generateDiff(processedSchema, currentSchema, schema);
 
-        // ROBUST EXECUTION ORDER:
-        // 1. Drop ALL GenLogic triggers (clean slate)
-        // 2. Run all DDL (tables, columns)
-        // 3. Modify existing columns (safe expansions only)
-        // 4. Clean up orphaned FK values (set NULL where parent doesn't exist)
-        // 5. Add FK constraints (after cleanup to avoid violations)
-        // 6. Create indexes
-        // 7. Add comments (table and column descriptions)
-        // 8. Create ALL triggers (fresh from schema)
-        // 9. Create matching functions (pattern matching utilities)
-        // 10. Insert content (with complete schema and active triggers)
-        const allStatements = [
-          ...dropAllTriggersSQL,
-          ...ddlStatements.createTables,
-          ...ddlStatements.addColumns,
-          ...ddlStatements.modifyColumns,
-          ...ddlStatements.cleanupForeignKeys,
-          ...ddlStatements.addForeignKeys,
-          ...ddlStatements.createIndexes,
-          ...ddlStatements.addComments,
-          ...triggerStatements,
-          ...matchingStatements,
-          ...contentStatements
-        ].filter(sql => sql.trim().length > 0 && !sql.startsWith('--'));
+      // PHASE 8: SQL generation
+      console.log('📝 Generating SQL statements...');
+      const ddlStatements = this.sqlGenerator.generateSQL(diff, processedSchema);
+      const triggerStatements = this.triggerGenerator.generateTriggers(schema, processedSchema);
+      const matchingStatements = this.matchingGenerator.generateMatchingSQL(schema, processedSchema);
+      const contentStatements = this.contentManager.generateContentInserts(schema, processedSchema);
 
-        // PHASE 8: Execution or dry-run reporting
-        if (this.config.dryRun) {
-          console.log('📋 DRY RUN - Planned changes:');
-          this.reportPlannedChanges(diff, allStatements);
+      // ROBUST EXECUTION ORDER:
+      // 1. Drop ALL GenLogic triggers (clean slate)
+      // 2. Run all DDL (tables, columns)
+      // 3. Modify existing columns (safe expansions only)
+      // 4. Clean up orphaned FK values (set NULL where parent doesn't exist)
+      // 5. Add FK constraints (after cleanup to avoid violations)
+      // 6. Create indexes
+      // 7. Add comments (table and column descriptions)
+      // 8. Create ALL triggers (fresh from schema)
+      // 9. Create matching functions (pattern matching utilities)
+      // 10. Insert content (with complete schema and active triggers)
+      const allStatements = [
+        ...dropAllTriggersSQL,
+        ...ddlStatements.createTables,
+        ...ddlStatements.addColumns,
+        ...ddlStatements.modifyColumns,
+        ...ddlStatements.cleanupForeignKeys,
+        ...ddlStatements.addForeignKeys,
+        ...ddlStatements.createIndexes,
+        ...ddlStatements.addComments,
+        ...triggerStatements,
+        ...matchingStatements,
+        ...contentStatements
+      ].filter(sql => sql.trim().length > 0 && !sql.startsWith('--'));
+
+      // PHASE 9: Execution or dry-run reporting
+      if (this.config.dryRun) {
+        console.log('📋 DRY RUN - Planned changes:');
+        this.reportPlannedChanges(diff, allStatements);
+      } else {
+        console.log('⚡ Executing database changes...');
+        if (allStatements.length > 0) {
+          await this.database.executeInTransaction(allStatements);
+          console.log(`✅ Successfully executed ${allStatements.length} SQL statements`);
         } else {
-          console.log('⚡ Executing database changes...');
-          if (allStatements.length > 0) {
-            await this.database.executeInTransaction(allStatements);
-            console.log(`✅ Successfully executed ${allStatements.length} SQL statements`);
-          } else {
-            console.log('✅ No changes needed - schema is up to date');
-          }
+          console.log('✅ No changes needed - schema is up to date');
         }
-
-      } finally {
-        await this.database.disconnect();
       }
 
-      // PHASE 9: Generate resolved schema documentation
+      // PHASE 10: Generate resolved schema documentation
       console.log('📝 Generating resolved schema documentation...');
       this.writeResolvedSchema(schemaPath, schema, processedSchema);
 
@@ -175,6 +175,9 @@ export class GenLogicProcessor {
       console.error('');
       console.error('❌ GenLogic processing failed:');
       throw error;
+    } finally {
+      // Always disconnect from database, even if processing failed
+      await this.database.disconnect();
     }
   }
 
