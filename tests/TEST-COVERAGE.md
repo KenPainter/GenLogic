@@ -98,6 +98,54 @@ Each test directory contains:
 - `verify-*.sql` - Queries to verify behavior
 - `expect-*.txt` - Expected query results (JSON format)
 
+## Test Naming Convention
+
+Tests should be named descriptively to indicate what they test:
+
+```
+tests/
+  03-validation/
+    {error-type}-{specific-case}/
+      schema.yaml
+      expect-exit-1.txt
+      expect-stderr.txt
+
+  04-schema-features/
+    {feature-name}-{variation}/
+      schema.yaml
+      expect-exit-0.txt
+      verify-schema.sql
+      expect-schema.txt
+
+  05-behavior/
+    {feature-name}-{scenario}/
+      schema.yaml
+      expect-exit-0.txt
+      setup-data.sql
+      verify-{aspect}.sql
+      expect-{aspect}.txt
+```
+
+Examples:
+- `03-validation/invalid-table-name-with-spaces/`
+- `04-schema-features/foreign-key-composite-pk/`
+- `05-behavior/sum-automation-fk-change/`
+
+## Test Creation Checklist
+
+When adding a new test:
+
+1. [ ] Create test directory with descriptive name
+2. [ ] Add `schema.yaml` with minimal example
+3. [ ] Add `expect-exit-0.txt` or `expect-exit-1.txt`
+4. [ ] For failures: Add `expect-stderr.txt` with exact error message
+5. [ ] For features: Add `verify-*.sql` queries
+6. [ ] For features: Add `expect-*.txt` with expected results
+7. [ ] For behaviors: Add `setup-data.sql` for test data
+8. [ ] Verify test passes/fails as expected
+9. [ ] Update this document with test location
+
+
 ## Coverage Status
 
 ### Phase 01: CLI (Command-Line Interface)
@@ -302,108 +350,179 @@ Scope: This phase tests that schema elements (tables, columns, constraints, inde
 - [x] [Column widening](./05-schema-features/additive-widen-column) - Columns widened for CHAR, VARCHAR, NUMERIC
 
 ### Phase 06: Behavior (End-to-End Data Flow)
-Coverage: 24 behavior tests, 19 passing, 5 failing
 
-Tested:
+**Coverage: 23 tests implemented, all passing (100%)**
 
-#### 6.1 Aggregation Automations (9 tests)
-- [x] [SUM automation](./06-behavior/automations-sum) - Sum aggregation with INSERT/UPDATE/DELETE
-- [x] [COUNT automation](./06-behavior/automations-count) - Row counting with FK changes
+Scope: This phase tests end-to-end data flow through triggers, automations, and calculated columns. Each test verifies that GenLogic's trigger generation correctly maintains data integrity and propagates changes through the database. Tests use setup-data.sql to create initial state, then verify-*.sql queries to inspect results after trigger execution.
+
+#### 6.1 Aggregation Automations
+
+- [x] [SUM automation](./06-behavior/automations-sum) - Basic SUM aggregation
+  - Initial SUM calculation on child INSERT
+  - Parent balance correctly aggregates child amounts
+
+- [x] [COUNT automation](./06-behavior/automations-count) - Row counting automation
+  - Initial COUNT calculation on child INSERT
+  - Parent counts child rows via FK relationship
+
 - [x] [MAX automation](./06-behavior/automations-max) - Maximum value tracking
+  - Initial MAX calculation on child INSERT
+  - Parent tracks maximum child value
+
 - [x] [MIN automation](./06-behavior/automations-min) - Minimum value tracking
+  - Initial MIN calculation on child INSERT
+  - Parent tracks minimum child value
+
 - [x] [LAST_VALUE automation](./06-behavior/automations-last-value) - Most recent value capture
-- [x] [Incremental updates](./06-behavior/automations-incremental) - Delta mode for SUM
-- [x] [Multiple automations](./06-behavior/automations-multiple) - Multiple automations on same table
-- [!] [SNAPSHOT automation](./06-behavior/automations-snapshot) - Point-in-time copy (FAILING)
-- [!] [SPREAD automation](./06-behavior/automations-spread) - Date range expansion (FAILING)
+  - Initial LAST_VALUE on child INSERT
+  - Parent captures last inserted child value
 
-#### 6.2 Calculated Columns (5 tests)
-- [!] All calculated column tests failing with "relation does not exist"
-- [ ] CASE WHEN expressions
-- [ ] Dependent calculated columns
-- [ ] NULL handling
-- [ ] String operations
-- [ ] UPDATE triggers recalculation
+- [x] [Incremental SUM](./06-behavior/automations-incremental) - SUM with INSERT/UPDATE/DELETE
+  - SUM recalculates on child INSERT
+  - SUM recalculates on child UPDATE (value change)
+  - SUM recalculates on child DELETE
 
-#### 6.3 Foreign Keys (2 tests)
-- [x] Composite FKs
-- [x] Nullable FKs
+- [x] [Multiple automations](./06-behavior/automations-multiple) - Multiple automations on same FK
+  - SUM + COUNT + MAX all working on same parent-child relationship
+  - All three automations update independently and correctly
 
-#### 6.4 Column Expansion (3 tests)
-- [x] VARCHAR size expansion
-- [x] NUMERIC precision expansion
-- [x] Expansion via reusable columns
+- [x] [SNAPSHOT automation](./06-behavior/automations-snapshot) - Point-in-time value capture
+  - SNAPSHOT copies parent value on child INSERT
+  - SNAPSHOT does NOT update when parent value changes (frozen at insertion time)
+  - Verifies immutability after parent UPDATE
 
-#### 6.5 Pattern Matching (2 tests)
-- [x] Pattern matching ALL mode
-- [x] Pattern matching BEST mode
+- [x] [SPREAD automation](./06-behavior/automations-spread) - Date range expansion with auto_create
+  - SPREAD generates multiple child rows based on date range
+  - auto_create with spread.start, spread.end, spread.interval
+  - Generated rows populate spread_date column correctly
 
-#### 6.6 Seed Data (1 test)
-- [x] Basic seed data insertion
+- [x] [SYNC automation](./06-behavior/automations-sync) - Synchronized value tracking
+  - SYNC copies parent value on child INSERT
+  - SYNC updates child when parent value changes (stays in sync)
+  - Verifies dynamic updates after parent UPDATE
 
-Missing Behavior Tests:
+#### 6.2 Generated Columns (Calculated Columns)
 
-#### 6.7 SUM Aggregation (comprehensive)
-- [x] SUM on INSERT (tested in automations-sum)
-- [x] SUM on UPDATE (value change)
-- [x] SUM on UPDATE (FK change to different parent)
-- [x] SUM on UPDATE (FK change from NULL to value)
-- [x] SUM on UPDATE (FK change from value to NULL)
-- [x] SUM on DELETE
+- [x] [CASE WHEN expressions](./06-behavior/calculated-columns-case) - Conditional logic in generated columns
+  - CASE WHEN @amount > 0 THEN 'credit' WHEN @amount < 0 THEN 'debit' ELSE 'zero' END
+  - Generated column with conditional branching based on another column
+
+- [x] [Dependent generated columns](./06-behavior/calculated-columns-dependent) - Generated column referencing another generated column
+  - subtotal = @quantity * @unit_price (first level)
+  - tax = @subtotal * 0.08 (depends on subtotal)
+  - total = @subtotal + @tax (depends on both)
+  - Three-level chained dependency resolution
+
+- [x] [NULL handling](./06-behavior/calculated-columns-null) - COALESCE for NULL safety
+  - COALESCE(@price, 0) - COALESCE(@discount, 0)
+  - Generated column handles NULL inputs without errors
+
+- [x] [String operations](./06-behavior/calculated-columns-string) - String concatenation
+  - @first_name || ' ' || @last_name
+  - Generated column with string concatenation operator
+
+- [x] [UPDATE triggers recalculation](./06-behavior/calculated-columns-update) - Generated columns recalculate on UPDATE
+  - Generated column recalculates when source column (@base_price) changes
+  - Verifies UPDATE trigger fires and recomputes value
+
+#### 6.3 Foreign Keys
+
+- [x] [Composite FKs](./06-behavior/foreign-keys-composite) - Composite primary key support
+  - Multiple columns in primary key (order_id, order_year)
+  - FK correctly references composite PK
+  - Child table successfully links to parent via composite key
+
+- [x] [Nullable FKs](./06-behavior/foreign-keys-nullable) - Optional foreign key relationships
+  - FK column can be NULL (not_null: false)
+  - No constraint violation when FK is NULL
+  - Allows orphan child rows
+
+#### 6.4 Column Expansion (Additive Schema Changes)
+
+- [x] [VARCHAR size expansion](./06-behavior/column-expansion-varchar) - Widening VARCHAR columns
+  - VARCHAR(30) expanded to VARCHAR(60)
+  - Existing data preserved after expansion
+  - No data loss on column widening
+
+- [x] [NUMERIC precision expansion](./06-behavior/column-expansion-numeric) - Widening NUMERIC precision/scale
+  - NUMERIC(10,2) expanded to NUMERIC(12,4)
+  - Existing data preserved with original precision
+  - More precision available for new values
+
+- [x] [Expansion via reusable columns](./06-behavior/column-expansion-reusable) - Column expansion through $ref
+  - Reusable column type changes propagate to all referencing tables
+  - Multiple tables using same reusable column all expand together
+
+#### 6.5 Pattern Matching
+
+- [x] [match_best function](./06-behavior/pattern-matching-best) - Highest specificity match
+  - Returns single best match based on specificity score
+  - String match + range bounds contribute to scoring
+  - Most specific rule wins (e.g., 'CA' + range beats 'CA' alone)
+
+- [x] [match_all function](./06-behavior/pattern-matching-all) - All matching rules
+  - Returns array of all matching rules
+  - String match + range bounds for filtering
+  - All applicable rules returned in result set
+
+#### 6.6 Seed Data
+
+- [x] [Basic seed data insertion](./06-behavior/content-seed-data) - seed-rows with static data
+  - seed-rows array inserts static reference data
+  - ON CONFLICT DO UPDATE for idempotency
+  - Data loaded at schema creation time
+
+---
+
+#### Planned Behavior Tests (Not Yet Implemented):
+
+#### 6.7 SUM Aggregation - Edge Cases
+- [ ] SUM on UPDATE with FK change to different parent
+- [ ] SUM on UPDATE with FK change from NULL to value
+- [ ] SUM on UPDATE with FK change from value to NULL
 - [ ] SUM with NULL child values (should treat as 0)
 - [ ] SUM with NULL parent value (should initialize to 0)
 - [ ] SUM on composite FK
 - [ ] SUM with multiple FKs to same parent table (explicit FK name)
 
-#### 6.8 COUNT Aggregation
-- [x] COUNT on INSERT (tested in automations-count)
-- [x] COUNT on UPDATE (FK change)
-- [x] COUNT on DELETE
+#### 6.8 COUNT Aggregation - Edge Cases
+- [ ] COUNT on UPDATE with FK change
 - [ ] COUNT with NULL child values (should count regardless)
 - [ ] COUNT on composite FK
 - [ ] COUNT going to zero (ensure never negative)
 
-#### 6.9 MAX Aggregation
-- [x] MAX on INSERT (tested in automations-max)
+#### 6.9 MAX Aggregation - Edge Cases
 - [ ] MAX on UPDATE (new max value)
-- [ ] MAX on UPDATE (FK change)
+- [ ] MAX on UPDATE with FK change
 - [ ] MAX on DELETE (when max row deleted, should recalculate)
 - [ ] MAX with NULL child values (should ignore NULLs)
 - [ ] MAX with all NULL values (should be NULL)
 
-#### 6.10 MIN Aggregation
-- [x] MIN on INSERT (tested in automations-min)
+#### 6.10 MIN Aggregation - Edge Cases
 - [ ] MIN on UPDATE (new min value)
-- [ ] MIN on UPDATE (FK change)
+- [ ] MIN on UPDATE with FK change
 - [ ] MIN on DELETE (when min row deleted, should recalculate)
 - [ ] MIN with NULL child values (should ignore NULLs)
 - [ ] MIN with all NULL values (should be NULL)
 
-#### 6.11 LAST_VALUE Automation
-- [x] LAST_VALUE on INSERT (tested in automations-last-value)
+#### 6.11 LAST_VALUE Automation - Edge Cases
 - [ ] LAST_VALUE on UPDATE (value change)
-- [ ] LAST_VALUE on UPDATE (FK change)
+- [ ] LAST_VALUE on UPDATE with FK change
 - [ ] LAST_VALUE on DELETE (should do nothing or recalculate?)
 - [ ] LAST_VALUE with NULL child value
 
-#### 6.12 SNAPSHOT Automation
-- [!] SNAPSHOT on INSERT (test exists but failing)
+#### 6.12 SNAPSHOT Automation - Edge Cases
 - [ ] SNAPSHOT with NULL parent value
-- [ ] SNAPSHOT doesn't update on parent UPDATE
-- [ ] SNAPSHOT updates on child FK change
+- [ ] SNAPSHOT updates on child FK change (should fetch from new parent)
 - [ ] SNAPSHOT with composite FK
 
-#### 6.13 SYNC Automation
-- [x] SYNC on INSERT (tested in automations-sync)
-- [ ] SYNC on UPDATE (parent changes, child updates)
+#### 6.13 SYNC Automation - Edge Cases
 - [ ] SYNC on UPDATE (child FK changes, fetches from new parent)
 - [ ] SYNC with NULL parent value
 - [ ] SYNC with composite FK
 
-#### 6.14 SPREAD Automation (auto_create with spread)
-- [!] SPREAD on INSERT (test exists but failing)
-- [ ] SPREAD generates multiple child rows based on date range
-- [ ] SPREAD with interval (daily, weekly, monthly)
+#### 6.14 SPREAD Automation - Edge Cases
+- [ ] SPREAD with different intervals (weekly, monthly)
 - [ ] SPREAD on UPDATE (dates change, regenerate children)
 - [ ] SPREAD on DELETE (delete all generated children)
 - [ ] SPREAD with copy_columns
@@ -434,7 +553,6 @@ Missing Behavior Tests:
 - [ ] Trigger prevents infinite loops (change detection)
 
 #### 6.18 Seed Data Advanced
-- [x] seed-rows with ON CONFLICT (tested in content-seed-data)
 - [ ] seed-rows with $lookup
 - [ ] seed-rows with $lookup and multi-condition where
 - [ ] seed-rows with nested $lookup
@@ -443,7 +561,6 @@ Missing Behavior Tests:
 - [ ] seed-rows with FK to parent seed row (insertion order)
 
 #### 6.19 Complex Scenarios
-- [ ] Multiple automations on same FK (SUM + COUNT + MAX on same relationship)
 - [ ] Automation chains (A → B → C)
 - [ ] Diamond dependencies (A → B, A → C, B → D, C → D)
 - [ ] Self-referential FK with aggregation (org chart)
@@ -451,8 +568,6 @@ Missing Behavior Tests:
 - [ ] NULL FK with aggregation (should handle gracefully)
 
 #### 6.20 Pattern Matching Advanced
-- [x] Pattern matching BEST mode (tested)
-- [x] Pattern matching ALL mode (tested)
 - [ ] Pattern matching with no matches (returns empty)
 - [ ] Pattern matching with ties (same specificity)
 - [ ] Pattern matching with NULL inputs
@@ -480,49 +595,3 @@ Missing Behavior Tests:
 - [ ] ON DELETE CASCADE behavior
 - [ ] ON DELETE RESTRICT behavior
 
-## Test Naming Convention
-
-Tests should be named descriptively to indicate what they test:
-
-```
-tests/
-  03-validation/
-    {error-type}-{specific-case}/
-      schema.yaml
-      expect-exit-1.txt
-      expect-stderr.txt
-
-  04-schema-features/
-    {feature-name}-{variation}/
-      schema.yaml
-      expect-exit-0.txt
-      verify-schema.sql
-      expect-schema.txt
-
-  05-behavior/
-    {feature-name}-{scenario}/
-      schema.yaml
-      expect-exit-0.txt
-      setup-data.sql
-      verify-{aspect}.sql
-      expect-{aspect}.txt
-```
-
-Examples:
-- `03-validation/invalid-table-name-with-spaces/`
-- `04-schema-features/foreign-key-composite-pk/`
-- `05-behavior/sum-automation-fk-change/`
-
-## Test Creation Checklist
-
-When adding a new test:
-
-1. [ ] Create test directory with descriptive name
-2. [ ] Add `schema.yaml` with minimal example
-3. [ ] Add `expect-exit-0.txt` or `expect-exit-1.txt`
-4. [ ] For failures: Add `expect-stderr.txt` with exact error message
-5. [ ] For features: Add `verify-*.sql` queries
-6. [ ] For features: Add `expect-*.txt` with expected results
-7. [ ] For behaviors: Add `setup-data.sql` for test data
-8. [ ] Verify test passes/fails as expected
-9. [ ] Update this document with test location
