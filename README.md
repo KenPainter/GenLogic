@@ -50,13 +50,9 @@ In addition to the docs linked to above, you need [Contributing](./CONTRIBUTING.
 ## Status and Major TO-DO Items
 
 General To-Do
-- Replace Bun postgres built-in with pg driver, allows tests
-  and use w/o password
+- Consider replacing Bun postgres built-in with pg driver, allows tests
+  and use on localhost w/trusted connections.
 - Implement SNAPSHOT - parent to child only once on insert to child
-- Docs:
-  - Database Architecture docs need a rethink
-  - Code Architecture docs need a rethink
-  - Edge cases are documented but not in the toc
 - Better solution for AI assisants to write schema files.
 - Implement subversion protection for automated columns
 
