@@ -5,17 +5,27 @@
  * Discovers and runs all CLI tests in a data-driven fashion.
  * Tests only interact with the CLI interface - no production code coupling.
  *
+ * Usage:
+ *   bun tests/run-cli-tests.ts              # Run all tests
+ *   bun tests/run-cli-tests.ts 01-cli       # Run tests matching "01-cli"
+ *   bun tests/run-cli-tests.ts 02-schema    # Run tests matching "02-schema"
+ *
  * Test structure:
  *   tests/category/test-name/
  *     schema.yaml              - Input schema (optional for --help, --version)
  *     expect-exit-0.txt        - Success marker
  *     expect-exit-1.txt        - Failure marker
- *     expect-stdout.txt        - Patterns that must appear in stdout
- *     expect-stderr.txt        - Patterns that must appear in stderr
+ *     expect-stdout.txt        - Patterns that must appear in stdout (supports regex: /pattern/)
+ *     expect-stderr.txt        - Patterns that must appear in stderr (supports regex: /pattern/)
  *     verify-*.sql             - SQL queries to run against DB
  *     expect-*.txt             - Expected output for corresponding verify-*.sql
  *     setup-data.sql           - SQL to run before verify queries
  *     args.txt                 - Extra CLI args
+ *
+ * Pattern matching:
+ *   - Lines starting with # are comments (ignored)
+ *   - Lines like /regex/ are treated as regex patterns
+ *   - Other lines are treated as literal substrings
  */
 
 import { readdirSync, existsSync, readFileSync, statSync } from 'fs';
@@ -26,7 +36,7 @@ import { SQL } from 'bun';
 const CLI_PATH = join(process.cwd(), 'src', 'cli.ts');
 const TESTS_DIR = join(process.cwd(), 'tests');
 
-// Password handling: optional for trust authentication
+// Test configuration - password required for Bun SQL driver
 const TEST_PASSWORD = process.env.GENLOGIC_TEST_PASSWORD || '';
 const TEST_USER = process.env.GENLOGIC_TEST_USER || process.env.USER || 'postgres';
 const TEST_DB = process.env.GENLOGIC_TEST_DB || 'genlogic_test_cli';
@@ -81,11 +91,11 @@ function discoverTests(): TestCase[] {
         const setupDataPath = join(fullPath, 'setup-data.sql');
 
         const expectedStdout = existsSync(stdoutPath)
-          ? readFileSync(stdoutPath, 'utf-8').trim().split('\n').filter(l => l.length > 0)
+          ? readFileSync(stdoutPath, 'utf-8').trim().split('\n').filter(l => l.length > 0 && !l.trim().startsWith('#'))
           : undefined;
 
         const expectedStderr = existsSync(stderrPath)
-          ? readFileSync(stderrPath, 'utf-8').trim().split('\n').filter(l => l.length > 0)
+          ? readFileSync(stderrPath, 'utf-8').trim().split('\n').filter(l => l.length > 0 && !l.trim().startsWith('#'))
           : undefined;
 
         // Find all verify-*.sql files
@@ -140,11 +150,11 @@ async function runTest(test: TestCase, db: SQL): Promise<boolean> {
     return false;
   }
 
-  // Common args (passwordless if no TEST_PASSWORD set)
+  // Common args - password required for Bun SQL driver
   const commonArgs = [
     '-d', TEST_DB,
     '-u', TEST_USER,
-    ...(TEST_PASSWORD ? ['-w', TEST_PASSWORD] : [])
+    '-w', TEST_PASSWORD
   ];
 
   // Build full command
@@ -169,22 +179,40 @@ async function runTest(test: TestCase, db: SQL): Promise<boolean> {
 
   // Check stdout patterns
   if (test.expectedStdout) {
-    const stdout = result.stdout.toString();
+    const stdout = result.stdout.toString().trim();
     for (const pattern of test.expectedStdout) {
-      if (!stdout.includes(pattern)) {
-        passed = false;
-        errors.push(`Expected stdout to contain: "${pattern}"`);
+      // Check if pattern is a regex (starts with / and ends with /)
+      if (pattern.startsWith('/') && pattern.endsWith('/')) {
+        const regex = new RegExp(pattern.slice(1, -1));
+        if (!regex.test(stdout)) {
+          passed = false;
+          errors.push(`Expected stdout to match regex: ${pattern}`);
+        }
+      } else {
+        if (!stdout.includes(pattern)) {
+          passed = false;
+          errors.push(`Expected stdout to contain: "${pattern}"`);
+        }
       }
     }
   }
 
   // Check stderr patterns
   if (test.expectedStderr) {
-    const stderr = result.stderr.toString();
+    const stderr = result.stderr.toString().trim();
     for (const pattern of test.expectedStderr) {
-      if (!stderr.includes(pattern)) {
-        passed = false;
-        errors.push(`Expected stderr to contain: "${pattern}"`);
+      // Check if pattern is a regex (starts with / and ends with /)
+      if (pattern.startsWith('/') && pattern.endsWith('/')) {
+        const regex = new RegExp(pattern.slice(1, -1));
+        if (!regex.test(stderr)) {
+          passed = false;
+          errors.push(`Expected stderr to match regex: ${pattern}`);
+        }
+      } else {
+        if (!stderr.includes(pattern)) {
+          passed = false;
+          errors.push(`Expected stderr to contain: "${pattern}"`);
+        }
       }
     }
   }
@@ -248,9 +276,18 @@ async function runTest(test: TestCase, db: SQL): Promise<boolean> {
 }
 
 async function main() {
+  // Optional filter: bun tests/run-cli-tests.ts [filter]
+  const filter = process.argv[2];
+
   console.log('🔍 Discovering CLI tests...\n');
 
-  const tests = discoverTests();
+  let tests = discoverTests();
+
+  // Apply filter if provided
+  if (filter) {
+    tests = tests.filter(t => t.name.includes(filter));
+    console.log(`Filter: "${filter}"`);
+  }
 
   // Sort tests: 000-dry-run-safety must be first
   tests.sort((a, b) => {

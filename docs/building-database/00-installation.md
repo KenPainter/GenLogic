@@ -98,7 +98,7 @@ bun run src/cli.ts --help
 
 Expected output from `--version`:
 ```
-1.0.0
+0.1.0
 ```
 
 Expected output from `--help`:
@@ -114,7 +114,7 @@ Options:
   -d, --database <database>  PostgreSQL database name
   -u, --user <user>          PostgreSQL username
   -w, --password <password>  PostgreSQL password
-  -s, --schema <path>        Path to YAML schema file(s) (default: "./schema.yaml")
+  -s, --schema <path>        Path to YAML schema file
   --dry-run                  Show planned changes without executing them (default: false)
   --help                     display help for command
 ```
@@ -136,12 +136,12 @@ bun run src/cli.ts \
 Required options:
 - `-d, --database` - Database name
 - `-u, --user` - PostgreSQL username
+- `-w, --password` - PostgreSQL password
+- `-s, --schema` - Schema file path
 
 Optional options:
 - `-h, --host` - PostgreSQL host (default: localhost)
 - `-p, --port` - PostgreSQL port (default: 5432)
-- `-w, --password` - PostgreSQL password
-- `-s, --schema` - Schema file path (default: ./schema.yaml)
 
 ## Troubleshooting
 

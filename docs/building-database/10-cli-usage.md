@@ -17,12 +17,12 @@ bun run src/cli.ts -d database_name -u username -w password -s schema.yaml
 - `-d, --database <database>` - PostgreSQL database name
 - `-u, --user <user>` - PostgreSQL username
 - `-w, --password <password>` - PostgreSQL password
+- `-s, --schema <path>` - Path to YAML schema file
 
 ### Optional Options
 
 - `-h, --host <host>` - PostgreSQL host (default: `localhost`)
 - `-p, --port <port>` - PostgreSQL port (default: `5432`)
-- `-s, --schema <path>` - Path to YAML schema file (default: `./schema.yaml`)
 - `--dry-run` - Show planned SQL changes without executing them
 - `--version` - Display version information
 - `--help` - Display help information
@@ -132,6 +132,8 @@ Common error messages and solutions:
 
 - "Database name is required" - Provide `-d` option
 - "Username is required" - Provide `-u` option
+- "Password is required" - Provide `-w` option
+- "Schema file path is required" - Provide `-s` option
 - "Column 'x' references non-existent column 'y'" - Fix column inheritance reference
 - "Foreign key references non-existent table" - Ensure referenced table exists
 - "Cycle detected in data flow graph" - Remove circular automation dependencies

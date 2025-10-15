@@ -14,19 +14,21 @@ Purpose: Map all tests to code execution phases for human review
 
 ## Test Categorization
 
-### Phase 1: CLI Entry (7 tests)
+### Phase 1: CLI Entry (9 tests)
 
 Tests command-line interface before any schema processing.
 
 | Test | Validates | Pass/Fail |
 |------|-----------|-----------|
-| `000-dry-run-safety` | --dry-run prevents database modification | Pass |
-| `cli-options/help` | --help displays usage | Pass |
-| `cli-options/version` | --version displays version | Pass |
-| `cli-options/custom-host-port` | Custom host/port options work | Pass |
-| `cli-options/schema-file-path` | Custom schema path option works | Pass |
-| `error-handling/missing-database` | Error when --database not provided | Pass |
-| `error-handling/missing-username` | Error when --user not provided | Pass |
+| `01-cli/000-dry-run-safety` | --dry-run prevents database modification | Pass |
+| `01-cli/help` | --help displays usage | Pass |
+| `01-cli/version` | --version displays version | Pass |
+| `01-cli/custom-host-port` | Custom host/port options work | Pass |
+| `01-cli/schema-file-path` | Custom schema path option works | Pass |
+| `01-cli/missing-database` | Error when --database not provided | Pass |
+| `01-cli/missing-username` | Error when --user not provided | Pass |
+| `01-cli/missing-password` | Error when --password not provided | Pass |
+| `01-cli/missing-schema` | Error when --schema not provided | Pass |
 
 Coverage: CLI options, required args, help text
 
@@ -174,8 +176,8 @@ Coverage: Basic seed data
 
 ## Summary Statistics
 
-- Total Tests: 43
-- Passing: 36 (84%)
+- Total Tests: 45
+- Passing: 38 (84%)
 - Failing: 7 (16%)
 - Missing: 2 (indexes-and-constraints, label-and-format)
 
@@ -183,7 +185,7 @@ Coverage: Basic seed data
 
 | Phase | Tests | Pass | Fail |
 |-------|-------|------|------|
-| 1. CLI Entry | 7 | 7 | 0 |
+| 1. CLI Entry | 9 | 9 | 0 |
 | 2. Schema Loading | 2 | 2 | 0 |
 | 3. Validation | 5 | 5 | 0 |
 | 4. Schema Features | 8 | 6 | 2 |

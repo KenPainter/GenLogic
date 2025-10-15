@@ -4,7 +4,7 @@
 
 Schema loading reads and parses the YAML schema file into a GenLogic schema object.
 
-Code Location: `src/processor.ts` → `loadSchema()`
+Code Location: `src/processor.ts` → `loadYamlSchema()`
 
 Execution Flow:
 ```
@@ -40,34 +40,38 @@ Error Path:
 
 `src/processor.ts` handles schema loading:
 ```typescript
-async loadSchema(path: string): Promise<GenLogicSchema>
+private loadYamlSchema(schemaPath: string): GenLogicSchema
 ```
 
-Uses `yaml` package to parse YAML into JavaScript object.
+Uses `yaml` package (parse function) to parse YAML into JavaScript object.
+Validates that result is an object (not null, not primitive).
 
 ### What Gets Validated Here
 
-Only syntax and file access:
-- YAML can be parsed
-- File exists and is readable
+This phase validates:
+- File exists and is readable (readFileSync)
+- YAML syntax is valid (yaml.parse)
+- Parsed result is an object (not null, not primitive)
 
 NOT validated here:
 - Table/column names
 - Type definitions
 - References between tables
 - Automation syntax
+- Schema structure (that happens in Phase 3)
 
 ### Critical Behavior
 
-1. No schema validation: This phase only checks if YAML is parseable
-2. Relative paths: Schema path is resolved relative to current working directory
-3. Error messages: YAML parser errors are passed through to user
+1. Minimal validation: Only checks YAML is parseable and result is an object
+2. Relative paths: Schema path resolved relative to current working directory
+3. Error messages: Wrapped with "Failed to load YAML schema: " prefix
+4. Synchronous: File read and parse happen synchronously (not async)
 
 ### Architectural Questions
 
-1. Should basic schema structure be validated here (e.g., "tables must be an object")?
-2. Should relative file paths be resolved relative to schema file location or CWD?
-3. Should this phase load imported schemas (if we add import support)?
+1. Should relative file paths be resolved relative to schema file location or CWD?
+2. Should this phase load imported schemas (if we add import support)?
+3. Should empty object {} be allowed as a valid schema?
 
 ## How to Read Test Results
 
