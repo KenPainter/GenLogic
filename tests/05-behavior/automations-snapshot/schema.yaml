@@ -11,10 +11,6 @@ tables:
       product_id: integer
       price_at_purchase:
         type: numeric(10,2)
-        automation:
-          type: SNAPSHOT
-          table: products
-          foreign_key: product
-          column: base_price
+        automation: "SNAPSHOT @products.base_price"
     foreign_keys:
       product: { table: products }

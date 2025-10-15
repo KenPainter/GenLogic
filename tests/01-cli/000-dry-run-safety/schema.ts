@@ -2,11 +2,11 @@
 // This file describes the actual database structure after GenLogic processing
 // Source: /home/ken/hacking/genlogic/tests/01-cli/000-dry-run-safety/schema.yaml
 // Database: genlogic_test_cli
-// Generated: 2025-10-15T15:14:15.909Z
+// Generated: 2025-10-15T16:18:48.397Z
 
 export const schema = {
   "_metadata": {
-    "generated_at": "2025-10-15T15:14:15.909Z",
+    "generated_at": "2025-10-15T16:18:48.396Z",
     "source_schema": "/home/ken/hacking/genlogic/tests/01-cli/000-dry-run-safety/schema.yaml",
     "database": "genlogic_test_cli",
     "genlogic_version": "1.0.0",

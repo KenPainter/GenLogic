@@ -67,59 +67,33 @@ export class GenLogicProcessor {
         throw new Error(`Schema syntax validation failed:\n${syntaxResult.errors.join('\n')}`);
       }
 
-      // PHASE 3: Cross-reference validation
-      console.log('🔗 Validating cross-references...');
-      const crossRefResult = this.validator.validateCrossReferences(schema);
-      if (!crossRefResult.isValid) {
-        throw new Error(`Cross-reference validation failed:\n${crossRefResult.errors.join('\n')}`);
-      }
+      // PHASE 3: Build reusable columns store
+      console.log('📦 Building reusable columns...');
+      const reusableColumns = this.schemaProcessor.buildReusableColumnsStore(schema);
 
-      // PHASE 4: Data flow graph validation (CRITICAL SAFETY)
-      console.log('🌐 Building data flow graph...');
-      const graphResult = this.graphValidator.validateDataFlowSafety(schema);
-      if (!graphResult.isValid) {
-        throw new Error(`Data flow validation failed:\n${graphResult.errors.join('\n')}`);
-      }
-      if (graphResult.warnings.length > 0) {
-        console.log('⚠️  Warnings:', graphResult.warnings.join(', '));
-      }
-
-      // PHASE 4.5: Assign table layers based on FK dependencies
+      // PHASE 4: Build FK graph and assign layers (FAIL FAST on cycles)
+      console.log('🌐 Building dependency graph...');
       const fkGraph = this.graphValidator.buildForeignKeyGraph(schema);
+      const cycleResult = this.graphValidator.detectCycles(fkGraph);
+      if (!cycleResult.isValid) {
+        throw new Error(`Foreign key cycles detected:\n${cycleResult.errors.join('\n')}`);
+      }
       const tableLayers = this.graphValidator.assignTableLayers(fkGraph);
+      console.log(`   Tables organized into ${Math.max(...tableLayers.values()) + 1} layers`);
 
-      // PHASE 5: Schema processing and inheritance resolution (layer by layer)
-      console.log('🔄 Processing schema inheritance...');
-      const processedSchema = this.schemaProcessor.processSchema(schema, tableLayers);
-
-      // PHASE 5.3: Validate generated column references
-      console.log('🔍 Validating generated column references...');
-      const generatedResult = this.validator.validateGeneratedColumnReferences(processedSchema);
-      if (!generatedResult.isValid) {
-        throw new Error(`Generated column validation failed:\n${generatedResult.errors.join('\n')}`);
-      }
-      if (generatedResult.warnings.length > 0) {
-        console.log('⚠️  Warnings:', generatedResult.warnings.join(', '));
-      }
+      // PHASE 5: Process schema layer-by-layer with integrated validation
+      console.log('🔄 Processing schema by layers...');
+      const processedSchema = this.schemaProcessor.processSchemaByLayers(
+        schema,
+        tableLayers,
+        reusableColumns
+      );
 
       // PHASE 5.4: Validate automation foreign key inference
       console.log('🔍 Validating automation definitions...');
       const automationResult = this.validator.validateAutomationInference(schema);
       if (!automationResult.isValid) {
         throw new Error(`Automation validation failed:\n${automationResult.errors.join('\n')}`);
-      }
-
-      // PHASE 5.5: Validate sync definitions (must happen AFTER FK expansion)
-      console.log('🔄 Validating sync definitions...');
-      const syncResult = this.validator.validateSyncDefinitions(schema, processedSchema);
-      if (!syncResult.isValid) {
-        throw new Error(`Sync validation failed:\n${syncResult.errors.join('\n')}`);
-      }
-
-      // PHASE 5.5.1: Validate indexes and unique constraints
-      const indexResult = this.validator.validateIndexesAndConstraints(schema, processedSchema);
-      if (!indexResult.isValid) {
-        throw new Error(`Index/constraint validation failed:\n${indexResult.errors.join('\n')}`);
       }
 
       // PHASE 5.6: Validate content sections

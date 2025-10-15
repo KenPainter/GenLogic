@@ -2,11 +2,11 @@
 // This file describes the actual database structure after GenLogic processing
 // Source: /home/ken/hacking/genlogic/tests/05-behavior/automations-last-value/schema.yaml
 // Database: genlogic_test_cli
-// Generated: 2025-10-15T15:14:25.017Z
+// Generated: 2025-10-15T16:18:57.064Z
 
 export const schema = {
   "_metadata": {
-    "generated_at": "2025-10-15T15:14:25.015Z",
+    "generated_at": "2025-10-15T16:18:57.062Z",
     "source_schema": "/home/ken/hacking/genlogic/tests/05-behavior/automations-last-value/schema.yaml",
     "database": "genlogic_test_cli",
     "genlogic_version": "1.0.0",

@@ -6,4 +6,4 @@ tables:
       last_name: varchar(50)
       full_name:
         type: varchar(101)
-        generated: "first_name || ' ' || last_name"
+        generated: "@first_name || ' ' || @last_name"

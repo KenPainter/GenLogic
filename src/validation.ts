@@ -53,48 +53,10 @@ export class SchemaValidator {
   }
 
   /**
-   * Complete validation: syntax, cross-references, and data flow
+   * DEPRECATED - Cross-reference validation is now integrated into processSchemaByLayers
+   * Keeping this private method for reference during transition period
    */
-  validate(schema: any): ValidationResult {
-    // First do basic syntax validation (without graph validation)
-    const isValid = this.validateSchema(schema);
-    const errors: string[] = [];
-    const warnings: string[] = [];
-
-    if (!isValid && this.validateSchema.errors) {
-      for (const error of this.validateSchema.errors) {
-        const path = error.instancePath || 'root';
-        errors.push(`${path}: ${error.message}`);
-      }
-    }
-
-    if (errors.length > 0) {
-      return { isValid: false, errors, warnings };
-    }
-
-    // Then do cross-reference validation (check that referenced tables/columns exist)
-    const crossRefResult = this.validateCrossReferences(schema);
-    if (!crossRefResult.isValid) {
-      return crossRefResult;
-    }
-
-    // Finally do graph/cycle validation (requires valid cross-references)
-    const graphResult = this.graphValidator.validateDataFlowSafety(schema);
-    errors.push(...graphResult.errors);
-    warnings.push(...graphResult.warnings);
-
-    return {
-      isValid: errors.length === 0,
-      errors,
-      warnings
-    };
-  }
-
-  /**
-   * PHASE 2: Cross-reference validation
-   * VALIDATION REQUIRED: These checks are embedded in our schema descriptions
-   */
-  validateCrossReferences(schema: GenLogicSchema): ValidationResult {
+  private validateCrossReferencesDeprecated(schema: GenLogicSchema): ValidationResult {
     const errors: string[] = [];
     const warnings: string[] = [];
 
@@ -275,11 +237,10 @@ export class SchemaValidator {
   }
 
   /**
-   * PHASE 2.3: Validate generated column references
-   * This must run AFTER schema processing, when all columns are defined
-   * Requires @column_name syntax in generated expressions
+   * DEPRECATED - Generated column validation is now integrated into processTableWithValidation
+   * Validation happens during schema processing, not as a separate phase
    */
-  validateGeneratedColumnReferences(processedSchema: any): ValidationResult {
+  private validateGeneratedColumnReferencesDeprecated(processedSchema: any): ValidationResult {
     const errors: string[] = [];
     const warnings: string[] = [];
 
@@ -447,10 +408,10 @@ export class SchemaValidator {
   }
 
   /**
-   * PHASE 2.5: Validate auto_create definitions against processed schema
-   * This must run AFTER schema processing, when FK columns are expanded
+   * DEPRECATED - Auto_create validation is now integrated into processTableWithValidation
+   * Validation happens during schema processing, not as a separate phase
    */
-  validateSyncDefinitions(schema: GenLogicSchema, processedSchema: any): ValidationResult {
+  private validateSyncDefinitionsDeprecated(schema: GenLogicSchema, processedSchema: any): ValidationResult {
     const errors: string[] = [];
     const warnings: string[] = [];
 
@@ -532,10 +493,10 @@ export class SchemaValidator {
   }
 
   /**
-   * PHASE 2.6: Validate indexes and unique_constraints column references
-   * This must run AFTER schema processing, when FK columns are expanded
+   * DEPRECATED - Index and constraint validation is now integrated into processTableWithValidation
+   * Validation happens during schema processing, not as a separate phase
    */
-  validateIndexesAndConstraints(schema: GenLogicSchema, processedSchema: any): ValidationResult {
+  private validateIndexesAndConstraintsDeprecated(schema: GenLogicSchema, processedSchema: any): ValidationResult {
     const errors: string[] = [];
     const warnings: string[] = [];
 

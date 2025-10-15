@@ -6,4 +6,4 @@ tables:
       markup: numeric(5,2)
       final_price:
         type: numeric(10,2)
-        generated: "base_price * (1 + markup / 100)"
+        generated: "@base_price * (1 + @markup / 100)"
