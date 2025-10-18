@@ -270,6 +270,14 @@ export class SQLGenerator {
       sql += ' UNIQUE';
     }
 
+    // INTEGRITY: Block NaN and Infinity for all numeric types
+    // NaN and Infinity are NEVER valid in business applications
+    if (this.isFloatingPointNumeric(definition.type)) {
+      // NaN is the only value where x <> x, so "x = x" blocks NaN
+      // abs(x) < 'Infinity' blocks both Infinity and -Infinity
+      sql += ` CHECK ("${columnName}" IS NULL OR ("${columnName}" = "${columnName}" AND abs("${columnName}") < 'Infinity'::numeric))`;
+    }
+
     // Add DEFAULT clause (but skip if automation/generated already handles the value)
     if (definition.default !== undefined && !definition.automation && !definition.generated) {
       // Determine if default value needs quotes
@@ -286,6 +294,16 @@ export class SQLGenerator {
     }
 
     return sql;
+  }
+
+  /**
+   * Check if a type is a floating-point numeric type that can have NaN/Infinity
+   * Integer types (integer, bigint, smallint) cannot have NaN/Infinity
+   */
+  private isFloatingPointNumeric(type: string): boolean {
+    const baseType = type.toLowerCase().split('(')[0];
+    const floatingPointTypes = ['numeric', 'decimal', 'real', 'double precision', 'double_precision', 'float'];
+    return floatingPointTypes.includes(baseType);
   }
 
   /**
