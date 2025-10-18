@@ -270,8 +270,8 @@ export class SQLGenerator {
       sql += ' UNIQUE';
     }
 
-    // Add DEFAULT clause
-    if (definition.default !== undefined) {
+    // Add DEFAULT clause (but skip if automation/generated already handles the value)
+    if (definition.default !== undefined && !definition.automation && !definition.generated) {
       // Determine if default value needs quotes
       const defaultValue = definition.default;
       if (defaultValue.match(/^-?\d+(\.\d+)?$/) || // number
