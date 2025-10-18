@@ -52,11 +52,6 @@ Automated columns are identified by presence of `automation` or
 [trigger-generator.ts](../src/trigger-generator.ts) method
 `getAutomatedColumns`.
 
-## Default Values for Calculated Columns
-
-
-
-
 ## Valid Inputs
 
 We must protect against NULL and "NaN pollution" in numeric

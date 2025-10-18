@@ -151,20 +151,89 @@ export class TriggerGenerator {
   }
 
   /**
-   * Generate protection code for automated columns
-   * INSERT: Force to NULL (or 0 for aggregations)
+   * Generate protection code for automated columns on INSERT
+   * Set to appropriate initial values based on automation type
+   * - Aggregations (SUM, COUNT): Initialize to 0
+   * - Other aggregations (MAX, MIN, LAST_VALUE): Initialize to NULL
+   * - Generated columns: Initialize to NULL (will be calculated immediately)
+   * - SNAPSHOT/SYNC: Initialize to NULL (will be pulled immediately)
    */
-  private generateAutomatedColumnProtection(automatedColumns: string[], operation: 'INSERT'): string {
+  private generateAutomatedColumnProtection(
+    tableName: string,
+    automatedColumns: string[],
+    operation: 'INSERT',
+    schema: GenLogicSchema,
+    processedSchema: ProcessedSchema
+  ): string {
     const lines: string[] = [];
 
     lines.push('  -- INTEGRITY: Reset automated columns to prevent external corruption');
 
     for (const col of automatedColumns) {
-      // For INSERT, always reset to NULL
-      // Aggregations will be recalculated by child triggers if needed
-      // SNAPSHOT/SYNC will be pulled on first FK assignment
-      // Generated columns will be calculated below
-      lines.push(`  NEW.${col} := NULL;`);
+      const columnDef = processedSchema.tables[tableName]?.columns[col];
+      if (!columnDef) {
+        // Shouldn't happen, but default to NULL if we can't find the column
+        lines.push(`  NEW.${col} := NULL;`);
+        continue;
+      }
+
+      // Check automation type
+      if (columnDef.automation) {
+        // Parse the automation to get the type
+        const automation = resolveAutomation(columnDef.automation as any, tableName, schema);
+        const automationType = (automation as any).type;
+
+        if (automationType === 'SUM' || automationType === 'COUNT') {
+          // Initialize aggregations to 0
+          lines.push(`  NEW.${col} := 0;`);
+        } else {
+          // MAX, MIN, LAST_VALUE, SNAPSHOT, SYNC: NULL
+          lines.push(`  NEW.${col} := NULL;`);
+        }
+      } else if (columnDef.generated) {
+        // Generated columns: NULL (will be calculated immediately after)
+        lines.push(`  NEW.${col} := NULL;`);
+      } else {
+        // Default: NULL
+        lines.push(`  NEW.${col} := NULL;`);
+      }
+    }
+
+    return lines.join('\n');
+  }
+
+  /**
+   * Generate protection code for automated columns on UPDATE
+   * Reset any user modifications back to OLD values (except for columns that will be recalculated)
+   * - Generated columns: Reset to NULL (will be recalculated immediately)
+   * - SNAPSHOT/SYNC: Keep user changes if FK didn't change (will be overwritten if FK changed)
+   * - All other automated columns: Reset to OLD value (prevent user modification)
+   */
+  private generateAutomatedColumnProtectionUpdate(
+    tableName: string,
+    automatedColumns: string[],
+    schema: GenLogicSchema,
+    processedSchema: ProcessedSchema
+  ): string {
+    const lines: string[] = [];
+
+    lines.push('  -- INTEGRITY: Prevent modification of automated columns');
+
+    for (const col of automatedColumns) {
+      const columnDef = processedSchema.tables[tableName]?.columns[col];
+      if (!columnDef) {
+        // Default: restore OLD value
+        lines.push(`  NEW.${col} := OLD.${col};`);
+        continue;
+      }
+
+      if (columnDef.generated) {
+        // Generated columns: Reset to NULL, will be recalculated below
+        lines.push(`  NEW.${col} := NULL;`);
+      } else {
+        // All other automated columns: Restore OLD value to prevent user modification
+        lines.push(`  NEW.${col} := OLD.${col};`);
+      }
     }
 
     return lines.join('\n');
@@ -464,12 +533,18 @@ export class TriggerGenerator {
     const triggers: string[] = [];
 
     // Determine which automations need BEFORE triggers (modify NEW row)
+    // INTEGRITY: Any table with automated columns needs BEFORE INSERT to protect them
+    const automatedColumns = this.getAutomatedColumns(tableName, schema, processedSchema);
+    const hasAutomatedColumns = automatedColumns.length > 0;
+
     const needsBeforeInsert =
+      hasAutomatedColumns ||
       automations.autoCreateParents.length > 0 ||
       automations.pullFromParents.length > 0 ||
       automations.calculatedColumns.length > 0;
 
     const needsBeforeUpdate =
+      hasAutomatedColumns ||
       automations.autoCreateParents.length > 0 ||
       automations.pullFromParents.length > 0 ||
       automations.calculatedColumns.length > 0;
@@ -534,7 +609,7 @@ export class TriggerGenerator {
     // Step -1: PROTECT AUTOMATED COLUMNS (prevent direct insertion of calculated values)
     const automatedColumns = this.getAutomatedColumns(tableName, schema, processedSchema);
     if (automatedColumns.length > 0) {
-      sections.push(this.generateAutomatedColumnProtection(automatedColumns, 'INSERT'));
+      sections.push(this.generateAutomatedColumnProtection(tableName, automatedColumns, 'INSERT', schema, processedSchema));
     }
 
     // Step 0: AUTO-CREATE PARENT (must be first - runs before FK constraint validation)
@@ -626,6 +701,12 @@ CREATE TRIGGER ${triggerName}
     const triggerName = `${tableName}_before_update_genlogic`;
 
     const sections: string[] = [];
+
+    // Step -1: PROTECT AUTOMATED COLUMNS (prevent direct modification)
+    const automatedColumns = this.getAutomatedColumns(tableName, schema, processedSchema);
+    if (automatedColumns.length > 0) {
+      sections.push(this.generateAutomatedColumnProtectionUpdate(tableName, automatedColumns, schema, processedSchema));
+    }
 
     // Step 0: AUTO-CREATE PARENT (if FK value changed to non-existent parent)
     const autoCreate = this.generateAutoCreateParent(automations, processedSchema);
