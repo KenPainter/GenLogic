@@ -29,7 +29,7 @@ Licensed under the Affero GPL 3.  See [LICENSE.md](./LICENSE.md).
 
 ## Using GenLogic
 
-All documentation is in the [Table of Contents](./docs/toc.md).
+All user documentation is in the [Table of Contents](./docs/toc.md).
 
 ## Hacking GenLogic
 
@@ -37,7 +37,7 @@ The use of an AI assistant is assumed, though officially neither
 encouraged nor discouraged.  The author uses Claude Code.
 
 The directory [ai-docs](./ai-docs/) contains the substantive
-context for people and AI assistants wishing to hack genlogic.
+context for people and AI assistants wishing to hack GenLogic.
 
 The [claude skills directory](./.claude/skills) directory contains
 skills that the author finds useful for keeping the AI assistant
