@@ -237,13 +237,24 @@ export class SchemaProcessor {
               continue;
             }
 
-            // If it has 'generated' but no 'automation', it's a generated column (not an FK extension)
+            // If it has 'generated' but no 'automation', check if it's an FK extension
             if (column.generated && !column.automation) {
-              // ERROR: Generated column must have type or $ref
-              throw new Error(
-                `Table '${_tableName}', column '${columnName}': ` +
-                `generated columns must specify a type or use $ref to inherit from a reusable column`
-              );
+              // Check if this column matches a foreign key name
+              const isFKExtension = table.foreign_keys && columnName in table.foreign_keys;
+
+              if (!isFKExtension) {
+                // ERROR: Not an FK extension, generated column must have type or $ref
+                throw new Error(
+                  `Table '${_tableName}', column '${columnName}': ` +
+                  `generated columns must specify a type or use $ref to inherit from a reusable column`
+                );
+              }
+
+              // It's an FK extension with generated expression
+              fkExtensions[columnName] = {
+                generated: column.generated
+              };
+              continue; // Don't add to processedColumns - it's an FK extension
             }
 
             // Otherwise, it's an FK extension - save it for later
@@ -752,13 +763,24 @@ export class SchemaProcessor {
               continue;
             }
 
-            // If it has 'generated' but no 'automation', it's a generated column (not an FK extension)
+            // If it has 'generated' but no 'automation', check if it's an FK extension
             if (column.generated && !column.automation) {
-              // ERROR: Generated column must have type or $ref
-              throw new Error(
-                `Table '${tableName}', column '${columnName}': ` +
-                `generated columns must specify a type or use $ref to inherit from a reusable column`
-              );
+              // Check if this column matches a foreign key name
+              const isFKExtension = table.foreign_keys && columnName in table.foreign_keys;
+
+              if (!isFKExtension) {
+                // ERROR: Not an FK extension, generated column must have type or $ref
+                throw new Error(
+                  `Table '${tableName}', column '${columnName}': ` +
+                  `generated columns must specify a type or use $ref to inherit from a reusable column`
+                );
+              }
+
+              // It's an FK extension with generated expression
+              fkExtensions[columnName] = {
+                generated: column.generated
+              };
+              continue;
             }
 
             // Otherwise, it's an FK extension
@@ -790,25 +812,6 @@ export class SchemaProcessor {
           : fkDef;
       }
 
-      // Validate no duplicate FK constraint names to the same table
-      // Group FKs by target table
-      const fksByTable = new Map<string, string[]>();
-      for (const [fkName, fk] of Object.entries(normalizedForeignKeys)) {
-        if (!fksByTable.has(fk.table)) {
-          fksByTable.set(fk.table, []);
-        }
-        fksByTable.get(fk.table)!.push(fkName);
-      }
-
-      // Check for multiple FKs to the same table
-      for (const [targetTable, fkNames] of fksByTable) {
-        if (fkNames.length > 1) {
-          throw new Error(
-            `Table '${tableName}' has multiple foreign keys to table '${targetTable}' (${fkNames.join(', ')}). ` +
-            `PostgreSQL requires unique constraint names - use explicit FK names or different target tables.`
-          );
-        }
-      }
     }
 
     // Step 2: Generate FK columns (parent tables already processed)

@@ -9,6 +9,7 @@ dist/
 build/
 *.tsbuildinfo
 tests/**/schema.ts
+tests/**/my-custom-schema.ts
 
 # Local files during dev
 debug/
