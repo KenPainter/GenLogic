@@ -1,2 +1,0 @@
---skip-common
--d testdb -u testuser

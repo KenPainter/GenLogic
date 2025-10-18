@@ -62,6 +62,25 @@ export class DatabaseManager {
 
     // Now connect to the target database and test the connection
     await this.pool.query('SELECT 1');
+
+    // INTEGRITY: Verify user has CREATEROLE privilege
+    // This is required for the two-user security model
+    const privCheck = await this.pool.query(`
+      SELECT rolsuper, rolcreaterole
+      FROM pg_roles
+      WHERE rolname = CURRENT_USER
+    `);
+
+    const canCreateRole = privCheck.rows[0]?.rolsuper || privCheck.rows[0]?.rolcreaterole;
+
+    if (!canCreateRole) {
+      throw new Error(
+        `INTEGRITY REQUIREMENT: Current user '${this.config.user}' lacks CREATEROLE privilege.\n` +
+        `GenLogic requires a privileged setup user to enforce database-level integrity.\n` +
+        `Grant CREATEROLE to this user or run GenLogic as postgres superuser.\n` +
+        `See: database-connections.md for the two-user model.`
+      );
+    }
   }
 
   /**

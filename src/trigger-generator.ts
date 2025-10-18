@@ -95,6 +95,7 @@ interface TableAutomations {
  *
  * GENLOGIC CORE BUSINESS LOGIC: Generate PostgreSQL triggers for all automation types
  * CONSOLIDATED APPROACH: One BEFORE trigger per table handles all automations with change detection
+ * SECURITY: All triggers execute as SECURITY DEFINER to protect automated column integrity
  */
 export class TriggerGenerator {
 
@@ -112,11 +113,61 @@ export class TriggerGenerator {
 
     // Generate consolidated triggers for each table
     for (const [tableName, automations] of Object.entries(tableAutomations)) {
-      const triggers = this.generateConsolidatedTriggers(tableName, automations, processedSchema);
+      const triggers = this.generateConsolidatedTriggers(tableName, automations, schema, processedSchema);
       triggerSQL.push(...triggers);
     }
 
     return triggerSQL;
+  }
+
+  /**
+   * Identify automated columns in a table
+   * These columns must not be modified directly by users
+   * Returns column names that have automation or generated properties
+   */
+  private getAutomatedColumns(tableName: string, schema: GenLogicSchema, processedSchema: ProcessedSchema): string[] {
+    const automatedColumns: string[] = [];
+    const table = schema.tables?.[tableName];
+    const processedTable = processedSchema.tables?.[tableName];
+
+    if (!table || !processedTable) return automatedColumns;
+
+    // Check all columns in the table
+    for (const [columnName, column] of Object.entries(processedTable.columns)) {
+      // Column with automation (SUM, COUNT, SNAPSHOT, SYNC, etc)
+      if (column.automation) {
+        automatedColumns.push(columnName);
+        continue;
+      }
+
+      // Column with generated expression
+      if (column.generated) {
+        automatedColumns.push(columnName);
+        continue;
+      }
+    }
+
+    return automatedColumns;
+  }
+
+  /**
+   * Generate protection code for automated columns
+   * INSERT: Force to NULL (or 0 for aggregations)
+   */
+  private generateAutomatedColumnProtection(automatedColumns: string[], operation: 'INSERT'): string {
+    const lines: string[] = [];
+
+    lines.push('  -- INTEGRITY: Reset automated columns to prevent external corruption');
+
+    for (const col of automatedColumns) {
+      // For INSERT, always reset to NULL
+      // Aggregations will be recalculated by child triggers if needed
+      // SNAPSHOT/SYNC will be pulled on first FK assignment
+      // Generated columns will be calculated below
+      lines.push(`  NEW.${col} := NULL;`);
+    }
+
+    return lines.join('\n');
   }
 
   /**
@@ -409,7 +460,7 @@ export class TriggerGenerator {
    * Generate triggers for a table
    * Split into BEFORE (modifies NEW) and AFTER (cascades) triggers
    */
-  private generateConsolidatedTriggers(tableName: string, automations: TableAutomations, processedSchema: ProcessedSchema): string[] {
+  private generateConsolidatedTriggers(tableName: string, automations: TableAutomations, schema: GenLogicSchema, processedSchema: ProcessedSchema): string[] {
     const triggers: string[] = [];
 
     // Determine which automations need BEFORE triggers (modify NEW row)
@@ -448,7 +499,7 @@ export class TriggerGenerator {
 
     // Generate INSERT triggers
     if (needsBeforeInsert) {
-      triggers.push(this.generateBeforeInsertTrigger(tableName, automations, processedSchema));
+      triggers.push(this.generateBeforeInsertTrigger(tableName, automations, schema, processedSchema));
     }
     if (needsAfterInsert) {
       triggers.push(this.generateAfterInsertTrigger(tableName, automations, processedSchema));
@@ -456,7 +507,7 @@ export class TriggerGenerator {
 
     // Generate UPDATE triggers
     if (needsBeforeUpdate) {
-      triggers.push(this.generateBeforeUpdateTrigger(tableName, automations, processedSchema));
+      triggers.push(this.generateBeforeUpdateTrigger(tableName, automations, schema, processedSchema));
     }
     if (needsAfterUpdate) {
       triggers.push(this.generateAfterUpdateTrigger(tableName, automations, processedSchema));
@@ -474,11 +525,17 @@ export class TriggerGenerator {
    * Generate BEFORE INSERT trigger (modifies NEW row)
    * Steps that must execute BEFORE row is written (to modify NEW)
    */
-  private generateBeforeInsertTrigger(tableName: string, automations: TableAutomations, processedSchema: ProcessedSchema): string {
+  private generateBeforeInsertTrigger(tableName: string, automations: TableAutomations, schema: GenLogicSchema, processedSchema: ProcessedSchema): string {
     const functionName = `${tableName}_before_insert_genlogic`;
     const triggerName = `${tableName}_before_insert_genlogic`;
 
     const sections: string[] = [];
+
+    // Step -1: PROTECT AUTOMATED COLUMNS (prevent direct insertion of calculated values)
+    const automatedColumns = this.getAutomatedColumns(tableName, schema, processedSchema);
+    if (automatedColumns.length > 0) {
+      sections.push(this.generateAutomatedColumnProtection(automatedColumns, 'INSERT'));
+    }
 
     // Step 0: AUTO-CREATE PARENT (must be first - runs before FK constraint validation)
     const autoCreate = this.generateAutoCreateParent(automations, processedSchema);
@@ -496,7 +553,10 @@ export class TriggerGenerator {
 
     return `
 CREATE OR REPLACE FUNCTION ${functionName}()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+SECURITY DEFINER
+SET search_path = public
+AS $$
 BEGIN
 ${functionBody}
 
@@ -540,7 +600,10 @@ CREATE TRIGGER ${triggerName}
 
     return `
 CREATE OR REPLACE FUNCTION ${functionName}()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+SECURITY DEFINER
+SET search_path = public
+AS $$
 BEGIN
 ${functionBody}
 
@@ -558,7 +621,7 @@ CREATE TRIGGER ${triggerName}
    * Generate BEFORE UPDATE trigger (modifies NEW row)
    * Steps that must execute BEFORE row is written (to modify NEW)
    */
-  private generateBeforeUpdateTrigger(tableName: string, automations: TableAutomations, processedSchema: ProcessedSchema): string {
+  private generateBeforeUpdateTrigger(tableName: string, automations: TableAutomations, schema: GenLogicSchema, processedSchema: ProcessedSchema): string {
     const functionName = `${tableName}_before_update_genlogic`;
     const triggerName = `${tableName}_before_update_genlogic`;
 
@@ -580,7 +643,10 @@ CREATE TRIGGER ${triggerName}
 
     return `
 CREATE OR REPLACE FUNCTION ${functionName}()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+SECURITY DEFINER
+SET search_path = public
+AS $$
 BEGIN
 ${functionBody}
 
@@ -624,7 +690,10 @@ CREATE TRIGGER ${triggerName}
 
     return `
 CREATE OR REPLACE FUNCTION ${functionName}()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+SECURITY DEFINER
+SET search_path = public
+AS $$
 BEGIN
 ${functionBody}
 
@@ -663,7 +732,10 @@ CREATE TRIGGER ${triggerName}
 
     return `
 CREATE OR REPLACE FUNCTION ${functionName}()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+SECURITY DEFINER
+SET search_path = public
+AS $$
 BEGIN
 ${functionBody}
 

@@ -11,6 +11,7 @@ import { TriggerGenerator } from './trigger-generator.js';
 import { MatchingGenerator } from './matching-generator.js';
 import { ContentManager } from './content-manager.js';
 import { ResolvedSchemaGenerator } from './resolved-schema-generator.js';
+import { PermissionsGenerator } from './permissions-generator.js';
 
 /**
  * GenLogic Core Processor
@@ -30,6 +31,7 @@ export class GenLogicProcessor {
   private matchingGenerator: MatchingGenerator;
   private contentManager: ContentManager;
   private resolvedSchemaGenerator: ResolvedSchemaGenerator;
+  private permissionsGenerator: PermissionsGenerator;
 
   constructor(config: DatabaseConfig) {
     this.config = config;
@@ -43,6 +45,7 @@ export class GenLogicProcessor {
     this.matchingGenerator = new MatchingGenerator();
     this.contentManager = new ContentManager();
     this.resolvedSchemaGenerator = new ResolvedSchemaGenerator();
+    this.permissionsGenerator = new PermissionsGenerator();
   }
 
   /**
@@ -124,6 +127,7 @@ export class GenLogicProcessor {
       const triggerStatements = this.triggerGenerator.generateTriggers(schema, processedSchema);
       const matchingStatements = this.matchingGenerator.generateMatchingSQL(schema, processedSchema);
       const contentStatements = this.contentManager.generateContentInserts(schema, processedSchema);
+      const permissionStatements = this.permissionsGenerator.generateAllPermissions(this.config.database, schema, processedSchema);
 
       // ROBUST EXECUTION ORDER:
       // 1. Drop ALL GenLogic triggers (clean slate)
@@ -135,7 +139,8 @@ export class GenLogicProcessor {
       // 7. Add comments (table and column descriptions)
       // 8. Create ALL triggers (fresh from schema)
       // 9. Create matching functions (pattern matching utilities)
-      // 10. Insert content (with complete schema and active triggers)
+      // 10. Set permissions and ownership (INTEGRITY protection)
+      // 11. Insert content (with complete schema and active triggers)
       const allStatements = [
         ...dropAllTriggersSQL,
         ...ddlStatements.createTables,
@@ -147,6 +152,7 @@ export class GenLogicProcessor {
         ...ddlStatements.addComments,
         ...triggerStatements,
         ...matchingStatements,
+        ...permissionStatements,
         ...contentStatements
       ].filter(sql => sql.trim().length > 0 && !sql.startsWith('--'));
 
