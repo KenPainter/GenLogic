@@ -174,6 +174,25 @@ For slow schema processing:
 2. Review generated SQL with `DEBUG_SQL=1`
 3. Check PostgreSQL logs for slow queries
 
+## Test Coverage
+
+This section lists tests that verify CLI behavior works correctly.
+
+### CLI Behavior Tests
+
+These tests verify command-line argument parsing and option handling:
+
+- [x] [--help flag](../../tests/01-cli/help) - Displays usage information and exits 0
+- [x] [--version flag](../../tests/01-cli/version) - Displays version in semver format and exits 0
+- [x] [Missing --database](../../tests/01-cli/missing-database) - Error: "Database name is required"
+- [x] [Missing --user](../../tests/01-cli/missing-username) - Error: "Username is required"
+- [x] [Missing --password](../../tests/01-cli/missing-password) - Error: "Password is required"
+- [x] [Missing --schema](../../tests/01-cli/missing-schema) - Error: "Schema file path is required"
+- [x] [--dry-run flag](../../tests/01-cli/000-dry-run-safety) - Flag passes through correctly, no DB changes made
+- [x] [Custom --host and --port](../../tests/01-cli/custom-host-port) - Non-default host/port values accepted
+- [x] [Custom schema path](../../tests/01-cli/schema-file-path) - Schema loaded from custom path
+- [x] [Non-existent schema file](../../tests/01-cli/nonexistent-schema-file) - Error: "no such file or directory"
+
 ---
 
 Previous: [Installation](00-installation.md) | Next: [What GenLogic Does](20-what-genlogic-does.md)

@@ -377,6 +377,25 @@ tables:
         email: admin@example.com
 ```
 
+## Test Coverage
+
+This section lists tests that verify seed data features work correctly.
+
+### Validation (Runtime)
+
+These tests verify that GenLogic catches invalid seed data definitions:
+
+- [x] [Non-existent column](../../tests/04-validation/seed-data-nonexistent-column) - Error when seed data references non-existent column
+- [x] [$lookup to non-existent table](../../tests/04-validation/seed-data-lookup-nonexistent-table) - Error when $lookup references non-existent table
+- [x] [$lookup to non-existent column](../../tests/04-validation/seed-data-lookup-nonexistent-column) - Error when $lookup where clause references non-existent column
+- [x] [Missing required PK](../../tests/04-validation/seed-data-missing-pk) - Error when seed data missing required non-serial PK value
+
+### Behavior (End-to-End Tests)
+
+These tests verify seed data behavior with actual database insertion:
+
+- [x] [Basic seed data insertion](../../tests/06-behavior/content-seed-data) - seed-rows with static data
+
 ---
 
 Previous: [Label and Format](09-label-and-format.md) | Next: [Test Guide](../development/02-test-guide.md)

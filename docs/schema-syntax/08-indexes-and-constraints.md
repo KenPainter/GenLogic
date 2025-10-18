@@ -102,6 +102,33 @@ Both `indexes` and `unique_constraints` can reference:
 
 GenLogic validates that all referenced columns exist and will error if you reference a non-existent column.
 
+## Test Coverage
+
+This section lists tests that verify index and constraint features work correctly.
+
+### Validation (Runtime)
+
+These tests verify that GenLogic catches invalid index and constraint definitions:
+
+- [x] [Index on non-existent column](../../tests/04-validation/invalid-index-columns) - Error when index references non-existent column
+- [x] [Unique constraint on non-existent column](../../tests/04-validation/invalid-unique-constraint-columns) - Error when unique constraint references non-existent column
+- [x] [Unique on nullable FK](../../tests/04-validation/unique-on-nullable-fk) - Unique constraints on nullable FKs are valid (should pass)
+
+### Schema Features (Isolated Tests)
+
+These tests verify that GenLogic generates correct index and constraint DDL:
+
+- [x] [Indexes and constraints](../../tests/05-schema-features/indexes-and-constraints) - Single/multi-column indexes and unique constraints
+- [x] [Single column index](../../tests/05-schema-features/indexes-and-constraints) - Single column index (tested above)
+- [x] [Multi-column index](../../tests/05-schema-features/index-multi-column) - Index on multiple columns
+- [x] [Unique index](../../tests/05-schema-features/index-unique) - Unique constraint on column
+- [x] [Index on FK column](../../tests/05-schema-features/index-on-fk) - FK columns auto-indexed
+- [x] [Multiple indexes](../../tests/05-schema-features/indexes-multiple) - Multiple indexes on same table
+- [x] [Multi-column unique](../../tests/05-schema-features/indexes-and-constraints) - Multi-column unique constraint (tested above)
+- [x] [Single column unique](../../tests/05-schema-features/unique-single-column) - Single column unique constraint
+- [x] [Multiple unique constraints](../../tests/05-schema-features/unique-multiple-constraints) - Multiple unique constraints on same table
+- [x] [Unique on nullable column](../../tests/05-schema-features/unique-on-nullable) - Unique constraint with nullable column
+
 ---
 
 Previous: [Pattern Matching Tables](07-matching-tables.md) | Next: [Label and Format](09-label-and-format.md)

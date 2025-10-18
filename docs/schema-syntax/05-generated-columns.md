@@ -197,6 +197,43 @@ FROM employees;
 -- John Doe  | 1000.00   | 150.00     | 850.00
 ```
 
+## Test Coverage
+
+This section lists tests that verify generated column features work correctly.
+
+### Validation (Runtime)
+
+These tests verify that GenLogic catches invalid generated column definitions:
+
+- [x] [No @ references](../../tests/04-validation/generated-column-no-at-reference) - Error when generated column has no @ references
+- [x] [Non-existent column reference](../../tests/04-validation/generated-column-nonexistent-ref) - Error when @column doesn't exist
+- [x] [Bare column reference](../../tests/04-validation/generated-column-bare-reference) - Error when column referenced without @ sigil
+- [x] [Circular dependency](../../tests/04-validation/generated-column-circular) - Error when generated columns form cycle
+- [x] [No type specified](../../tests/04-validation/generated-column-no-type) - Error when generated column has no type or $ref
+- [x] [Index on generated column](../../tests/04-validation/index-on-generated-column) - Indexes on generated columns are valid (should pass)
+
+### Schema Features (Isolated Tests)
+
+These tests verify that GenLogic generates correct generated column DDL and triggers:
+
+- [x] [Generated columns](../../tests/05-schema-features/calculated-columns) - Generated columns with @ reference expressions
+- [x] [Arithmetic expression](../../tests/05-schema-features/generated-arithmetic) - Generated column with arithmetic (@a * @b)
+- [x] [String concatenation](../../tests/05-schema-features/generated-string-concat) - Generated column with string ops (@first || ' ' || @last)
+- [x] [CASE expression](../../tests/05-schema-features/generated-case) - Generated column with CASE WHEN
+- [x] [NULL handling](../../tests/05-schema-features/generated-null-handling) - Generated column with COALESCE
+- [x] [Dependent generated columns](../../tests/05-schema-features/generated-dependent) - Generated column referencing another generated column
+- [x] [Function call](../../tests/05-schema-features/generated-function-call) - Generated column with function (UPPER(@name))
+
+### Behavior (End-to-End Tests)
+
+These tests verify generated column behavior with actual data:
+
+- [x] [CASE WHEN expressions](../../tests/06-behavior/calculated-columns-case) - Conditional logic in generated columns
+- [x] [Dependent generated columns](../../tests/06-behavior/calculated-columns-dependent) - Generated column referencing another generated column
+- [x] [NULL handling](../../tests/06-behavior/calculated-columns-null) - COALESCE for NULL safety
+- [x] [String operations](../../tests/06-behavior/calculated-columns-string) - String concatenation
+- [x] [UPDATE triggers recalculation](../../tests/06-behavior/calculated-columns-update) - Generated columns recalculate on UPDATE
+
 ---
 
 Previous: [Moving Values from Parent to Child](04-parent-to-child.md) | Next: [Moving Values from Child to Parent](06-child-to-parent.md)

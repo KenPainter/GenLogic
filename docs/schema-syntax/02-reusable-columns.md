@@ -240,6 +240,23 @@ columns:
     comment: Boolean flag
 ```
 
+## Test Coverage
+
+This section lists tests that verify reusable column features work correctly.
+
+### Schema Features (Isolated Tests)
+
+These tests verify that GenLogic correctly inherits and overrides reusable column definitions:
+
+- [x] [Column inheritance](../../tests/05-schema-features/column-inheritance) - Null inheritance from reusable columns
+- [x] [Ref inheritance](../../tests/05-schema-features/ref-inheritance) - $ref inheritance with type reuse from reusable columns
+- [x] [$ref with type override](../../tests/05-schema-features/ref-type-override) - Override type when using $ref
+- [x] [$ref with automation override](../../tests/05-schema-features/ref-automation-override) - Override automation when using $ref
+- [x] [$ref with label/format override](../../tests/05-schema-features/ref-label-format-override) - Override label/format in $ref
+- [x] [SQL type string in reusable column](../../tests/05-schema-features/sql-type-string-reusable) - Reusable columns with SQL type strings
+- [x] [SQL type string in table column](../../tests/05-schema-features/sql-type-string-table) - Table columns with SQL type strings
+- [x] [SQL type with modifiers](../../tests/05-schema-features/sql-type-with-modifiers) - VARCHAR(50) PRIMARY KEY syntax
+
 ---
 
 Previous: [Single Table Basics](01-single-table.md) | Next: [Foreign Keys](03-foreign-keys.md)

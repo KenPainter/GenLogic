@@ -273,6 +273,27 @@ Pattern matching tables are useful for:
 - Automated classification
 - Pattern-based defaults
 
+## Test Coverage
+
+This section lists tests that verify pattern matching table features work correctly.
+
+### Schema Features (Isolated Tests)
+
+These tests verify that GenLogic generates correct pattern matching table DDL and functions:
+
+- [x] [Pattern matching tables](../../tests/05-schema-features/pattern-matching-tables) - Pattern matching table creation
+- [x] [Fixed structure](../../tests/05-schema-features/pattern-fixed-structure) - Fixed structure (id, string_match, result_column, range_low_bound, range_high_bound)
+- [x] [Custom result_column_name](../../tests/05-schema-features/pattern-result-column-name) - Custom result column name
+- [x] [match_best function](../../tests/05-schema-features/pattern-match-best) - match_best function generation
+- [x] [match_all function](../../tests/05-schema-features/pattern-match-all) - match_all function generation
+
+### Behavior (End-to-End Tests)
+
+These tests verify pattern matching behavior with actual data:
+
+- [x] [match_best function](../../tests/06-behavior/pattern-matching-best) - Highest specificity match
+- [x] [match_all function](../../tests/06-behavior/pattern-matching-all) - All matching rules
+
 ---
 
 Previous: [Moving Values from Child to Parent](06-child-to-parent.md) | Next: [Indexes and Unique Constraints](08-indexes-and-constraints.md)

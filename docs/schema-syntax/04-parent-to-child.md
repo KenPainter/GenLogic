@@ -200,6 +200,36 @@ tables:
 - Cascading updates (keep derived data synchronized with source)
 - Real-time data (current category, current status)
 
+## Test Coverage
+
+This section lists tests that verify parent-to-child automation features work correctly.
+
+### Validation (Runtime)
+
+These tests verify that GenLogic catches invalid auto-create definitions:
+
+- [x] [Spread bad start column](../../tests/04-validation/auto-create-spread-bad-start) - Error when spread.start column doesn't exist in parent
+- [x] [Spread bad end column](../../tests/04-validation/auto-create-spread-bad-end) - Error when spread.end column doesn't exist in parent
+- [x] [Copy_columns bad parent](../../tests/04-validation/auto-create-copy-bad-parent) - Error when copy_columns parent column doesn't exist
+- [x] [Copy_columns bad child](../../tests/04-validation/auto-create-copy-bad-child) - Error when copy_columns child column doesn't exist
+- [x] [Literals bad column](../../tests/04-validation/auto-create-literals-bad-column) - Error when literals references non-existent child column
+- [x] [auto_create_parent without PK](../../tests/04-validation/auto-create-parent-no-pk) - Error when auto_create_parent on FK to table without primary key
+
+### Schema Features (Isolated Tests)
+
+These tests verify that GenLogic generates correct auto-create triggers:
+
+- [x] [auto_create_parent trigger](../../tests/05-schema-features/auto-create-parent-trigger) - BEFORE INSERT trigger generated for auto_create_parent FK
+
+### Behavior (End-to-End Tests)
+
+These tests verify parent-to-child automation behavior with actual data:
+
+- [x] [SNAPSHOT automation](../../tests/06-behavior/automations-snapshot) - Point-in-time value capture
+- [x] [SPREAD automation](../../tests/06-behavior/automations-spread) - Date range expansion with auto_create
+- [x] [SYNC automation](../../tests/06-behavior/automations-sync) - Synchronized value tracking
+- [x] [Basic auto_create_parent](../../tests/06-behavior/auto-create-parent-basic) - BEFORE INSERT trigger auto-creates parent row
+
 ---
 
 Previous: [Foreign Keys](03-foreign-keys.md) | Next: [Generating Values Within a Row](05-generated-columns.md)

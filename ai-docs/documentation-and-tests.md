@@ -9,6 +9,15 @@ For this reason, we have a documentation system that also
 details tests.  This creates a single source of truth for
 how a feature is specified, and how it is tested.
 
+## Test Coverage
+
+To provide our required level of [database-integrity](./database-integrity.md),
+we must have 100% coverage of advertised syntax features and integrity
+features.
+
+We test end-to-end always, to ensure the tests follow the same code
+path as the end-user.
+
 ## Documentation Sections
 
 ### Setup and CLI Usage
@@ -18,10 +27,12 @@ There should be exactly three documents here:
 - [00-Installation](../docs/installation-and-usage/00-installation.md)
   - only instructions
 - [10-Database-Setup](../docs/installation-and-usage/10-database-setup.md)
-  - only instructions
+  - only instructions relevant to the user
+  - following details in [database-connections](./database-connections.md)
 - [20-cli-usage](../docs/installation-and-usage/20-cli-usage.md)
   - instructions
   - listing of test coverage
+  - following details in [code structure](./code-structure.md)
 
 ### Schema Syntax
 

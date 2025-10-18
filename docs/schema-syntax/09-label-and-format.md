@@ -258,6 +258,18 @@ tables:
 - They work seamlessly with reusable column definitions
 - Use them to improve UI generation and schema documentation
 
+## Test Coverage
+
+This section lists tests that verify label and format features work correctly.
+
+### Schema Features (Isolated Tests)
+
+These tests verify that GenLogic correctly propagates and stores label/format metadata:
+
+- [x] [Label and format](../../tests/05-schema-features/label-and-format) - Label/format metadata propagation
+- [x] [Label/format on reusable column](../../tests/05-schema-features/label-format-reusable) - Label/format inheritance from reusable column
+- [x] [Label/format through FK](../../tests/05-schema-features/label-format-fk) - Label/format inheritance through FK
+
 ---
 
 Previous: [Indexes and Unique Constraints](08-indexes-and-constraints.md) | Next: [Seed Data](02-seed-data.md)

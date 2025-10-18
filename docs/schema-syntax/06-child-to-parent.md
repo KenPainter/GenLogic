@@ -239,6 +239,22 @@ Aggregations are automatically updated when:
 
 The parent row value is always current.
 
+## Test Coverage
+
+This section lists tests that verify child-to-parent aggregation features work correctly.
+
+### Behavior (End-to-End Tests)
+
+These tests verify aggregation automation behavior with actual data:
+
+- [x] [SUM automation](../../tests/06-behavior/automations-sum) - Basic SUM aggregation
+- [x] [COUNT automation](../../tests/06-behavior/automations-count) - Row counting automation
+- [x] [MAX automation](../../tests/06-behavior/automations-max) - Maximum value tracking
+- [x] [MIN automation](../../tests/06-behavior/automations-min) - Minimum value tracking
+- [x] [LAST_VALUE automation](../../tests/06-behavior/automations-last-value) - Most recent value capture
+- [x] [Incremental SUM](../../tests/06-behavior/automations-incremental) - SUM with INSERT/UPDATE/DELETE
+- [x] [Multiple automations](../../tests/06-behavior/automations-multiple) - Multiple automations on same FK
+
 ---
 
 Previous: [Generating Values Within a Row](05-generated-columns.md) | Next: [Pattern Matching Tables](07-matching-tables.md)

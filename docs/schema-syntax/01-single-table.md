@@ -151,6 +151,53 @@ You can combine types with constraints:
 - default value - Sets default value
 - primary key - Marks as primary key
 
+## Test Coverage
+
+This section lists tests that verify single-table features work correctly.
+
+### Validation (Runtime)
+
+These tests verify that GenLogic catches invalid table and column definitions:
+
+- [x] [Simple valid schema](../../tests/04-validation/simple-schema) - Valid basic schema passes validation
+- [x] [Invalid table names](../../tests/04-validation/invalid-table-name) - Malformed table names rejected
+- [x] [Invalid column names](../../tests/04-validation/invalid-column-name) - Malformed column names rejected
+- [x] [Invalid column references](../../tests/04-validation/invalid-column-reference) - Non-existent column references in automations
+- [x] [Table name reserved word](../../tests/04-validation/table-name-reserved-word) - PostgreSQL reserved words rejected in table names
+- [x] [Column name reserved word](../../tests/04-validation/column-name-reserved-word) - PostgreSQL reserved words rejected in column names
+
+### Schema Features (Isolated Tests)
+
+These tests verify that GenLogic generates correct table and column DDL:
+
+- [x] [Column types](../../tests/05-schema-features/column-types) - All PostgreSQL data types (serial, integer, varchar, numeric, timestamp, boolean, uuid, json, etc.)
+- [x] [SERIAL, BIGSERIAL, SMALLSERIAL](../../tests/05-schema-features/column-types-serial) - Serial types create sequences
+- [x] [INTEGER, BIGINT, SMALLINT](../../tests/05-schema-features/column-types-integer) - Integer types
+- [x] [NUMERIC(p,s), DECIMAL(p,s)](../../tests/05-schema-features/column-types-numeric) - Fixed precision numeric types
+- [x] [REAL, DOUBLE PRECISION](../../tests/05-schema-features/column-types-float) - Floating point types
+- [x] [VARCHAR(n), CHAR(n), TEXT](../../tests/05-schema-features/column-types-text) - Text types
+- [x] [BOOLEAN](../../tests/05-schema-features/column-types-boolean) - Boolean type
+- [x] [UUID](../../tests/05-schema-features/column-types-uuid) - UUID type
+- [x] [JSON, JSONB](../../tests/05-schema-features/column-types-json) - JSON types
+- [x] [Comment on table](../../tests/05-schema-features/comment-table) - Table-level comments
+- [x] [Comment on column](../../tests/05-schema-features/comment-column) - Column-level comments
+
+### Additive Changes (Schema Evolution)
+
+These tests verify that GenLogic safely modifies existing database schemas:
+
+- [x] [New table added](../../tests/05-schema-features/additive-new-table) - New table added to existing database
+- [x] [New column added](../../tests/05-schema-features/additive-new-column) - New column added to existing table
+- [x] [Column widening](../../tests/05-schema-features/additive-widen-column) - Columns widened for CHAR, VARCHAR, NUMERIC
+
+### Behavior (End-to-End Tests)
+
+These tests verify schema evolution behavior with actual data:
+
+- [x] [VARCHAR size expansion](../../tests/06-behavior/column-expansion-varchar) - Widening VARCHAR columns
+- [x] [NUMERIC precision expansion](../../tests/06-behavior/column-expansion-numeric) - Widening NUMERIC precision/scale
+- [x] [Expansion via reusable columns](../../tests/06-behavior/column-expansion-reusable) - Column expansion through $ref
+
 ---
 
 Previous: [What GenLogic Does](../building-database/20-what-genlogic-does.md) | Next: [Reusable Columns](02-reusable-columns.md)

@@ -354,6 +354,43 @@ SELECT * FROM categories;
 - Parent columns (except PK) should have defaults or allow NULL
 - Best for summary tables where parent row has no user-entered data
 
+## Test Coverage
+
+This section lists tests that verify foreign key features work correctly.
+
+### Validation (Runtime)
+
+These tests verify that GenLogic catches invalid foreign key definitions:
+
+- [x] [Circular FK dependencies](../../tests/04-validation/circular-foreign-keys) - Cycle detection in foreign key graph
+- [x] [FK to non-existent table](../../tests/04-validation/fk-to-nonexistent-table) - Error when FK references non-existent table
+- [x] [FK to table without primary key](../../tests/04-validation/fk-to-table-without-pk) - Error when FK references table with no PK
+- [x] [Multiple FKs without explicit name](../../tests/04-validation/fk-multiple-without-name) - Error when multiple FKs create naming conflict
+- [x] [Self-referential FK](../../tests/04-validation/fk-self-referential) - Self-referential FKs are valid (should pass)
+
+### Schema Features (Isolated Tests)
+
+These tests verify that GenLogic generates correct foreign key DDL and database schema:
+
+- [x] [Foreign keys](../../tests/05-schema-features/foreign-keys) - Basic FK generation with constraint creation
+- [x] [Simple FK](../../tests/05-schema-features/fk-simple) - No prefix/suffix, single column
+- [x] [FK with prefix](../../tests/05-schema-features/fk-with-prefix) - FK column named with prefix
+- [x] [FK with suffix](../../tests/05-schema-features/fk-with-suffix) - FK column named with suffix
+- [x] [FK with prefix and suffix](../../tests/05-schema-features/fk-with-prefix-and-suffix) - FK column with both prefix and suffix
+- [x] [Nullable FK](../../tests/05-schema-features/fk-nullable) - FK with not_null: false
+- [x] [Required FK](../../tests/05-schema-features/fk-required) - FK with not_null: true
+- [x] [FK delete: restrict](../../tests/05-schema-features/fk-delete-restrict) - ON DELETE RESTRICT
+- [x] [FK delete: cascade](../../tests/05-schema-features/fk-delete-cascade) - ON DELETE CASCADE
+- [x] [FK to SERIAL PK](../../tests/05-schema-features/fk-to-serial) - FK from child table to parent with SERIAL PK
+- [x] [Comment on FK](../../tests/05-schema-features/comment-fk) - Foreign key comments
+
+### Behavior (End-to-End Tests)
+
+These tests verify foreign key behavior with actual data:
+
+- [x] [Composite FKs](../../tests/06-behavior/foreign-keys-composite) - Composite primary key support
+- [x] [Nullable FKs](../../tests/06-behavior/foreign-keys-nullable) - Optional foreign key relationships
+
 ---
 
 Previous: [Reusable Columns](02-reusable-columns.md) | Next: [Moving Values from Parent to Child](04-parent-to-child.md)
