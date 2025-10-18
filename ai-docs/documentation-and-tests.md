@@ -18,6 +18,12 @@ features.
 We test end-to-end always, to ensure the tests follow the same code
 path as the end-user.
 
+## No Troubleshooting Help
+
+Do not include troubleshooting guides.  Provide clear instructions,
+but do not provide information that can fall out of date or cannot
+be tested.  That is why we do not include troubleshooting guides.
+
 ## Documentation Sections
 
 ### Setup and CLI Usage

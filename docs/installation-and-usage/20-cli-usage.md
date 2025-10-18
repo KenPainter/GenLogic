@@ -1,4 +1,4 @@
-Previous: [Installation](00-installation.md) | Next: [What GenLogic Does](20-what-genlogic-does.md)
+Previous: [Database Setup](10-database-setup.md)
 
 # CLI Usage
 
@@ -10,7 +10,7 @@ GenLogic provides a command-line interface for processing schema definitions and
 bun run src/cli.ts -d database_name -u username -s schema.yaml
 ```
 
-GenLogic connects to PostgreSQL on localhost using Unix socket trusted connections.
+GenLogic connects to PostgreSQL on localhost using Unix socket connections.
 
 ## Command Options
 
@@ -39,7 +39,7 @@ bun run src/cli.ts \
   -s /path/to/my-product.yaml
 ```
 
-If the database doesn't exist, GenLogic will create it automatically.
+If the database doesn't exist, GenLogic creates it automatically.
 
 ### Dry Run Mode
 
@@ -53,7 +53,7 @@ bun run src/cli.ts \
   --dry-run
 ```
 
-This outputs the SQL statements that would be executed without actually running them.
+This outputs the SQL statements that would be executed without running them.
 
 ## Schema File Format
 
@@ -90,7 +90,7 @@ See schema syntax documentation for details.
    ```bash
    bun run src/cli.ts -d mydb -u $USER -s schema.yaml --dry-run
    ```
-3. Build/Update the database:
+3. Build the database:
    ```bash
    bun run src/cli.ts -d mydb -u $USER -s schema.yaml
    ```
@@ -100,8 +100,8 @@ See schema syntax documentation for details.
 When modifying an existing schema:
 
 1. Edit your schema file
-2. Preview changes with dry run to see what will be modified (if desired)
-3. Apply changes when satisfied
+2. Preview changes with dry run to see what will be modified
+3. Apply changes
 
 ### Debugging
 
@@ -113,15 +113,16 @@ DEBUG_SQL=1 bun run src/cli.ts -d mydb -u $USER -s schema.yaml
 
 ## Error Messages
 
-Common error messages and solutions:
+Common error messages:
 
-- "Database name is required" - Provide `-d` option
-- "Username is required" - Provide `-u` option
-- "Schema file path is required" - Provide `-s` option
+- "Database name is required" - Missing `-d` option
+- "Username is required" - Missing `-u` option
+- "Schema file path is required" - Missing `-s` option
+- "Schema file not found" - File does not exist at specified path
 - "Column 'x' references non-existent column 'y'" - Fix column inheritance reference
 - "Foreign key references non-existent table" - Ensure referenced table exists
 - "Cycle detected in data flow graph" - Remove circular automation dependencies
-- Connection errors - Check PostgreSQL is running and peer authentication is configured (see Installation guide)
+- "INTEGRITY REQUIREMENT: Current user lacks CREATEROLE privilege" - Grant CREATEROLE to user (see Database Setup)
 
 ## Integration with CI/CD
 
@@ -148,31 +149,7 @@ For validation testing, use dry-run mode:
       --dry-run
 ```
 
-**Note**: Ensure your CI environment has PostgreSQL configured with peer/trust authentication for the specified user.
-
-## Troubleshooting
-
-### Connection Issues
-
-If you cannot connect to the database:
-1. Verify PostgreSQL is running: `pg_isready`
-2. Test Unix socket connection: `psql -U username -d postgres`
-3. Check `pg_hba.conf` has peer authentication enabled for local connections
-4. Verify your system user matches the PostgreSQL user you're specifying
-
-### Schema Validation Errors
-
-If schema validation fails:
-1. Check YAML syntax with a YAML validator
-2. Verify all referenced columns and tables exist
-3. Check for circular dependencies in automations
-
-### Performance Issues
-
-For slow schema processing:
-1. Use `--dry-run` first to analyze changes
-2. Review generated SQL with `DEBUG_SQL=1`
-3. Check PostgreSQL logs for slow queries
+Ensure your CI environment has PostgreSQL configured with peer authentication for the specified user.
 
 ## Test Coverage
 
@@ -186,13 +163,11 @@ These tests verify command-line argument parsing and option handling:
 - [x] [--version flag](../../tests/01-cli/version) - Displays version in semver format and exits 0
 - [x] [Missing --database](../../tests/01-cli/missing-database) - Error: "Database name is required"
 - [x] [Missing --user](../../tests/01-cli/missing-username) - Error: "Username is required"
-- [x] [Missing --password](../../tests/01-cli/missing-password) - Error: "Password is required"
 - [x] [Missing --schema](../../tests/01-cli/missing-schema) - Error: "Schema file path is required"
 - [x] [--dry-run flag](../../tests/01-cli/000-dry-run-safety) - Flag passes through correctly, no DB changes made
-- [x] [Custom --host and --port](../../tests/01-cli/custom-host-port) - Non-default host/port values accepted
 - [x] [Custom schema path](../../tests/01-cli/schema-file-path) - Schema loaded from custom path
 - [x] [Non-existent schema file](../../tests/01-cli/nonexistent-schema-file) - Error: "no such file or directory"
 
 ---
 
-Previous: [Installation](00-installation.md) | Next: [What GenLogic Does](20-what-genlogic-does.md)
+Previous: [Database Setup](10-database-setup.md)

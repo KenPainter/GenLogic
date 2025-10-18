@@ -1,0 +1,4 @@
+tables:
+  test_connection:
+    columns:
+      id: serial primary key

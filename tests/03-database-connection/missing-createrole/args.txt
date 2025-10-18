@@ -1,0 +1,3 @@
+--skip-common
+-d genlogic_test_createrole_check
+-u genlogic_test_no_createrole

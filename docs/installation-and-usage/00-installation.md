@@ -1,4 +1,4 @@
-Next: [CLI Usage](10-cli-usage.md)
+Next: [Database Setup](10-database-setup.md)
 
 # Installation
 
@@ -8,7 +8,7 @@ This guide covers installing GenLogic and its prerequisites.
 
 GenLogic requires:
 
-1. PostgreSQL - [Installation instructions](https://www.postgresql.org/download/)
+1. PostgreSQL 12 or higher - [Installation instructions](https://www.postgresql.org/download/)
 2. Bun 1.2.0 or later - [Installation instructions](https://bun.sh/docs/installation)
 
 ## Installing GenLogic
@@ -39,40 +39,6 @@ bun run src/cli.ts --version
 bun run src/cli.ts --help
 ```
 
-## Configuration
-
-### Database Connection
-
-GenLogic connects to PostgreSQL on localhost using Unix socket trusted connections (peer authentication).
-
-```bash
-bun run src/cli.ts \
-  -d myapp_db \
-  -u postgres \
-  -s schema.yaml
-```
-
-Required options:
-- `-d, --database` - Database name (will be created automatically if it doesn't exist)
-- `-u, --user` - PostgreSQL username
-- `-s, --schema` - Schema file path
-
-### PostgreSQL Authentication Setup
-
-GenLogic requires trusted/peer authentication to be configured in PostgreSQL. Verify your `pg_hba.conf` includes:
-
-```
-# TYPE  DATABASE        USER            ADDRESS                 METHOD
-local   all             all                                     peer
-```
-
-Test your connection:
-```bash
-psql -U your_username -d postgres
-```
-
-If this works without a password prompt, GenLogic will work.
-
 ---
 
-Next: [CLI Usage](10-cli-usage.md)
+Next: [Database Setup](10-database-setup.md)

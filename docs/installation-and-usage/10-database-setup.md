@@ -2,17 +2,40 @@ Previous: [Installation](00-installation.md) | Next: [CLI Usage](20-cli-usage.md
 
 # Database Setup
 
-GenLogic requires a PostgreSQL database with proper user permissions and authentication configured.
+GenLogic connects to PostgreSQL on localhost using Unix socket connections with peer authentication.
 
 ## Prerequisites
 
 - PostgreSQL 12 or higher installed
-- Database user with CREATE DATABASE privilege
-- Unix socket or TCP connection to PostgreSQL
+- Database user with CREATE DATABASE and CREATEROLE privileges
+- Unix socket connection to PostgreSQL configured
+
+## Connection Method
+
+GenLogic connects to PostgreSQL via Unix socket at `/var/run/postgresql`. This requires:
+
+1. PostgreSQL running on localhost
+2. Peer authentication configured in `pg_hba.conf`
+3. System username matching PostgreSQL username
+
+Example `pg_hba.conf` entry:
+
+```
+# TYPE  DATABASE        USER            ADDRESS                 METHOD
+local   all             all                                     peer
+```
+
+Test your connection works without a password:
+
+```bash
+psql -U your_username -d postgres
+```
+
+If this succeeds without prompting for a password, GenLogic will connect successfully.
 
 ## Creating a Database
 
-GenLogic will automatically create the database if it doesn't exist, provided your user has CREATE DATABASE privilege:
+GenLogic automatically creates the database if it doesn't exist:
 
 ```bash
 bun run src/cli.ts \
@@ -21,75 +44,21 @@ bun run src/cli.ts \
   -s schema.yaml
 ```
 
-If the database `myapp_db` doesn't exist, GenLogic creates it automatically.
+If database `myapp_db` doesn't exist and the user has CREATE DATABASE privilege, GenLogic creates it.
 
-## Connection Methods
+## Two-User Security Model
 
-### Unix Socket Connection (Default)
+GenLogic enforces database-level integrity using a two-user model.
 
-GenLogic connects via Unix socket by default (localhost):
+### Setup User (Privileged)
 
-```bash
-bun run src/cli.ts \
-  -d mydb \
-  -u postgres \
-  -s schema.yaml
-```
+GenLogic must run as a privileged user with CREATEROLE privilege. This user performs schema migrations and configures the security model.
 
-### TCP Connection
-
-For remote databases or custom ports:
-
-```bash
-bun run src/cli.ts \
-  -d mydb \
-  -u postgres \
-  -s schema.yaml \
-  --host db.example.com \
-  --port 5432 \
-  --password yourpassword
-```
-
-## Authentication
-
-### Peer Authentication (Development)
-
-For local development, peer authentication is simplest:
-
-```bash
-# pg_hba.conf
-local   all   all   peer
-```
-
-Your system username must match your PostgreSQL username.
-
-### Password Authentication (Production)
-
-For production or remote connections:
-
-```bash
-# pg_hba.conf
-host   all   all   0.0.0.0/0   md5
-```
-
-Then use the `--password` flag:
-
-```bash
-bun run src/cli.ts \
-  -d mydb \
-  -u postgres \
-  -s schema.yaml \
-  --password yourpassword
-```
-
-## User Permissions
-
-The database user needs these privileges:
-
-- CREATE DATABASE - To create database if it doesn't exist
-- CREATE TABLE - To create tables
-- CREATE FUNCTION - To create triggers and stored procedures
-- CREATEROLE - Required for non-subvertible calculated columns (see [Non-Subvertible Calculations](../features/02-non-subvertible-calculations.md))
+The setup user:
+- Creates the `<database_name>_genlogic_admin` role
+- Creates tables owned by the admin role
+- Generates SECURITY DEFINER triggers owned by the admin role
+- Configures column-level permissions for application users
 
 Grant CREATEROLE privilege:
 
@@ -97,33 +66,18 @@ Grant CREATEROLE privilege:
 ALTER ROLE your_user CREATEROLE;
 ```
 
-## Troubleshooting
+GenLogic fails immediately at connection time if the user lacks CREATEROLE privilege.
 
-### Connection Refused
+### Application User (Normal)
 
-If you get "connection refused":
+After GenLogic runs, application code connects as a normal unprivileged user. This user has restricted permissions:
 
-1. Check PostgreSQL is running: `pg_isready`
-2. Verify connection settings (host, port)
-3. Check firewall rules
+- SELECT, INSERT, DELETE permissions on all tables
+- UPDATE permission only on non-automated columns
+- Cannot modify automated or generated columns (permission denied)
+- Cannot bypass triggers (does not own tables)
 
-### Authentication Failed
-
-If authentication fails:
-
-1. Verify username and password
-2. Check `pg_hba.conf` authentication method
-3. Reload PostgreSQL: `sudo systemctl reload postgresql`
-
-### Database Does Not Exist
-
-If the database doesn't exist and GenLogic can't create it:
-
-1. Verify user has CREATE DATABASE privilege
-2. Create database manually:
-   ```sql
-   CREATE DATABASE myapp_db;
-   ```
+This separation ensures calculated values cannot be corrupted by application code or malicious clients.
 
 ## Test Coverage
 
@@ -134,8 +88,8 @@ This section lists tests that verify database connection behavior works correctl
 These tests verify that GenLogic handles database connections correctly:
 
 - [x] [Successful connection](../../tests/03-database-connection/successful-connection) - Database connects and disconnects cleanly
-- [x] [Authentication failure](../../tests/03-database-connection/authentication-failure) - Wrong password error reported
-- [x] [Database doesn't exist](../../tests/03-database-connection/database-does-not-exist) - Non-existent database error reported
+- [x] [Auto-create database](../../tests/03-database-connection/auto-create-database) - Database created automatically when it doesn't exist
+- [x] [Missing CREATEROLE](../../tests/03-database-connection/missing-createrole) - Error when user lacks CREATEROLE privilege
 
 ---
 
