@@ -419,6 +419,7 @@ export class TriggerGenerator {
       automations.calculatedColumns.length > 0;
 
     const needsBeforeUpdate =
+      automations.autoCreateParents.length > 0 ||
       automations.pullFromParents.length > 0 ||
       automations.calculatedColumns.length > 0;
 
@@ -562,6 +563,10 @@ CREATE TRIGGER ${triggerName}
     const triggerName = `${tableName}_before_update_genlogic`;
 
     const sections: string[] = [];
+
+    // Step 0: AUTO-CREATE PARENT (if FK value changed to non-existent parent)
+    const autoCreate = this.generateAutoCreateParent(automations, processedSchema);
+    if (autoCreate) sections.push(autoCreate);
 
     // Step 1: PULL from parents (if FK changed, fetch values into NEW)
     const pulls = this.generatePullFromParents(automations, 'UPDATE', processedSchema);
