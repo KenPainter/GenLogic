@@ -31,7 +31,9 @@
 import { readdirSync, existsSync, readFileSync, statSync } from 'fs';
 import { join, relative, basename } from 'path';
 import { $ } from 'bun';
-import { SQL } from 'bun';
+import pkg from 'pg';
+const { Pool } = pkg;
+import type { Pool as PgPool } from 'pg';
 
 const CLI_PATH = join(process.cwd(), 'src', 'cli.ts');
 const TESTS_DIR = join(process.cwd(), 'tests');
@@ -140,17 +142,17 @@ function discoverTests(): TestCase[] {
   return tests;
 }
 
-async function runTest(test: TestCase, db: SQL): Promise<boolean> {
+async function runTest(test: TestCase, pool: PgPool): Promise<boolean> {
   // Clean database before each test
   try {
-    await db`DROP SCHEMA public CASCADE`;
-    await db`CREATE SCHEMA public`;
+    await pool.query('DROP SCHEMA public CASCADE');
+    await pool.query('CREATE SCHEMA public');
   } catch (e) {
     console.error(`Failed to clean database: ${e}`);
     return false;
   }
 
-  // Common args - password required for Bun SQL driver
+  // Common args - password required for database connection
   const commonArgs = [
     '-d', TEST_DB,
     '-u', TEST_USER,
@@ -221,7 +223,7 @@ async function runTest(test: TestCase, db: SQL): Promise<boolean> {
   if (test.setupDataSql) {
     const setupSql = readFileSync(test.setupDataSql, 'utf-8');
     try {
-      await db.unsafe(setupSql);
+      await pool.query(setupSql);
     } catch (e) {
       passed = false;
       errors.push(`Failed to run setup-data.sql: ${e}`);
@@ -242,8 +244,8 @@ async function runTest(test: TestCase, db: SQL): Promise<boolean> {
     }
 
     try {
-      const queryResult = await db.unsafe(sqlContent);
-      const actualOutput = JSON.stringify(queryResult);
+      const queryResult = await pool.query(sqlContent);
+      const actualOutput = JSON.stringify(queryResult.rows);
       const expectedOutput = readFileSync(expectPath, 'utf-8').trim();
 
       // Normalize whitespace for comparison
@@ -299,14 +301,16 @@ async function main() {
   console.log(`Found ${tests.length} tests\n`);
 
   // Connect to database
-  let db: SQL;
+  let pool: PgPool;
   try {
-    db = new SQL({
-      hostname: '127.0.0.1',
+    pool = new Pool({
+      host: '127.0.0.1',
       database: TEST_DB,
-      username: TEST_USER,
+      user: TEST_USER,
       ...(TEST_PASSWORD ? { password: TEST_PASSWORD } : {})
     });
+    // Test connection
+    await pool.query('SELECT 1');
   } catch (e) {
     console.error(`Failed to connect to database: ${e}`);
     process.exit(1);
@@ -316,7 +320,7 @@ async function main() {
   let failed = 0;
 
   for (const test of tests) {
-    const result = await runTest(test, db);
+    const result = await runTest(test, pool);
     if (result) {
       passed++;
     } else {
@@ -327,13 +331,13 @@ async function main() {
         console.error('\n🚨 CRITICAL FAILURE: Test 0 (dry-run safety) failed!');
         console.error('The system is UNSAFE - --dry-run does not prevent database modification.');
         console.error('ABORTING all remaining tests.');
-        db.close();
+        await pool.end();
         process.exit(1);
       }
     }
   }
 
-  db.close();
+  await pool.end();
 
   console.log(`\n📊 Results: ${passed} passed, ${failed} failed`);
 

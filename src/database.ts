@@ -1,4 +1,6 @@
-import { SQL } from "bun";
+import pkg from 'pg';
+const { Pool } = pkg;
+import type { Pool as PgPool, PoolClient } from 'pg';
 import type {
   DatabaseConfig,
   DatabaseTable,
@@ -15,14 +17,14 @@ import type {
  * This enables safe diffing and incremental updates without breaking existing data
  */
 export class DatabaseManager {
-  private db: SQL;
+  private pool: PgPool;
 
   constructor(config: DatabaseConfig) {
-    this.db = new SQL({
-      hostname: config.host,
+    this.pool = new Pool({
+      host: config.host,
       port: config.port,
       database: config.database,
-      username: config.user,
+      user: config.user,
       password: config.password
     });
   }
@@ -31,16 +33,15 @@ export class DatabaseManager {
    * Connect to database
    */
   async connect(): Promise<void> {
-    // Bun.sql manages connections automatically, just verify with a simple query
-    await this.db`SELECT 1`;
+    // Test connection with a simple query
+    await this.pool.query('SELECT 1');
   }
 
   /**
    * Disconnect from database
    */
   async disconnect(): Promise<void> {
-    // Bun.sql manages connection pooling automatically
-    // No explicit disconnect needed
+    await this.pool.end();
   }
 
   /**
@@ -69,22 +70,22 @@ export class DatabaseManager {
    * Get list of user tables (excluding system tables)
    */
   private async getTables(): Promise<string[]> {
-    const result = await this.db`
+    const result = await this.pool.query(`
       SELECT table_name
       FROM information_schema.tables
       WHERE table_schema = 'public'
       AND table_type = 'BASE TABLE'
       ORDER BY table_name
-    `;
+    `);
 
-    return result.map(row => row.table_name);
+    return result.rows.map(row => row.table_name);
   }
 
   /**
    * Get columns for a specific table
    */
   private async getColumns(tableName: string): Promise<DatabaseColumn[]> {
-    const result = await this.db`
+    const result = await this.pool.query(`
       SELECT
         c.column_name,
         c.data_type,
@@ -101,7 +102,7 @@ export class DatabaseManager {
         FROM information_schema.table_constraints tc
         JOIN information_schema.key_column_usage ku
           ON tc.constraint_name = ku.constraint_name
-        WHERE tc.table_name = ${tableName}
+        WHERE tc.table_name = $1
         AND tc.constraint_type = 'PRIMARY KEY'
       ) pk ON c.column_name = pk.column_name
       LEFT JOIN (
@@ -109,14 +110,14 @@ export class DatabaseManager {
         FROM information_schema.table_constraints tc
         JOIN information_schema.key_column_usage ku
           ON tc.constraint_name = ku.constraint_name
-        WHERE tc.table_name = ${tableName}
+        WHERE tc.table_name = $1
         AND tc.constraint_type = 'UNIQUE'
       ) uq ON c.column_name = uq.column_name
-      WHERE c.table_name = ${tableName}
+      WHERE c.table_name = $1
       ORDER BY c.ordinal_position
-    `;
+    `, [tableName]);
 
-    return result.map(row => ({
+    return result.rows.map(row => ({
       name: row.column_name,
       type: this.buildPostgreSQLType(row),
       nullable: row.is_nullable === 'YES',
@@ -147,7 +148,7 @@ export class DatabaseManager {
    * Get foreign keys for a specific table
    */
   private async getForeignKeys(tableName: string): Promise<DatabaseForeignKey[]> {
-    const result = await this.db`
+    const result = await this.pool.query(`
       SELECT
         tc.constraint_name,
         kcu.column_name,
@@ -161,12 +162,12 @@ export class DatabaseManager {
         ON ccu.constraint_name = tc.constraint_name
       JOIN information_schema.referential_constraints AS rc
         ON tc.constraint_name = rc.constraint_name
-      WHERE tc.table_name = ${tableName}
+      WHERE tc.table_name = $1
       AND tc.constraint_type = 'FOREIGN KEY'
       ORDER BY tc.constraint_name
-    `;
+    `, [tableName]);
 
-    return result.map(row => ({
+    return result.rows.map(row => ({
       name: row.constraint_name,
       column: row.column_name,
       referencedTable: row.foreign_table_name,
@@ -179,7 +180,7 @@ export class DatabaseManager {
    * Get indexes for a specific table
    */
   private async getIndexes(tableName: string): Promise<DatabaseIndex[]> {
-    const result = await this.db`
+    const result = await this.pool.query(`
       SELECT
         i.relname AS index_name,
         array_agg(a.attname ORDER BY c.ordinality) AS column_names,
@@ -190,13 +191,13 @@ export class DatabaseManager {
       JOIN pg_attribute a ON a.attrelid = t.oid
       JOIN unnest(idx.indkey) WITH ORDINALITY AS c(attnum, ordinality)
         ON a.attnum = c.attnum
-      WHERE t.relname = ${tableName}
+      WHERE t.relname = $1
       AND i.relname NOT LIKE '%_pkey'
       GROUP BY i.relname, idx.indisunique
       ORDER BY i.relname
-    `;
+    `, [tableName]);
 
-    return result.map(row => ({
+    return result.rows.map(row => ({
       name: row.index_name,
       columns: row.column_names,
       isUnique: row.is_unique
@@ -208,17 +209,17 @@ export class DatabaseManager {
    * GENLOGIC FOCUS: Identify our triggers by naming convention
    */
   private async getTriggers(tableName: string): Promise<DatabaseTrigger[]> {
-    const result = await this.db`
+    const result = await this.pool.query(`
       SELECT
         t.trigger_name,
         t.event_manipulation as event,
         t.action_timing as timing
       FROM information_schema.triggers t
-      WHERE t.event_object_table = ${tableName}
+      WHERE t.event_object_table = $1
       ORDER BY t.trigger_name
-    `;
+    `, [tableName]);
 
-    return result.map(row => ({
+    return result.rows.map(row => ({
       name: row.trigger_name,
       table: tableName,
       event: row.event as 'INSERT' | 'UPDATE' | 'DELETE',
@@ -240,7 +241,7 @@ export class DatabaseManager {
    * Used for unconditional cleanup at start of processing
    */
   async getAllGenLogicTriggers(): Promise<Array<{ triggerName: string; tableName: string }>> {
-    const result = await this.db`
+    const result = await this.pool.query(`
       SELECT
         t.trigger_name,
         t.event_object_table as table_name
@@ -248,9 +249,9 @@ export class DatabaseManager {
       WHERE t.event_object_schema = 'public'
         AND t.trigger_name LIKE '%_genlogic'
       ORDER BY t.event_object_table, t.trigger_name
-    `;
+    `);
 
-    return result.map(row => ({
+    return result.rows.map(row => ({
       triggerName: row.trigger_name,
       tableName: row.table_name
     }));
@@ -271,14 +272,15 @@ export class DatabaseManager {
    * Execute SQL within a transaction
    */
   async executeInTransaction(sqlStatements: string[]): Promise<void> {
-    // Use Bun's transaction API
-    await this.db.begin(async (tx) => {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
       for (let i = 0; i < sqlStatements.length; i++) {
         const sql = sqlStatements[i];
         try {
-          // Execute raw SQL using Bun.sql transaction
-          await tx.unsafe(sql);
+          await client.query(sql);
         } catch (sqlError: any) {
+          await client.query('ROLLBACK');
           // Add context about which statement failed
           throw new Error(
             `SQL execution failed at statement ${i + 1}/${sqlStatements.length}: ${sqlError.message}\n` +
@@ -286,33 +288,40 @@ export class DatabaseManager {
           );
         }
       }
-    });
+      await client.query('COMMIT');
+    } catch (error) {
+      // Ensure rollback on any error
+      try {
+        await client.query('ROLLBACK');
+      } catch (rollbackError) {
+        // Ignore rollback errors
+      }
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   /**
    * Execute a single SQL statement
    */
   async execute(sql: string): Promise<any> {
-    return await this.db.unsafe(sql);
+    return await this.pool.query(sql);
   }
 
   /**
    * Execute a query with optional parameters
+   * Supports parameterized queries using $1, $2, etc.
    */
   async query(sql: string, params?: any[]): Promise<any> {
-    // Bun.sql doesn't support parameterized queries in the same way
-    // Use tagged template literals instead
-    if (params && params.length > 0) {
-      throw new Error('Use tagged template literals instead of parameterized queries with Bun.sql');
-    }
-    return await this.db.unsafe(sql);
+    return await this.pool.query(sql, params);
   }
 
   /**
-   * Get the underlying SQL object for direct tagged template literal queries
+   * Get the underlying Pool object for direct queries
    * Mainly for tests that need to run queries
    */
-  getSQL(): SQL {
-    return this.db;
+  getPool(): PgPool {
+    return this.pool;
   }
 }
