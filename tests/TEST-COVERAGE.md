@@ -274,6 +274,7 @@ and columns.  There is no specific validation stage in the code.
 - [x] [Copy_columns bad parent](./04-validation/auto-create-copy-bad-parent) - Error when copy_columns parent column doesn't exist
 - [x] [Copy_columns bad child](./04-validation/auto-create-copy-bad-child) - Error when copy_columns child column doesn't exist
 - [x] [Literals bad column](./04-validation/auto-create-literals-bad-column) - Error when literals references non-existent child column
+- [x] [auto_create_parent without PK](./04-validation/auto-create-parent-no-pk) - Error when auto_create_parent on FK to table without primary key
 
 #### 4.8 Pattern Matching Validation
 - [3] matching_table without result_column_name (covered by JSON Schema - required field)
@@ -380,6 +381,9 @@ Scope: This phase tests that schema elements (tables, columns, constraints, inde
 - [x] [New table added](./05-schema-features/additive-new-table) - New table added to existing database
 - [x] [New column added](./05-schema-features/additive-new-column) - New column added to existing table
 - [x] [Column widening](./05-schema-features/additive-widen-column) - Columns widened for CHAR, VARCHAR, NUMERIC
+
+#### 5.12 Auto-Create Parent
+- [x] [auto_create_parent trigger](./05-schema-features/auto-create-parent-trigger) - BEFORE INSERT trigger generated for auto_create_parent FK
 
 ### Phase 06: Behavior (End-to-End Data Flow)
 
@@ -504,11 +508,18 @@ Scope: This phase tests end-to-end data flow through triggers, automations, and 
   - ON CONFLICT DO UPDATE for idempotency
   - Data loaded at schema creation time
 
+#### 6.7 Auto-Create Parent
+
+- [x] [Basic auto_create_parent](./06-behavior/auto-create-parent-basic) - BEFORE INSERT trigger auto-creates parent row
+  - Insert child with non-existent FK value
+  - Parent row auto-created with only PK populated
+  - Child insert succeeds with FK constraint satisfied
+
 ---
 
 #### Planned Behavior Tests (Not Yet Implemented):
 
-#### 6.7 SUM Aggregation - Edge Cases
+#### 6.8 SUM Aggregation - Edge Cases
 - [ ] SUM on UPDATE with FK change to different parent
 - [ ] SUM on UPDATE with FK change from NULL to value
 - [ ] SUM on UPDATE with FK change from value to NULL
@@ -517,43 +528,43 @@ Scope: This phase tests end-to-end data flow through triggers, automations, and 
 - [ ] SUM on composite FK
 - [ ] SUM with multiple FKs to same parent table (explicit FK name)
 
-#### 6.8 COUNT Aggregation - Edge Cases
+#### 6.9 COUNT Aggregation - Edge Cases
 - [ ] COUNT on UPDATE with FK change
 - [ ] COUNT with NULL child values (should count regardless)
 - [ ] COUNT on composite FK
 - [ ] COUNT going to zero (ensure never negative)
 
-#### 6.9 MAX Aggregation - Edge Cases
+#### 6.10 MAX Aggregation - Edge Cases
 - [ ] MAX on UPDATE (new max value)
 - [ ] MAX on UPDATE with FK change
 - [ ] MAX on DELETE (when max row deleted, should recalculate)
 - [ ] MAX with NULL child values (should ignore NULLs)
 - [ ] MAX with all NULL values (should be NULL)
 
-#### 6.10 MIN Aggregation - Edge Cases
+#### 6.11 MIN Aggregation - Edge Cases
 - [ ] MIN on UPDATE (new min value)
 - [ ] MIN on UPDATE with FK change
 - [ ] MIN on DELETE (when min row deleted, should recalculate)
 - [ ] MIN with NULL child values (should ignore NULLs)
 - [ ] MIN with all NULL values (should be NULL)
 
-#### 6.11 LAST_VALUE Automation - Edge Cases
+#### 6.12 LAST_VALUE Automation - Edge Cases
 - [ ] LAST_VALUE on UPDATE (value change)
 - [ ] LAST_VALUE on UPDATE with FK change
 - [ ] LAST_VALUE on DELETE (should do nothing or recalculate?)
 - [ ] LAST_VALUE with NULL child value
 
-#### 6.12 SNAPSHOT Automation - Edge Cases
+#### 6.13 SNAPSHOT Automation - Edge Cases
 - [ ] SNAPSHOT with NULL parent value
 - [ ] SNAPSHOT updates on child FK change (should fetch from new parent)
 - [ ] SNAPSHOT with composite FK
 
-#### 6.13 SYNC Automation - Edge Cases
+#### 6.14 SYNC Automation - Edge Cases
 - [ ] SYNC on UPDATE (child FK changes, fetches from new parent)
 - [ ] SYNC with NULL parent value
 - [ ] SYNC with composite FK
 
-#### 6.14 SPREAD Automation - Edge Cases
+#### 6.15 SPREAD Automation - Edge Cases
 - [ ] SPREAD with different intervals (weekly, monthly)
 - [ ] SPREAD on UPDATE (dates change, regenerate children)
 - [ ] SPREAD on DELETE (delete all generated children)
@@ -561,7 +572,7 @@ Scope: This phase tests end-to-end data flow through triggers, automations, and 
 - [ ] SPREAD with literals
 - [ ] SPREAD with filter condition
 
-#### 6.15 SYNC Auto-Create (auto_create without spread)
+#### 6.16 SYNC Auto-Create (auto_create without spread)
 - [ ] SYNC auto_create on INSERT (create matching child row)
 - [ ] SYNC auto_create on UPDATE (update matching child row)
 - [ ] SYNC auto_create on DELETE (delete matching child row)
@@ -569,13 +580,13 @@ Scope: This phase tests end-to-end data flow through triggers, automations, and 
 - [ ] SYNC auto_create with literals
 - [ ] SYNC auto_create with filter condition
 
-#### 6.16 FK Cascading Behaviors
+#### 6.17 FK Cascading Behaviors
 - [ ] FK delete: restrict (prevents parent deletion if children exist)
 - [ ] FK delete: cascade (deletes children when parent deleted)
 - [ ] FK with NOT NULL (cannot set FK to NULL)
 - [ ] FK without NOT NULL (can set FK to NULL)
 
-#### 6.17 Trigger Execution Order
+#### 6.18 Trigger Execution Order
 - [ ] BEFORE INSERT trigger execution
 - [ ] AFTER INSERT trigger execution
 - [ ] BEFORE UPDATE trigger execution
@@ -584,7 +595,7 @@ Scope: This phase tests end-to-end data flow through triggers, automations, and 
 - [ ] Multiple triggers on same table (execution order)
 - [ ] Trigger prevents infinite loops (change detection)
 
-#### 6.18 Seed Data Advanced
+#### 6.19 Seed Data Advanced
 - [ ] seed-rows with $lookup
 - [ ] seed-rows with $lookup and multi-condition where
 - [ ] seed-rows with nested $lookup
@@ -592,14 +603,14 @@ Scope: This phase tests end-to-end data flow through triggers, automations, and 
 - [ ] seed-rows idempotency (run twice, same result)
 - [ ] seed-rows with FK to parent seed row (insertion order)
 
-#### 6.19 Complex Scenarios
+#### 6.20 Complex Scenarios
 - [ ] Automation chains (A → B → C)
 - [ ] Diamond dependencies (A → B, A → C, B → D, C → D)
 - [ ] Self-referential FK with aggregation (org chart)
 - [ ] Composite FK with aggregation
 - [ ] NULL FK with aggregation (should handle gracefully)
 
-#### 6.20 Pattern Matching Advanced
+#### 6.21 Pattern Matching Advanced
 - [ ] Pattern matching with no matches (returns empty)
 - [ ] Pattern matching with ties (same specificity)
 - [ ] Pattern matching with NULL inputs
@@ -608,7 +619,7 @@ Scope: This phase tests end-to-end data flow through triggers, automations, and 
 - [ ] Pattern matching with both string and range
 - [ ] Pattern matching priority ordering
 
-#### 6.21 Data Type Behaviors
+#### 6.22 Data Type Behaviors
 - [ ] SERIAL generates unique IDs
 - [ ] NUMERIC precision preservation
 - [ ] VARCHAR truncation prevention
@@ -618,7 +629,7 @@ Scope: This phase tests end-to-end data flow through triggers, automations, and 
 - [ ] NULL vs empty string
 - [ ] Zero vs NULL in numeric columns
 
-#### 6.22 Constraint Enforcement
+#### 6.23 Constraint Enforcement
 - [ ] PRIMARY KEY prevents duplicates
 - [ ] UNIQUE constraint prevents duplicates
 - [ ] NOT NULL prevents NULLs

@@ -33,9 +33,9 @@ During a build GenLogic drops all triggers that it recognizes
 as its own, and rewrites a new set of triggers.
 
 GenLogic uses BEFORE triggers for actions that _pull_ from
-a parent table, and for actions that generate values within
-a row.   GenLogic writes a single BEFORE trigger for each
-table on each of INSERT, UPDATE and DELETE.
+a parent table, auto-create parent rows, and for actions that
+generate values within a row. GenLogic writes a single BEFORE
+trigger for each table on each of INSERT, UPDATE and DELETE.
 
 GenLogic uses AFTER triggers for actions that _push_ to
 other tables (SYNC, aggregrations, spread).  GenLogic writes

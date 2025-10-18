@@ -9,6 +9,14 @@ import { resolveAutomation } from './automation-parser.js';
 interface TableAutomations {
   tableName: string;
 
+  // AUTO-CREATE PARENT: this table is child, auto-create parent rows on INSERT
+  autoCreateParents: Array<{
+    parentTable: string;
+    foreignKeyName: string;
+    fkColumns: string[];  // The FK columns that point to parent
+    parentPKColumns: string[];  // The PK columns in parent table
+  }>;
+
   // SYNC to other tables: propagate INSERT/UPDATE/DELETE to sibling tables
   syncTargets: Array<{
     targetTable: string;
@@ -124,6 +132,7 @@ export class TriggerGenerator {
     for (const tableName of Object.keys(schema.tables)) {
       tableAutomations[tableName] = {
         tableName,
+        autoCreateParents: [],
         syncTargets: [],
         spreadTargets: [],
         pushToChildren: [],
@@ -335,6 +344,29 @@ export class TriggerGenerator {
       }
     }
 
+    // Collect auto_create_parent from foreign keys
+    // Key insight: auto_create_parent is on child table's FK, trigger goes on child table (BEFORE INSERT)
+    for (const [childTableName, table] of Object.entries(schema.tables)) {
+      if (!table.foreign_keys) continue;
+
+      for (const [fkName, fkDef] of Object.entries(table.foreign_keys)) {
+        const fk = typeof fkDef === 'string' ? { table: fkDef } : fkDef;
+        if (!fk.auto_create_parent) continue;
+
+        const parentTableName = fk.table;
+        const fkColumns = this.getFKColumnNames(childTableName, parentTableName, fkName, processedSchema);
+        const parentPKColumns = this.getTablePrimaryKeys(parentTableName, processedSchema);
+
+        // Trigger goes on CHILD table (BEFORE INSERT to create parent before FK validation)
+        tableAutomations[childTableName].autoCreateParents.push({
+          parentTable: parentTableName,
+          foreignKeyName: fkName,
+          fkColumns,
+          parentPKColumns
+        });
+      }
+    }
+
     return tableAutomations;
   }
 
@@ -382,6 +414,7 @@ export class TriggerGenerator {
 
     // Determine which automations need BEFORE triggers (modify NEW row)
     const needsBeforeInsert =
+      automations.autoCreateParents.length > 0 ||
       automations.pullFromParents.length > 0 ||
       automations.calculatedColumns.length > 0;
 
@@ -445,6 +478,10 @@ export class TriggerGenerator {
     const triggerName = `${tableName}_before_insert_genlogic`;
 
     const sections: string[] = [];
+
+    // Step 0: AUTO-CREATE PARENT (must be first - runs before FK constraint validation)
+    const autoCreate = this.generateAutoCreateParent(automations, processedSchema);
+    if (autoCreate) sections.push(autoCreate);
 
     // Step 1: PULL from parents (fetch values into NEW)
     const pulls = this.generatePullFromParents(automations, 'INSERT', processedSchema);
@@ -720,6 +757,41 @@ CREATE TRIGGER ${triggerName}
         sections.push(`  FROM ${pull.parentTable}`);
         sections.push(`  WHERE ${whereConditions};`);
       }
+    }
+
+    return sections.join('\n');
+  }
+
+  /**
+   * Generate auto_create_parent logic
+   * Creates parent row if it doesn't exist (BEFORE INSERT only)
+   */
+  private generateAutoCreateParent(automations: TableAutomations, processedSchema: ProcessedSchema): string | null {
+    if (automations.autoCreateParents.length === 0) return null;
+
+    const sections: string[] = [];
+    sections.push('  -- Step 0: AUTO-CREATE PARENT (if parent row does not exist)');
+
+    for (const autoCreate of automations.autoCreateParents) {
+      // Build INSERT statement for parent table
+      // Only populate PK columns with values from child FK columns
+      const pkColumnList = autoCreate.parentPKColumns.join(', ');
+      const fkValueList = autoCreate.fkColumns.map(fkCol => `NEW.${fkCol}`).join(', ');
+
+      // Build WHERE clause to check if parent exists
+      const whereConditions = autoCreate.fkColumns.map((fkCol, idx) => {
+        const pkCol = autoCreate.parentPKColumns[idx];
+        return `${pkCol} = NEW.${fkCol}`;
+      }).join(' AND ');
+
+      sections.push(`  -- Auto-create parent '${autoCreate.parentTable}' if it doesn't exist`);
+      sections.push(`  IF NEW.${autoCreate.fkColumns[0]} IS NOT NULL AND NOT EXISTS (`);
+      sections.push(`    SELECT 1 FROM ${autoCreate.parentTable} WHERE ${whereConditions}`);
+      sections.push(`  ) THEN`);
+      sections.push(`    INSERT INTO ${autoCreate.parentTable} (${pkColumnList})`);
+      sections.push(`    VALUES (${fkValueList})`);
+      sections.push(`    ON CONFLICT DO NOTHING;  -- Handle race conditions`);
+      sections.push(`  END IF;`);
     }
 
     return sections.join('\n');

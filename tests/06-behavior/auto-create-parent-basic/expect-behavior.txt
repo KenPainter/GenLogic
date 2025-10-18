@@ -1,0 +1,1 @@
+[{"category_name":"Equipment","total_amount":75},{"category_name":"Office Supplies","total_amount":150}]

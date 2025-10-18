@@ -1,0 +1,20 @@
+tables:
+  # Parent table with primary key
+  categories:
+    columns:
+      category_name:
+        type: varchar(100) primary key
+      total_amount:
+        automation: SUM @transactions.amount
+
+  # Child table with auto_create_parent enabled
+  transactions:
+    columns:
+      transaction_id:
+        type: serial primary key
+      amount:
+        type: integer not null
+    foreign_keys:
+      category_name:
+        table: categories
+        auto_create_parent: true

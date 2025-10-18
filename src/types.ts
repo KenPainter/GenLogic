@@ -66,6 +66,7 @@ export interface ForeignKeyDefinition {
   suffix?: string;
   not_null?: boolean;
   delete?: 'restrict' | 'cascade';
+  auto_create_parent?: boolean;  // Auto-create parent row when child references non-existent parent
   auto_create?: AutoCreateDefinition;  // FK-following auto-creation (sync/spread)
 }
 

@@ -947,6 +947,24 @@ export class SchemaProcessor {
             processedTables
           );
         }
+
+        // Validate auto_create_parent (parent must have PK)
+        if (fk.auto_create_parent) {
+          const parentTable = processedTables.get(fk.table);
+          if (!parentTable) {
+            throw new Error(
+              `Table '${tableName}', FK '${fkName}': ` +
+              `auto_create_parent references parent table '${fk.table}' which is not yet processed`
+            );
+          }
+          const parentPK = this.findPrimaryKeyColumnsFromMap(parentTable);
+          if (parentPK.length === 0) {
+            throw new Error(
+              `Table '${tableName}', FK '${fkName}': ` +
+              `auto_create_parent requires parent table '${fk.table}' to have a primary key`
+            );
+          }
+        }
       }
     }
 

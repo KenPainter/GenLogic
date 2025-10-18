@@ -1,0 +1,2 @@
+# auto_create_parent requires parent to have PK
+primary key

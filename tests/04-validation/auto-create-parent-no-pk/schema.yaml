@@ -1,0 +1,20 @@
+tables:
+  # Parent table WITHOUT a primary key
+  categories:
+    columns:
+      category_name:
+        type: varchar(100)
+      total_amount:
+        type: integer default 0
+
+  # Child table attempting auto_create_parent on FK to table without PK
+  transactions:
+    columns:
+      transaction_id:
+        type: serial primary key
+      amount:
+        type: integer
+    foreign_keys:
+      category_name:
+        table: categories
+        auto_create_parent: true

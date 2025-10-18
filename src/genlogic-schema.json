@@ -294,6 +294,10 @@
           "enum": ["restrict", "cascade"],
           "description": "ON DELETE behavior - restrict (default) or cascade"
         },
+        "auto_create_parent": {
+          "type": "boolean",
+          "description": "GENLOGIC: Auto-create parent row with only PK when child references non-existent parent (requires parent to have PK)"
+        },
         "auto_create": {
           "$ref": "#/definitions/autoCreateDefinition",
           "description": "GENLOGIC: Auto-creation behavior when parent is referenced"

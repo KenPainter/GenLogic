@@ -266,6 +266,94 @@ Delete actions:
 - cascade: Delete child rows when parent is deleted
 - restrict: Prevent parent deletion if child rows exist (default)
 
+## Auto-Create Parent
+
+Automatically create parent rows when inserting child rows with non-existent foreign key values:
+
+```yaml
+tables:
+  categories:
+    columns:
+      category_name: varchar(100) primary key
+      total_amount:
+        automation: SUM @transactions.amount
+
+  transactions:
+    foreign_keys:
+      category_name:
+        table: categories
+        auto_create_parent: true
+
+    columns:
+      transaction_id: serial primary key
+      amount: integer not null
+      category_name: varchar(100)
+```
+
+Generated SQL includes a BEFORE INSERT trigger:
+
+```sql
+CREATE OR REPLACE FUNCTION transactions_before_insert_genlogic()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Auto-create parent 'categories' if it doesn't exist
+  IF NEW.category_name IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM categories WHERE category_name = NEW.category_name
+  ) THEN
+    INSERT INTO categories (category_name)
+    VALUES (NEW.category_name)
+    ON CONFLICT DO NOTHING;  -- Handle race conditions
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER transactions_before_insert_genlogic
+  BEFORE INSERT ON transactions
+  FOR EACH ROW EXECUTE FUNCTION transactions_before_insert_genlogic();
+```
+
+### How It Works
+
+When inserting a child row:
+1. BEFORE INSERT trigger checks if parent row exists
+2. If parent doesn't exist, creates it with only the primary key populated
+3. Other parent columns (like aggregations) get their default values
+4. FK constraint validation then succeeds because parent exists
+
+Example:
+
+```sql
+-- Parent table is empty
+SELECT * FROM categories;
+-- (no rows)
+
+-- Insert transaction with new category
+INSERT INTO transactions (amount, category_name)
+VALUES (100, 'Office Supplies');
+
+-- Parent row automatically created
+SELECT * FROM categories;
+-- category_name    | total_amount
+-- -----------------|-------------
+-- Office Supplies  | 100
+```
+
+### Use Cases
+
+**Auto-create parent** is useful for:
+- Summary tables where parent only contains PK + aggregations
+- Automatic category creation (categories are just labels with counts/totals)
+- Data entry simplification (no need to pre-create parent records)
+- Denormalized reporting tables
+
+### Requirements
+
+- Parent table **must have a primary key**
+- Parent columns (except PK) should have defaults or allow NULL
+- Best for summary tables where parent row has no user-entered data
+
 ---
 
 Previous: [Reusable Columns](02-reusable-columns.md) | Next: [Moving Values from Parent to Child](04-parent-to-child.md)
