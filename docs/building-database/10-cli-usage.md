@@ -7,25 +7,24 @@ GenLogic provides a command-line interface for processing schema definitions and
 ## Basic Usage
 
 ```bash
-bun run src/cli.ts -d database_name -u username -w password -s schema.yaml
+bun run src/cli.ts -d database_name -u username -s schema.yaml
 ```
+
+GenLogic connects to PostgreSQL on localhost using Unix socket trusted connections.
 
 ## Command Options
 
 ### Required Options
 
-- `-d, --database <database>` - PostgreSQL database name
+- `-d, --database <database>` - PostgreSQL database name (created automatically if it doesn't exist)
 - `-u, --user <user>` - PostgreSQL username
-- `-w, --password <password>` - PostgreSQL password
 - `-s, --schema <path>` - Path to YAML schema file
 
 ### Optional Options
 
-- `-h, --host <host>` - PostgreSQL host (default: `localhost`)
-- `-p, --port <port>` - PostgreSQL port (default: `5432`)
 - `--dry-run` - Show planned SQL changes without executing them
-- `--version` - Display version information
-- `--help` - Display help information
+- `-V, --version` - Display version information
+- `-h, --help` - Display help information
 
 ## Usage Examples
 
@@ -37,9 +36,10 @@ Build your database:
 bun run src/cli.ts \
   -d myapp_db \
   -u postgres \
-  -w mypassword \
   -s /path/to/my-product.yaml
 ```
+
+If the database doesn't exist, GenLogic will create it automatically.
 
 ### Dry Run Mode
 
@@ -49,26 +49,11 @@ Preview changes without applying them:
 bun run src/cli.ts \
   -d myapp_db \
   -u postgres \
-  -w mypassword \
-  -s /path/to/my-product.yaml
+  -s /path/to/my-product.yaml \
   --dry-run
 ```
 
 This outputs the SQL statements that would be executed without actually running them.
-
-### Custom Host and Port
-
-Connect to a remote PostgreSQL server:
-
-```bash
-bun run src/cli.ts \
-  -h db.example.com \
-  -p 5433 \
-  -d production_db \
-  -u dbadmin \
-  -w secure_password \
-  -s schema.yaml
-```
 
 ## Schema File Format
 
@@ -103,11 +88,11 @@ See schema syntax documentation for details.
 1. Create your schema file
 2. Preview changes with dry run:
    ```bash
-   bun run src/cli.ts -d mydb -u user -w pass -s schema.yaml --dry-run
+   bun run src/cli.ts -d mydb -u $USER -s schema.yaml --dry-run
    ```
 3. Build/Update the database:
    ```bash
-   bun run src/cli.ts -d mydb -u user -w pass -s schema.yaml
+   bun run src/cli.ts -d mydb -u $USER -s schema.yaml
    ```
 
 ### Schema Updates
@@ -123,7 +108,7 @@ When modifying an existing schema:
 For detailed SQL output during execution:
 
 ```bash
-DEBUG_SQL=1 bun run src/cli.ts -d mydb -u user -w pass -s schema.yaml
+DEBUG_SQL=1 bun run src/cli.ts -d mydb -u $USER -s schema.yaml
 ```
 
 ## Error Messages
@@ -132,12 +117,11 @@ Common error messages and solutions:
 
 - "Database name is required" - Provide `-d` option
 - "Username is required" - Provide `-u` option
-- "Password is required" - Provide `-w` option
 - "Schema file path is required" - Provide `-s` option
 - "Column 'x' references non-existent column 'y'" - Fix column inheritance reference
 - "Foreign key references non-existent table" - Ensure referenced table exists
 - "Cycle detected in data flow graph" - Remove circular automation dependencies
-- "Connection refused" - Check PostgreSQL is running and credentials are correct
+- Connection errors - Check PostgreSQL is running and peer authentication is configured (see Installation guide)
 
 ## Integration with CI/CD
 
@@ -149,7 +133,6 @@ Example GitHub Actions workflow:
     bun run src/cli.ts \
       -d ${{ secrets.DB_NAME }} \
       -u ${{ secrets.DB_USER }} \
-      -w ${{ secrets.DB_PASSWORD }} \
       -s schema.yaml
 ```
 
@@ -161,20 +144,21 @@ For validation testing, use dry-run mode:
     bun run src/cli.ts \
       -d ${{ secrets.DB_NAME }} \
       -u ${{ secrets.DB_USER }} \
-      -w ${{ secrets.DB_PASSWORD }} \
       -s schema.yaml \
       --dry-run
 ```
+
+**Note**: Ensure your CI environment has PostgreSQL configured with peer/trust authentication for the specified user.
 
 ## Troubleshooting
 
 ### Connection Issues
 
 If you cannot connect to the database:
-1. Verify PostgreSQL is running: `pg_isready -h localhost -p 5432`
-2. Check credentials: `psql -h localhost -U username -d database`
-3. Ensure database exists
-4. Check firewall/network settings
+1. Verify PostgreSQL is running: `pg_isready`
+2. Test Unix socket connection: `psql -U username -d postgres`
+3. Check `pg_hba.conf` has peer authentication enabled for local connections
+4. Verify your system user matches the PostgreSQL user you're specifying
 
 ### Schema Validation Errors
 

@@ -2,11 +2,8 @@
 // CORE PRINCIPLE: Foreign keys are DATA PIPELINES that create columns AND automation pathways
 
 export interface DatabaseConfig {
-  host: string;
-  port: number;
   database: string;
   user: string;
-  password?: string;
   dryRun: boolean;
 }
 

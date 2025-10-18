@@ -38,8 +38,7 @@ import type { Pool as PgPool } from 'pg';
 const CLI_PATH = join(process.cwd(), 'src', 'cli.ts');
 const TESTS_DIR = join(process.cwd(), 'tests');
 
-// Test configuration - password required for Bun SQL driver
-const TEST_PASSWORD = process.env.GENLOGIC_TEST_PASSWORD || '';
+// Test configuration - Unix socket trusted connections
 const TEST_USER = process.env.GENLOGIC_TEST_USER || process.env.USER || 'postgres';
 const TEST_DB = process.env.GENLOGIC_TEST_DB || 'genlogic_test_cli';
 
@@ -152,11 +151,10 @@ async function runTest(test: TestCase, pool: PgPool): Promise<boolean> {
     return false;
   }
 
-  // Common args - password required for database connection
+  // Common args - Unix socket trusted connection
   const commonArgs = [
     '-d', TEST_DB,
-    '-u', TEST_USER,
-    '-w', TEST_PASSWORD
+    '-u', TEST_USER
   ];
 
   // Build full command
@@ -300,14 +298,13 @@ async function main() {
 
   console.log(`Found ${tests.length} tests\n`);
 
-  // Connect to database
+  // Connect to database using Unix socket
   let pool: PgPool;
   try {
     pool = new Pool({
-      host: '127.0.0.1',
+      host: '/var/run/postgresql',
       database: TEST_DB,
-      user: TEST_USER,
-      ...(TEST_PASSWORD ? { password: TEST_PASSWORD } : {})
+      user: TEST_USER
     });
     // Test connection
     await pool.query('SELECT 1');

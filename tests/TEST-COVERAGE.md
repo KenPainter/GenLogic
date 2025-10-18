@@ -12,30 +12,22 @@ This document catalogs all testable behavior in GenLogic. It serves as:
 
 ### Prerequisites
 
-1. **PostgreSQL database**: Tests require a test database
-2. **Database creation**: Create `genlogic_test_cli` database
+1. **PostgreSQL**: Tests require PostgreSQL with trusted/peer authentication configured
+2. **Unix socket access**: GenLogic uses Unix socket connections to localhost
+
+### Running All Tests
 
 ```bash
-# Create test database
-createdb genlogic_test_cli
-
-# Or using psql
-psql -U postgres -c "CREATE DATABASE genlogic_test_cli;"
-```
-
-### Password Configuration
-
-```bash
-export GENLOGIC_TEST_PASSWORD=your_password
 bun tests/run-cli-tests.ts
 ```
 
 To run only one suite:
 
 ```bash
-export GENLOGIC_TEST_PASSWORD=your_password
 bun tests/run-cli-tests.ts 02-schema
 ```
+
+**Note**: The test database (`genlogic_test_cli`) will be automatically created if it doesn't exist.
 
 
 ## Test-Driven Development Workflow

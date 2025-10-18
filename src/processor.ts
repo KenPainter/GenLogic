@@ -51,7 +51,7 @@ export class GenLogicProcessor {
   async process(schemaPath: string): Promise<void> {
     console.log('🚀 GenLogic - Augmented Normalization Processor');
     console.log(`📁 Schema: ${schemaPath}`);
-    console.log(`🗄️  Database: ${this.config.user}@${this.config.host}:${this.config.port}/${this.config.database}`);
+    console.log(`🗄️  Database: ${this.config.user}@localhost/${this.config.database}`);
     console.log(`🔄 Mode: ${this.config.dryRun ? 'DRY RUN' : 'EXECUTE'}`);
     console.log('');
 

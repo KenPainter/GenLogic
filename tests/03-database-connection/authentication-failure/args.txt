@@ -1,4 +1,0 @@
---skip-common
--d genlogic_test_cli
--u ken
--w wrong_password_intentionally_wrong

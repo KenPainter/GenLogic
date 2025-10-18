@@ -18,22 +18,49 @@ import type {
  */
 export class DatabaseManager {
   private pool: PgPool;
+  private config: DatabaseConfig;
 
   constructor(config: DatabaseConfig) {
+    this.config = config;
+    // Initialize pool with Unix socket connection (trusted/peer auth on localhost)
+    // Setting host to socket directory forces Unix socket instead of TCP
     this.pool = new Pool({
-      host: config.host,
-      port: config.port,
+      host: '/var/run/postgresql',
       database: config.database,
-      user: config.user,
-      password: config.password
+      user: config.user
     });
   }
 
   /**
    * Connect to database
+   * Creates the database if it doesn't exist
    */
   async connect(): Promise<void> {
-    // Test connection with a simple query
+    // First, try to connect to the postgres database to check/create our target database
+    const postgresPool = new Pool({
+      host: '/var/run/postgresql',
+      database: 'postgres',
+      user: this.config.user
+    });
+
+    try {
+      // Check if target database exists
+      const result = await postgresPool.query(
+        'SELECT 1 FROM pg_database WHERE datname = $1',
+        [this.config.database]
+      );
+
+      if (result.rows.length === 0) {
+        // Database doesn't exist, create it
+        // Note: CREATE DATABASE cannot be run in a transaction or with parameters
+        await postgresPool.query(`CREATE DATABASE ${this.config.database}`);
+        console.log(`✅ Created database: ${this.config.database}`);
+      }
+    } finally {
+      await postgresPool.end();
+    }
+
+    // Now connect to the target database and test the connection
     await this.pool.query('SELECT 1');
   }
 
