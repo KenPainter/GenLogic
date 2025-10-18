@@ -46,7 +46,7 @@ export class GenLogicProcessor {
   }
 
   /**
-   * Main processing pipeline - implements the phases from IMPLEMENTATION_PLAN.md
+   * Main processing pipeline
    */
   async process(schemaPath: string): Promise<void> {
     console.log('🚀 GenLogic - Augmented Normalization Processor');
