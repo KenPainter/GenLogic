@@ -1,49 +1,11 @@
 Previous: [Tables and Columns](10-tables-and-columns.md) | Next: [Schema Validation](../features/01-schema-validation.md)
 
-# Tables and Columns
+# Column Types
 
-## YAML Structure
+GenLogic supports standard PostgreSQL data types in column definitions.
+Types can be specified as SQL strings or in object format for advanced features.
 
-A GenLogic schema must contain a top level key "tables"
-that lists the table definitions.  Each table contains 
-a key "columns" that lists the columns.
-
-```yaml
-tables:
-  table_name:
-    columns:
-      column_name: *Genlogic definition*
-```
-
-Here is a simple example of two unrelated tables
-and their column definitions.  In this example the
-column definition is a string that supports
-several SQL/Postgres keywords.
-
-## Simple Example
-
-```yaml
-tables:
-    customers:
-        columns:
-            customer_id: serial primary key
-            customer_code: varhar(6) unique not null 
-            customer_name: varchar(30) not null
-    vendors:
-        columns:
-            vendor_id: serial primary key
-            vendor_code: varhar(6) unique not null 
-            vendor_name: varchar(30) not null
-
-```
-
-## Limitations
-
-
-## What GenLogic Does
-
-For the simple example 
-
+## Example
 
 ```yaml
 tables:
@@ -83,37 +45,7 @@ tables:
       metadata: jsonb
 ```
 
-## Column Definition Formats
-
-### SQL String (Simple)
-The simplest format uses SQL definition strings directly:
-
-```yaml
-columns:
-  id: serial primary key
-  name: varchar(100) not null unique
-  balance: numeric(15,2) default 0
-  created_at: timestamp default NOW()
-```
-
-### Object Format (For GenLogic Features)
-Use object format when you need GenLogic-specific features like automation or generated columns:
-
-```yaml
-columns:
-  total_sales:
-    definition: numeric(12,2)
-    automation: SUM @orders.amount
-    comment: Total from all orders
-
-  net_balance:
-    definition: numeric(15,2)
-    # use quotes if the first symbol is @ in the string
-    generated: "@debits - @credits"
-    comment: Calculated balance
-```
-
-## Data Type Reference
+## Data Type Support and Limitations
 
 ### Integer Types
 - integer - 4-byte integer
@@ -121,6 +53,7 @@ columns:
 - smallint - 2-byte integer
 - serial - Auto-incrementing integer
 - bigserial - Auto-incrementing bigint
+- smallserial - Auto-incrementing smallint
 
 ### Text Types
 - varchar(n) - Variable-length text, size required
@@ -148,59 +81,39 @@ columns:
 - json - JSON data
 - jsonb - Binary JSON data (indexable)
 
-### SQL Constraints
-You can combine types with constraints:
-- not null - Prevents NULL values
-- unique - Ensures unique values
-- default value - Sets default value
-- primary key - Marks as primary key
-
 ## Test Coverage
 
-This section lists tests that verify single-table features work correctly.
+### Integer Types
 
-### Validation (Runtime)
+- [x] [SERIAL, BIGSERIAL, SMALLSERIAL](../../tests/05-schema-features/column-types-serial)
+- [x] [INTEGER, BIGINT, SMALLINT](../../tests/05-schema-features/column-types-integer)
 
-These tests verify that GenLogic catches invalid table and column definitions:
+### Text Types
 
-- [x] [Simple valid schema](../../tests/04-validation/simple-schema) - Valid basic schema passes validation
-- [x] [Invalid table names](../../tests/04-validation/invalid-table-name) - Malformed table names rejected
-- [x] [Invalid column names](../../tests/04-validation/invalid-column-name) - Malformed column names rejected
-- [x] [Invalid column references](../../tests/04-validation/invalid-column-reference) - Non-existent column references in automations
-- [x] [Table name reserved word](../../tests/04-validation/table-name-reserved-word) - PostgreSQL reserved words rejected in table names
-- [x] [Column name reserved word](../../tests/04-validation/column-name-reserved-word) - PostgreSQL reserved words rejected in column names
+- [x] [VARCHAR, CHAR, TEXT](../../tests/05-schema-features/column-types-text)
 
-### Schema Features (Isolated Tests)
+### Numeric Types
 
-These tests verify that GenLogic generates correct table and column DDL:
+- [x] [NUMERIC with precision and scale](../../tests/05-schema-features/column-types-numeric)
+- [x] [REAL, DOUBLE PRECISION](../../tests/05-schema-features/column-types-float)
 
-- [x] [Column types](../../tests/05-schema-features/column-types) - All PostgreSQL data types (serial, integer, varchar, numeric, timestamp, boolean, uuid, json, etc.)
-- [x] [SERIAL, BIGSERIAL, SMALLSERIAL](../../tests/05-schema-features/column-types-serial) - Serial types create sequences
-- [x] [INTEGER, BIGINT, SMALLINT](../../tests/05-schema-features/column-types-integer) - Integer types
-- [x] [NUMERIC(p,s), DECIMAL(p,s)](../../tests/05-schema-features/column-types-numeric) - Fixed precision numeric types
-- [x] [REAL, DOUBLE PRECISION](../../tests/05-schema-features/column-types-float) - Floating point types
-- [x] [VARCHAR(n), CHAR(n), TEXT](../../tests/05-schema-features/column-types-text) - Text types
-- [x] [BOOLEAN](../../tests/05-schema-features/column-types-boolean) - Boolean type
-- [x] [UUID](../../tests/05-schema-features/column-types-uuid) - UUID type
-- [x] [JSON, JSONB](../../tests/05-schema-features/column-types-json) - JSON types
-- [x] [Comment on table](../../tests/05-schema-features/comment-table) - Table-level comments
-- [x] [Comment on column](../../tests/05-schema-features/comment-column) - Column-level comments
+### Boolean Type
 
-### Additive Changes (Schema Evolution)
+- [x] [BOOLEAN](../../tests/05-schema-features/column-types-boolean)
 
-These tests verify that GenLogic safely modifies existing database schemas:
+### Date and Time Types
 
-- [x] [New table added](../../tests/05-schema-features/additive-new-table) - New table added to existing database
-- [x] [New column added](../../tests/05-schema-features/additive-new-column) - New column added to existing table
-- [x] [Column widening](../../tests/05-schema-features/additive-widen-column) - Columns widened for CHAR, VARCHAR, NUMERIC
+- [x] [DATE, TIMESTAMP, TIMESTAMPTZ](../../tests/05-schema-features/column-types)
 
-### Behavior (End-to-End Tests)
+### Other Types
 
-These tests verify schema evolution behavior with actual data:
+- [x] [UUID](../../tests/05-schema-features/column-types-uuid)
+- [x] [JSON, JSONB](../../tests/05-schema-features/column-types-json)
+- [x] [BIT](../../tests/05-schema-features/column-types)
 
-- [x] [VARCHAR size expansion](../../tests/06-behavior/column-expansion-varchar) - Widening VARCHAR columns
-- [x] [NUMERIC precision expansion](../../tests/06-behavior/column-expansion-numeric) - Widening NUMERIC precision/scale
-- [x] [Expansion via reusable columns](../../tests/06-behavior/column-expansion-reusable) - Column expansion through $ref
+### All Types Combined
+
+- [x] [All PostgreSQL data types in one schema](../../tests/05-schema-features/column-types)
 
 ---
 
