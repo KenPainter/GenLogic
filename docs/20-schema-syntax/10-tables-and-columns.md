@@ -49,7 +49,13 @@ Supported:
 - `UNIQUE`
 - `NOT NULL`
 - `DEFAULT value` - supports numbers, booleans, quoted strings, 
-  and function calls (must be at the end of the definition)
+  and function calls. 
+
+GenLogic _removes_ each keyword from the string as it finds
+them, and the last thing it checks for is DEFAULT.  If it finds
+DEFAULT, it will include everything after as the default value.
+This may produce unexpected results if the schema contains invalid
+keywords like: "... DEFAULT 'x' COLLATE".
 
 Examples:
 ```yaml
@@ -69,7 +75,8 @@ Not Supported:
 - `COLLATE`
 
 Modifier Order:
-- Modifiers can appear in any order except `DEFAULT`, which must be last
+- Modifiers can appear in any order except `DEFAULT`, which
+  will match to the end of the string, so it should be last.
 - Valid: `varchar(100) unique not null default 'foo'`
 - Valid: `varchar(100) not null unique default 'foo'`
 
