@@ -1,274 +1,133 @@
 Previous: [Indexes and Unique Constraints](08-indexes-and-constraints.md) | Next: [Seed Data](10-seed-data.md)
 
-# Label and Format
+# Label, Format, and Comment
 
-GenLogic provides `label` and `format` properties for columns to enhance UI generation and display.
+GenLogic provides optional metadata properties for tables and 
+columns: `label`, `format`, and `comment`. 
+## Properties
 
-## Overview
+### label
 
-- **label**: Human-readable label for UI display
-- **format**: Format hint for UI rendering (e.g., 'currency', 'date', 'email', 'phone')
-- Both are optional metadata that don't affect database structure
-- Both **automatically propagate** through foreign keys and SYNC/SNAPSHOT automations
-
-## Basic Usage
+Human-readable label for UI display.  These are purely suggestive
+for the UI, and appear in the [Resolved Schema](../features/90-resolved-schema.md)
 
 ```yaml
-columns:
-  email:
-    definition: varchar(255)
-    label: Email Address
-    format: email
-
 tables:
   products:
     columns:
-      id: serial primary key
       name:
         definition: varchar(200) not null
         label: Product Name
       price:
         definition: numeric(10,2) not null
         label: Unit Price
-        format: currency
-      created_at:
-        definition: timestamp not null default now()
-        label: Date Created
-        format: datetime
 ```
 
-## Automatic Propagation Through Foreign Keys
+### format
 
-When you create a foreign key, label and format automatically follow from the referenced primary key column:
-
-```yaml
-tables:
-  users:
-    columns:
-      id:
-        definition: serial primary key
-        label: User ID
-        format: id
-      name: varchar(100) not null
-
-  orders:
-    columns:
-      id: serial primary key
-      # Foreign key automatically gets label "User ID" and format "id"
-    foreign_keys:
-      user_id: users
-```
-
-The generated `user_id` column in `orders` will have:
-- definition: integer (copied from users.id)
-- label: "User ID" (copied from users.id)
-- format: "id" (copied from users.id)
-
-## Automatic Propagation Through SYNC/SNAPSHOT
-
-Label and format also propagate through SYNC and SNAPSHOT automations:
+Format hint for UI rendering.  These are purely suggestive
+for the UI, and appear in the [Resolved Schema](../features/90-resolved-schema.md)
 
 ```yaml
-tables:
-  accounts:
-    columns:
-      id: serial primary key
-      balance:
-        definition: numeric(10,2) not null default 0
-        label: Account Balance
-        format: currency
-
-  transactions:
-    columns:
-      id: serial primary key
-      amount:
-        definition: numeric(10,2) not null
-        label: Transaction Amount
-        format: currency
-    foreign_keys:
-      account_id: accounts
-
-  ledger:
-    columns:
-      id: serial primary key
-      # SNAPSHOT: Gets label and format from transactions.amount
-      transaction_amount:
-        definition: numeric(10,2)
-        automation: SNAPSHOT @transactions.amount
-        # Automatically gets:
-        # label: "Transaction Amount"
-        # format: "currency"
-    foreign_keys:
-      transaction_id: transactions
-```
-
-## Overriding Propagated Values
-
-You can override label and format on FK columns or automation columns:
-
-```yaml
-tables:
-  users:
-    columns:
-      id:
-        definition: serial primary key
-        label: User ID
-        format: id
-
-  orders:
-    columns:
-      id: serial primary key
-      # Override the label while keeping the type
-      user_id:
-        label: Customer  # Overrides "User ID"
-        format: id       # Could override this too, or omit to keep original
-    foreign_keys:
-      user_id: users
-```
-
-**Note**: When overriding, you're defining an explicit column that matches the FK-generated column name. The override completely replaces the label/format.
-
-## Reusable Columns
-
-Label and format work with reusable column definitions:
-
-```yaml
-columns:
-  currency_field:
-    definition: numeric(10,2) not null default 0
-    label: Amount
-    format: currency
-
-  email_field:
-    definition: varchar(255) not null
-    label: Email Address
-    format: email
-
 tables:
   products:
     columns:
-      id: serial primary key
-      price: currency_field  # Inherits label "Amount" and format "currency"
-
-  customers:
-    columns:
-      id: serial primary key
-      email: email_field     # Inherits label "Email Address" and format "email"
+      price:
+        definition: numeric(10,2) not null
+        label: Unit Price
+        format: currency
+      email:
+        definition: varchar(255)
+        label: Email Address
+        format: email
 ```
 
-## Format Values
+### comment
 
-Common format values (not enforced by GenLogic, but recommended conventions):
+Documentation text stored in PostgreSQL database metadata via `COMMENT ON TABLE` and `COMMENT ON COLUMN`.
 
-- `currency` - Monetary values (e.g., $1,234.56)
-- `date` - Date only (e.g., 2024-01-15)
-- `datetime` - Date and time (e.g., 2024-01-15 14:30:00)
-- `time` - Time only (e.g., 14:30:00)
-- `email` - Email addresses
-- `phone` - Phone numbers
-- `url` - URLs
-- `id` - ID values (can hide from forms, show in compact format)
-- `percent` - Percentage values
-- `markdown` - Markdown text
-- `json` - JSON data
-- `uuid` - UUID values
+These also serve as comments within the schema YAML file.
 
-Use format values that make sense for your UI framework.
+```yaml
+tables:
+  users:
+    comment: User accounts and profiles
+    columns:
+      id:
+        definition: serial primary key
+        comment: Primary key identifier
+      email:
+        definition: varchar(255)
+        comment: User email address
+```
 
-## When to Use
+## Inheritance
 
-Use `label` and `format` when:
+All three properties inherit via `$ref` (see [Reusable Columns](12-reusable-columns.md)).
 
-1. **Building UIs**: Your UI generation tool can use these to create better forms and displays
-2. **Documentation**: They serve as self-documentation for what columns represent
-3. **Consistency**: They propagate through relationships, ensuring consistent labeling
-4. **Multi-table views**: When joining tables, you know which column is which
+Additionally, `label` and `format` automatically propagate:
+- Through foreign keys from the referenced primary key 
+  column - see [Foreign Keys](./20-foreign-keys.md)
+- Through SYNC and SNAPSHOT automations from the source 
+  column - see [Parent to Child Copies](./30-parent-to-child.md)
 
-Don't use them if:
-- You're not building a UI from the schema
-- You prefer to manage labels in your application code
-- You want complete separation between schema and presentation
+The `comment` property does not propagate automatically.
 
-## Example: Complete E-commerce Schema
+## Example
 
 ```yaml
 columns:
   currency:
     definition: numeric(10,2) not null default 0
+    label: Amount
     format: currency
+    comment: Currency value with 2 decimal places
 
 tables:
   products:
+    comment: Product catalog
     columns:
       id:
         definition: serial primary key
         label: Product ID
         format: id
+        comment: Unique product identifier
       name:
         definition: varchar(200) not null
         label: Product Name
+        comment: Display name for product
       price:
         $ref: currency
         label: Unit Price
-      created_at:
-        definition: timestamp not null default now()
-        label: Created
-        format: datetime
 
   orders:
+    comment: Customer orders
     columns:
       id:
         definition: serial primary key
         label: Order ID
         format: id
-      order_date:
-        definition: timestamp not null default now()
-        label: Order Date
-        format: datetime
       total:
         $ref: currency
         label: Order Total
     foreign_keys:
-      # Gets label "Product ID" and format "id" automatically
-      product_id: products
-
-  order_items:
-    columns:
-      id:
-        definition: serial primary key
-        label: Item ID
-        format: id
-      quantity:
-        definition: integer not null
-        label: Quantity
-      item_total:
-        $ref: currency
-        label: Item Total
-    foreign_keys:
-      order_id: orders      # Gets "Order ID" / "id"
-      product_id: products  # Gets "Product ID" / "id"
+      product_id: products  # Inherits label "Product ID" and format "id"
 ```
-
-## Summary
-
-- `label` and `format` are optional UI metadata
-- They automatically propagate through foreign keys
-- They automatically propagate through SYNC/SNAPSHOT automations
-- You can override them on a per-column basis
-- They work seamlessly with reusable column definitions
-- Use them to improve UI generation and schema documentation
 
 ## Test Coverage
 
-This section lists tests that verify label and format features work correctly.
+### Label and Format
 
-### Schema Features (Isolated Tests)
+- [x] [Label and format basic usage](../../tests/05-schema-features/label-and-format)
+- [x] [Label and format in reusable columns](../../tests/05-schema-features/label-format-reusable)
+- [x] [Label and format propagation through FK](../../tests/05-schema-features/label-format-fk)
+- [x] [Label and format override with $ref](../../tests/05-schema-features/ref-label-format-override)
 
-These tests verify that GenLogic correctly propagates and stores label/format metadata:
+### Comment
 
-- [x] [Label and format](../../tests/05-schema-features/label-and-format) - Label/format metadata propagation
-- [x] [Label/format on reusable column](../../tests/05-schema-features/label-format-reusable) - Label/format inheritance from reusable column
-- [x] [Label/format through FK](../../tests/05-schema-features/label-format-fk) - Label/format inheritance through FK
+- [x] [Comment on table](../../tests/05-schema-features/comment-table)
+- [x] [Comment on column](../../tests/05-schema-features/comment-column)
+- [x] [Comment on foreign key](../../tests/05-schema-features/comment-fk)
 
 ---
 

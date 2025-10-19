@@ -12,7 +12,7 @@
 1. [Tables and Columns](20-schema-syntax/10-tables-and-columns.md) 
 1. [Column Types](20-schema-syntax/11-column-types.md)
 2. [Reusable Columns](schema-syntax/12-reusable-columns.md)
-9. [Label, Format, and Comment](schema-syntax/13-label-and-format.md)
+9. [Label, Format, and Comment](schema-syntax/13-label-format-comment.md)
 
 3. [Foreign Keys](schema-syntax/03-foreign-keys.md)
 4. [Moving Values from Parent to Child](schema-syntax/04-parent-to-child.md)
@@ -28,6 +28,7 @@
 2. [Non-Subvertible Calculations](features/02-non-subvertible-calculations.md)
 3. [Additive Changes Only](features/03-additive-changes.md)
 4. [Numeric Integrity Protection](features/04-numeric-integrity.md)
+5. [The Resolved File] - no link yet, does not exist
 
 ## Hacking GenLogic
 
