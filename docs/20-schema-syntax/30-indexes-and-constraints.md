@@ -2,11 +2,11 @@ Previous: [Pattern Matching Tables](07-matching-tables.md) | Next: [Label and Fo
 
 # Indexes and Unique Constraints
 
-GenLogic supports defining composite indexes and unique constraints on your tables.
+GenLogic supports defining indexes and unique constraints for multi-column combinations.
 
 ## Indexes
 
-Create non-unique indexes for query performance:
+Create indexes using the `indexes` section:
 
 ```yaml
 tables:
@@ -21,23 +21,21 @@ tables:
       customer: customers
 
     indexes:
-      - [order_date]              # Single-column index
-      - [customer_id, order_date] # Composite index
-      - [status, order_date]      # Another composite index
+      - [order_date]
+      - [customer_id, order_date]
+      - [status, order_date]
 ```
 
-**Generated SQL:**
-```sql
-CREATE INDEX "idx_orders_order_date" ON "orders" ("order_date");
-CREATE INDEX "idx_orders_customer_id_order_date" ON "orders" ("customer_id", "order_date");
-CREATE INDEX "idx_orders_status_order_date" ON "orders" ("status", "order_date");
-```
-
-**Note:** Foreign key columns automatically get indexes, so you don't need to manually add them.
+Foreign key columns automatically get indexes.
 
 ## Unique Constraints
 
-Create composite unique constraints to ensure combinations of columns are unique:
+Single-column unique constraints can be declared in the column definition using
+the `unique` keyword - see [Tables and Columns](10-tables-and-columns.md).
+
+
+Single-column or multi-column unique constraints can be added
+using the `unique_constraints` section:
 
 ```yaml
 tables:
@@ -53,19 +51,28 @@ tables:
       course: courses
 
     unique_constraints:
-      - [student_id, course_id, semester]  # Student can only enroll once per course per semester
+      - [student_id, course_id, semester]
 ```
 
-**Generated SQL:**
-```sql
-CREATE UNIQUE INDEX "unique_enrollments_student_id_course_id_semester"
-  ON "enrollments" ("student_id", "course_id", "semester");
-```
+Unique constraints allow multiple NULL values. In PostgreSQL, NULLs are not considered equal,
+so a unique constraint on a nullable column permits multiple rows with NULL.
 
-## Real-World Example: Transaction Deduplication
+## Example
 
 ```yaml
 tables:
+  users:
+    columns:
+      user_id: serial primary key
+      email: varchar(255)
+      username: varchar(50)
+      external_id: varchar(100)
+
+    unique_constraints:
+      - [email]
+      - [username]
+      - [external_id]  # Nullable - multiple NULLs allowed
+
   ledger:
     columns:
       ledger_id: serial primary key
@@ -75,32 +82,12 @@ tables:
       date: date
 
     indexes:
-      - [institution, trxid]  # Fast lookup for deduplication
+      - [institution, trxid]
+      - [date]
+
+    unique_constraints:
+      - [institution, trxid, date]
 ```
-
-This creates an index that makes checking for duplicate transactions (by institution + trxid) very fast.
-
-## When to Use Each
-
-### Use `indexes` for:
-- Columns frequently used in WHERE clauses
-- Columns used in JOIN conditions (though FK columns get indexes automatically)
-- Columns used in ORDER BY clauses
-- Composite queries (multiple columns together in WHERE)
-
-### Use `unique_constraints` for:
-- Business rules requiring unique combinations (student + course + semester)
-- Natural keys (email + domain)
-- Preventing duplicate data (account + transaction_id)
-
-## Column References
-
-Both `indexes` and `unique_constraints` can reference:
-- Regular columns
-- Foreign key columns (generated automatically)
-- Any column in the table after FK expansion
-
-GenLogic validates that all referenced columns exist and will error if you reference a non-existent column.
 
 ## Test Coverage
 

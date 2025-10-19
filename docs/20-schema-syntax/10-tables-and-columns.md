@@ -51,6 +51,13 @@ Supported:
 - `DEFAULT value` - supports numbers, booleans, quoted strings, 
   and function calls. 
 
+Using PRIMARY KEY on multiple columns will create a compound
+primary key, as expected.  By contrast,
+using the UNIQUE keyword on multiple columns creates
+multiple single-column constraints.  If the schema needs a
+compound unique constraint in addition to the primary key,
+use a [Unique Constraint](./30-indexes-and-constraints.md).
+
 GenLogic _removes_ each keyword from the string as it finds
 them, and the last thing it checks for is DEFAULT.  If it finds
 DEFAULT, it will include everything after as the default value.
