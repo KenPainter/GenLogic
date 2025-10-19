@@ -1,4 +1,4 @@
-Previous: [Additive Changes](03-additive-changes.md)
+Previous: [Additive Changes Only](03-additive-changes.md)
 
 # Numeric Integrity Protection
 
@@ -108,4 +108,4 @@ This feature is verified by:
 
 ---
 
-Previous: [Additive Changes](03-additive-changes.md)
+Previous: [Additive Changes Only](03-additive-changes.md)

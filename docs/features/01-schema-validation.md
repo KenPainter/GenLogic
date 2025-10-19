@@ -1,3 +1,5 @@
+Previous: [Seed Data](../schema-syntax/10-seed-data.md) | Next: [Non-Subvertible Calculations](02-non-subvertible-calculations.md)
+
 # Schema Validation
 
 GenLogic validates your schema files **before** connecting to the database. This ensures that syntax errors, invalid patterns, and schema structure problems are caught early, providing immediate feedback during development.

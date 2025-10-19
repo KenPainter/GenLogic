@@ -1,6 +1,6 @@
 # GenLogic
 
-GenLogic is a tool for creating Postgres databases that implement business
+GenLogic is a tool for creating Postgres databases with embedded business
 logic.  This business logic exploits data paths that are inherently present
 in a normalized database, namely the foreign key.  GenLogic allows the
 user to specify the flow of values up and down through foreign keys
@@ -14,8 +14,8 @@ derived values.
 
 This produces three major simplifications for application development:
 - Declarative business logic in the database layer
-- No ORM is needed
-- Simplified SQL statements in the middleware
+- No ORM in the client
+- Simplified SQL statements in the client
 
 This project is the spiritual descendant of [Andromeda](https://github.com/Andromeda-Project/andromeda),
 originally written by [Ken Downs](https://github.com/KenPainter) 
@@ -23,9 +23,26 @@ in 2002 in PHP, and then maintained
 by [Donald Organ](https://github.com/dorgan/) up until about 2012. GenLogic is
 a complete rewrite in Typescript.
 
+## Platforms
+
+The author uses Linux exclusively for dev and production.  GenLogic
+uses peer authentication, which can only work on Mac and Linux. 
+
+Windows use is not supported.
+
 ## Licensing
 
 Licensed under the Affero GPL 3.  See [LICENSE.md](./LICENSE.md).
+
+The AGPL means you CAN use GenLogic in a build pipeline for any
+database for any purpose.
+
+The AGPL means you CANNOT build a network-available database
+building tool on top of GenLogic without providing the full source
+code of GenLogic and your tool.
+
+Contact the author at kendowns@protonmail.com for commercial 
+licensing options.
 
 ## Using GenLogic
 

@@ -1,4 +1,4 @@
-Previous: [What GenLogic Does](../building-database/20-what-genlogic-does.md) | Next: [Reusable Columns](02-reusable-columns.md)
+Previous: [CLI Usage](../installation-and-usage/20-cli-usage.md) | Next: [Reusable Columns](02-reusable-columns.md)
 
 # Single Table Definition
 
@@ -200,4 +200,4 @@ These tests verify schema evolution behavior with actual data:
 
 ---
 
-Previous: [What GenLogic Does](../building-database/20-what-genlogic-does.md) | Next: [Reusable Columns](02-reusable-columns.md)
+Previous: [CLI Usage](../installation-and-usage/20-cli-usage.md) | Next: [Reusable Columns](02-reusable-columns.md)

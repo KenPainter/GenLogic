@@ -204,10 +204,11 @@ export class TriggerGenerator {
 
   /**
    * Generate protection code for automated columns on UPDATE
-   * Reset any user modifications back to OLD values (except for columns that will be recalculated)
    * - Generated columns: Reset to NULL (will be recalculated immediately)
-   * - SNAPSHOT/SYNC: Keep user changes if FK didn't change (will be overwritten if FK changed)
-   * - All other automated columns: Reset to OLD value (prevent user modification)
+   * - SYNC/SNAPSHOT: DO NOT reset - allow parent triggers to update them
+   *   (Column-level permissions prevent user modification)
+   * - Aggregations (SUM/COUNT/etc): DO NOT reset - updated by child triggers
+   *   (Column-level permissions prevent user modification)
    */
   private generateAutomatedColumnProtectionUpdate(
     tableName: string,
@@ -216,24 +217,26 @@ export class TriggerGenerator {
     processedSchema: ProcessedSchema
   ): string {
     const lines: string[] = [];
+    const generatedColumns: string[] = [];
 
-    lines.push('  -- INTEGRITY: Prevent modification of automated columns');
-
+    // Only reset GENERATED columns - they need recalculation
     for (const col of automatedColumns) {
       const columnDef = processedSchema.tables[tableName]?.columns[col];
-      if (!columnDef) {
-        // Default: restore OLD value
-        lines.push(`  NEW.${col} := OLD.${col};`);
-        continue;
+      if (columnDef?.generated) {
+        generatedColumns.push(col);
       }
+      // IMPORTANT: Do NOT reset SYNC/SNAPSHOT/aggregation columns!
+      // They must be updatable by triggers (parent SYNC pushes, child aggregation pushes)
+      // Column-level permissions prevent USER modification
+    }
 
-      if (columnDef.generated) {
-        // Generated columns: Reset to NULL, will be recalculated below
-        lines.push(`  NEW.${col} := NULL;`);
-      } else {
-        // All other automated columns: Restore OLD value to prevent user modification
-        lines.push(`  NEW.${col} := OLD.${col};`);
-      }
+    if (generatedColumns.length === 0) {
+      return '';  // No protection needed if no generated columns
+    }
+
+    lines.push('  -- INTEGRITY: Reset generated columns for recalculation');
+    for (const col of generatedColumns) {
+      lines.push(`  NEW.${col} := NULL;`);
     }
 
     return lines.join('\n');

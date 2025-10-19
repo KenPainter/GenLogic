@@ -17,7 +17,6 @@ program
 
 program
   .option('-d, --database <database>', 'PostgreSQL database name')
-  .option('-u, --user <user>', 'PostgreSQL username')
   .option('-s, --schema <path>', 'Path to YAML schema file')
   .option('--dry-run', 'Show planned changes without executing them', false)
   .action(async (options) => {
@@ -28,13 +27,15 @@ program
         process.exit(1);
       }
 
-      if (!options.user) {
-        console.error('Error: Username is required (-u, --user)');
+      if (!options.schema) {
+        console.error('Error: Schema file path is required (-s, --schema)');
         process.exit(1);
       }
 
-      if (!options.schema) {
-        console.error('Error: Schema file path is required (-s, --schema)');
+      // Auto-detect current user from environment
+      const user = process.env.USER;
+      if (!user) {
+        console.error('Error: Cannot determine current user (USER environment variable not set)');
         process.exit(1);
       }
 
@@ -46,7 +47,7 @@ program
 
       const processor = new GenLogicProcessor({
         database: options.database,
-        user: options.user,
+        user: user,
         dryRun: options.dryRun
       });
 

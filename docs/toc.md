@@ -4,11 +4,10 @@ This directory contains comprehensive documentation for GenLogic schema definiti
 
 ## Table of Contents
 
-### Building and Updating a Database
-1. [Installation](building-database/00-installation.md)
-2. [CLI Usage](building-database/10-cli-usage.md)
-3. [What GenLogic Does](building-database/20-what-genlogic-does.md)
-
+### Installation and Usage
+1. [Installation](installation-and-usage/00-installation.md)
+2. [Configure Postgres](installation-and-usage/10-configure-postgres.md)
+3. [CLI Usage](installation-and-usage/20-cli-usage.md)
 
 ### GenLogic Schema Syntax
 1. [Single Table Basics](schema-syntax/01-single-table.md) - Creating a simple table with all column types
@@ -22,3 +21,12 @@ This directory contains comprehensive documentation for GenLogic schema definiti
 9. [Label and Format](schema-syntax/09-label-and-format.md) - UI metadata that propagates through relationships
 10. [Seed Data](schema-syntax/10-seed-data.md) - Loading seed data with foreign key resolution
 
+### Features
+1. [Schema Validation](features/01-schema-validation.md) - Two-stage validation catches errors before database connection
+2. [Non-Subvertible Calculations](features/02-non-subvertible-calculations.md) - Database-level protection for automated columns
+3. [Additive Changes Only](features/03-additive-changes.md) - GenLogic never destroys data
+4. [Numeric Integrity Protection](features/04-numeric-integrity.md) - Automatic blocking of NaN and Infinity values
+
+### Hacking GenLogic
+
+1. [Running Tests](./hacking/run-tests.md)

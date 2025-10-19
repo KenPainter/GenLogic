@@ -1,4 +1,4 @@
-Next: [Database Setup](10-database-setup.md)
+Next: [Configure Postgres](10-configure-postgres.md)
 
 # Installation
 
@@ -41,4 +41,4 @@ bun run src/cli.ts --help
 
 ---
 
-Next: [Database Setup](10-database-setup.md)
+Next: [Configure Postgres](10-configure-postgres.md)

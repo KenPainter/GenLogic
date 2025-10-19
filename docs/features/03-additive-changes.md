@@ -1,3 +1,5 @@
+Previous: [Non-Subvertible Calculations](02-non-subvertible-calculations.md) | Next: [Numeric Integrity Protection](04-numeric-integrity.md)
+
 # Additive Changes Only
 
 GenLogic guarantees that it will never destroy data. All schema changes are **additive only** - GenLogic can create new tables, add new columns, and widen existing columns, but it cannot and will not delete or narrow anything.
@@ -273,4 +275,4 @@ Additive changes are tested in the schema features and behavior test suites:
 
 ---
 
-Previous: [Non-Subvertible Calculations](02-non-subvertible-calculations.md) | Next: [Schema Syntax](../schema-syntax/01-single-table.md)
+Previous: [Non-Subvertible Calculations](02-non-subvertible-calculations.md) | Next: [Numeric Integrity Protection](04-numeric-integrity.md)

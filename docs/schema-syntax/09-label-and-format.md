@@ -1,4 +1,4 @@
-Previous: [Indexes and Unique Constraints](08-indexes-and-constraints.md) | Next: [Seed Data](02-seed-data.md)
+Previous: [Indexes and Unique Constraints](08-indexes-and-constraints.md) | Next: [Seed Data](10-seed-data.md)
 
 # Label and Format
 
@@ -272,4 +272,4 @@ These tests verify that GenLogic correctly propagates and stores label/format me
 
 ---
 
-Previous: [Indexes and Unique Constraints](08-indexes-and-constraints.md) | Next: [Seed Data](02-seed-data.md)
+Previous: [Indexes and Unique Constraints](08-indexes-and-constraints.md) | Next: [Seed Data](10-seed-data.md)

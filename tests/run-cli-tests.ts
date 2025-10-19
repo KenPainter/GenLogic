@@ -38,8 +38,12 @@ import type { Pool as PgPool } from 'pg';
 const CLI_PATH = join(process.cwd(), 'src', 'cli.ts');
 const TESTS_DIR = join(process.cwd(), 'tests');
 
-// Test configuration - Unix socket trusted connections
-const TEST_USER = process.env.GENLOGIC_TEST_USER || process.env.USER || 'postgres';
+// Test configuration - Unix socket peer authentication
+const TEST_USER = process.env.USER;
+if (!TEST_USER) {
+  console.error('Error: Cannot determine current user (USER environment variable not set)');
+  process.exit(1);
+}
 const TEST_DB = process.env.GENLOGIC_TEST_DB || 'genlogic_test_cli';
 
 interface TestCase {
@@ -151,10 +155,9 @@ async function runTest(test: TestCase, pool: PgPool): Promise<boolean> {
     return false;
   }
 
-  // Common args - Unix socket trusted connection
+  // Common args - Unix socket peer authentication
   const commonArgs = [
-    '-d', TEST_DB,
-    '-u', TEST_USER
+    '-d', TEST_DB
   ];
 
   // Build full command

@@ -1,1 +1,0 @@
-INTEGRITY REQUIREMENT: Current user 'genlogic_test_no_createrole' lacks CREATEROLE privilege

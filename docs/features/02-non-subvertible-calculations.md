@@ -1,3 +1,5 @@
+Previous: [Schema Validation](01-schema-validation.md) | Next: [Additive Changes Only](03-additive-changes.md)
+
 # Non-Subvertible Calculated Columns
 
 GenLogic provides automated and generated columns that are automatically maintained by the database. To ensure data integrity, these calculated values must be protected from direct modification by application code.
@@ -188,4 +190,4 @@ Users can rely on automated columns with the same confidence as PRIMARY KEY or F
 
 ---
 
-Previous: [Schema Validation](01-schema-validation.md) | Next: [Additive Changes](03-additive-changes.md)
+Previous: [Schema Validation](01-schema-validation.md) | Next: [Additive Changes Only](03-additive-changes.md)
