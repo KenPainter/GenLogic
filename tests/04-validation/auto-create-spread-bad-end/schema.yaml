@@ -2,16 +2,16 @@ tables:
   projects:
     columns:
       id:
-        type: serial primary key
+        definition: serial primary key
       start_date:
-        type: date
+        definition: date
 
   tasks:
     columns:
       id:
-        type: serial primary key
+        definition: serial primary key
       date:
-        type: date
+        definition: date
     foreign_keys:
       project_id:
         table: projects

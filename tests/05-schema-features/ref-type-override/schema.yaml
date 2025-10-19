@@ -7,4 +7,4 @@ tables:
       id: serial primary key
       name:
         $ref: base_col
-        type: varchar(100)  # Override type
+        definition: varchar(100)  # Override type

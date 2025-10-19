@@ -1,3 +1,5 @@
+Previous: [Numeric Integrity Protection](../features/04-numeric-integrity.md)
+
 # Running Tests
 
 ## Run All Tests
@@ -17,3 +19,7 @@ bun tests/run-cli-tests.ts automations-sync
 ```
 
 Filters match any part of the test path.
+
+---
+
+Previous: [Numeric Integrity Protection](../features/04-numeric-integrity.md)

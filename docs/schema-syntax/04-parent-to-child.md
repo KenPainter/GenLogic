@@ -18,7 +18,7 @@ tables:
 
     columns:
       destination_column:
-        type: *same type as source_column*
+        definition: *same type as source_column*
         automation: SNAPSHOT @parent_table.source_column
         # or: automation: SYNC @parent_table.source_column
 ```
@@ -50,7 +50,7 @@ tables:
 
       # Freeze price at time of purchase
       price_at_purchase:
-        type: numeric(10,2)
+        definition: numeric(10,2)
         automation: SNAPSHOT @products.base_price
 ```
 
@@ -80,7 +80,7 @@ tables:
 
       # Keep tax rate synchronized
       category_tax:
-        type: numeric(5,2)
+        definition: numeric(5,2)
         automation: SYNC @categories.tax_rate
 ```
 
@@ -127,20 +127,20 @@ tables:
 
       # Freeze values at order time
       product_name:
-        type: varchar(100)
+        definition: varchar(100)
         automation: SNAPSHOT @products.product_name
 
       unit_price:
-        type: numeric(10,2)
+        definition: numeric(10,2)
         automation: SNAPSHOT @products.unit_price
 
       # Keep synchronized with current values
       tax_category:
-        type: varchar(50)
+        definition: varchar(50)
         automation: SYNC @products.tax_category
 
       weight_kg:
-        type: numeric(8,2)
+        definition: numeric(8,2)
         automation: SYNC @products.weight_kg
 ```
 
@@ -177,12 +177,12 @@ tables:
 
       # Copy discount group FK from customer
       discount_group_id:
-        type: integer
+        definition: integer
         automation: SYNC @customers.discount_group_id
 
       # Then use that FK to get the discount rate
       discount_percent:
-        type: numeric(5,2)
+        definition: numeric(5,2)
         automation: SNAPSHOT @discount_groups.discount_percent
 ```
 

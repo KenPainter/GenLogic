@@ -1,6 +1,6 @@
 columns:
   email_col:
-    type: varchar(255)
+    definition: varchar(255)
     label: Email Address
     format: email
 

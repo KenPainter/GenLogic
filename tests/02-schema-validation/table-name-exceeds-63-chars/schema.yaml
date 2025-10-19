@@ -3,4 +3,4 @@ tables:
   table_name_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:
     columns:
       id:
-        type: serial primary key
+        definition: serial primary key

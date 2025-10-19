@@ -4,7 +4,7 @@ tables:
       id: integer primary key
       name: varchar(50)
       last_reading:
-        type: numeric(10,2)
+        definition: numeric(10,2)
         automation: LAST_VALUE @readings.value
 
   readings:

@@ -4,5 +4,5 @@ tables:
       id: serial primary key
       name: varchar(100)
       name_upper:
-        type: varchar(100)
+        definition: varchar(100)
         generated: "UPPER(@name)"

@@ -2,7 +2,7 @@ tables:
   products:
     columns:
       id:
-        type: serial primary key
+        definition: serial primary key
       # "where" is a PostgreSQL reserved word
       where:
-        type: varchar(100)
+        definition: varchar(100)

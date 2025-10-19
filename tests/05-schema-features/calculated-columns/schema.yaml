@@ -4,5 +4,5 @@ tables:
       price: numeric(10,2)
       quantity: integer
       total:
-        type: numeric(10,2)
+        definition: numeric(10,2)
         generated: "@price * @quantity"

@@ -1,6 +1,6 @@
 columns:
   base_col:
-    type: varchar(100)
+    definition: varchar(100)
     label: Base Label
     format: text
 

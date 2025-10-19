@@ -1,6 +1,6 @@
 columns:
   base_col:
-    type: numeric(10,2)
+    definition: numeric(10,2)
     automation: SUM @items.amount
 
 tables:

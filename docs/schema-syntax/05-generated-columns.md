@@ -19,7 +19,7 @@ tables:
       source_column1: *any valid PostgreSQL type*
       source_column2: *any valid PostgreSQL type*
       calculated_column:
-        type: *result type*
+        definition: *result type*
         generated: *any valid PostgreSQL expression*
 ```
 
@@ -32,7 +32,7 @@ tables:
       price: numeric(10,2)
       quantity: integer
       total:
-        type: numeric(10,2)
+        definition: numeric(10,2)
         generated: "@price * @quantity"
 ```
 
@@ -64,7 +64,7 @@ generated: "SUBSTRING(@code, 1, 5)"
 
 ```yaml
 status:
-  type: varchar(20)
+  definition: varchar(20)
   generated: "case when @amount > 0 then 'positive' when @amount < 0 then 'negative' else 'zero' end"
 ```
 
@@ -95,17 +95,17 @@ tables:
 
       # Generated first
       subtotal:
-        type: numeric(10,2)
+        definition: numeric(10,2)
         generated: "@unit_price * @quantity"
 
       # Generated second (uses subtotal)
       tax:
-        type: numeric(10,2)
+        definition: numeric(10,2)
         generated: "@subtotal * 0.1"
 
       # Generated third (uses subtotal and tax)
       total:
-        type: numeric(10,2)
+        definition: numeric(10,2)
         generated: "@subtotal + @tax"
 ```
 
@@ -119,11 +119,11 @@ tables:
   invalid_table:
     columns:
       col_a:
-        type: integer
+        definition: integer
         generated: "@col_b + 1"  # Depends on col_b
 
       col_b:
-        type: integer
+        definition: integer
         generated: "@col_a + 1"  # Depends on col_a - CYCLE!
 ```
 
@@ -136,7 +136,7 @@ A column cannot have both generated and automation properties:
 ```yaml
 # INVALID
 balance:
-  type: numeric(10,2)
+  definition: numeric(10,2)
   generated: "@credits - @debits"  # Can't have both
   automation: SUM @transactions.amount
 ```
@@ -165,22 +165,22 @@ tables:
 
       # Concatenate name
       full_name:
-        type: varchar(101)
+        definition: varchar(101)
         generated: "@first_name || ' ' || @last_name"
 
       # Calculate gross pay
       gross_pay:
-        type: numeric(10,2)
+        definition: numeric(10,2)
         generated: "@hourly_rate * @hours_worked"
 
       # Calculate tax
       tax_amount:
-        type: numeric(10,2)
+        definition: numeric(10,2)
         generated: "@gross_pay * 0.15"
 
       # Calculate net pay
       net_pay:
-        type: numeric(10,2)
+        definition: numeric(10,2)
         generated: "@gross_pay - @tax_amount"
 ```
 

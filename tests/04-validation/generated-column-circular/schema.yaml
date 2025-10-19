@@ -2,11 +2,11 @@ tables:
   products:
     columns:
       id:
-        type: serial primary key
+        definition: serial primary key
       # Circular dependency: a references b, b references a
       column_a:
-        type: numeric(10,2)
+        definition: numeric(10,2)
         generated: "@column_b + 1"
       column_b:
-        type: numeric(10,2)
+        definition: numeric(10,2)
         generated: "@column_a * 2"

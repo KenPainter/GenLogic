@@ -12,7 +12,7 @@ tables:
       foreign_keys: 0
     columns:
       id:
-        type: integer
+        definition: integer
         primary_key: true
         expect_null_on_read: false
         can_write_null: false
@@ -21,7 +21,7 @@ tables:
         update_behavior: immutable
         note: Application must provide this value, cannot change after insert
       name:
-        type: varchar
+        definition: varchar
         size: 100
         expect_null_on_read: true
         can_write_null: true
@@ -30,7 +30,7 @@ tables:
         update_behavior: allowed
         note: Application controls this value
       base_price:
-        type: numeric
+        definition: numeric
         size: 10
         decimal: 2
         expect_null_on_read: true
@@ -46,7 +46,7 @@ tables:
       foreign_keys: 1
     columns:
       id:
-        type: integer
+        definition: integer
         primary_key: true
         expect_null_on_read: false
         can_write_null: false
@@ -55,7 +55,7 @@ tables:
         update_behavior: immutable
         note: Application must provide this value, cannot change after insert
       product_id:
-        type: integer
+        definition: integer
         expect_null_on_read: true
         can_write_null: true
         writable: always
@@ -63,13 +63,13 @@ tables:
         update_behavior: allowed
         note: Application controls this value
       price_at_purchase:
-        type: numeric(10,2)
+        definition: numeric(10,2)
         expect_null_on_read: true
         can_write_null: false
         writable: never
         reason: database_automation
         managed_by:
-          type: trigger_aggregation
+          definition: trigger_aggregation
           automation_type: SNAPSHOT
           source_table: products
           source_column: base_price
@@ -82,7 +82,7 @@ tables:
         query_note: Always reflects current state via triggers
         warning: ⚠️  AUTOMATED IN DATABASE - DO NOT SET IN APPLICATION
       product:
-        type: integer
+        definition: integer
         expect_null_on_read: true
         can_write_null: true
         writable: always

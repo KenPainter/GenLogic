@@ -1,4 +1,4 @@
-Previous: [Additive Changes Only](03-additive-changes.md)
+Previous: [Additive Changes Only](03-additive-changes.md) | Next: [Running Tests](../hacking/run-tests.md)
 
 # Numeric Integrity Protection
 
@@ -108,4 +108,4 @@ This feature is verified by:
 
 ---
 
-Previous: [Additive Changes Only](03-additive-changes.md)
+Previous: [Additive Changes Only](03-additive-changes.md) | Next: [Running Tests](../hacking/run-tests.md)

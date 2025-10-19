@@ -10,12 +10,12 @@
 
 columns:
   currency_col:
-    type: numeric(10,2) not null default 0
+    definition: numeric(10,2) not null default 0
     label: Currency Amount
     format: currency
 
   email_col:
-    type: varchar(255) not null
+    definition: varchar(255) not null
     label: Email Address
     format: email
 
@@ -24,7 +24,7 @@ tables:
     comment: Users with labeled columns
     columns:
       id:
-        type: serial primary key
+        definition: serial primary key
         label: User ID
         format: id
       name: varchar(100) not null
@@ -34,7 +34,7 @@ tables:
     comment: Accounts - FK should get label/format from users.id
     columns:
       id:
-        type: serial primary key
+        definition: serial primary key
         label: Account ID
         format: id
       balance:
@@ -48,14 +48,14 @@ tables:
     comment: Transactions - FK should get labels from both parent tables
     columns:
       id:
-        type: serial primary key
+        definition: serial primary key
         label: Transaction ID
         format: id
       amount:
         $ref: currency_col
         label: Transaction Amount
       transaction_date:
-        type: timestamp not null default now()
+        definition: timestamp not null default now()
         label: Date
         format: datetime
       # account_id gets "Account ID" / "id"
@@ -68,16 +68,16 @@ tables:
     comment: Ledger with SNAPSHOT - should get label/format from source
     columns:
       id:
-        type: serial primary key
+        definition: serial primary key
         label: Ledger ID
         format: id
       # SNAPSHOT: Should get "Transaction Amount" / "currency" from transactions.amount
       snapshot_amount:
-        type: numeric(10,2)
+        definition: numeric(10,2)
         automation: SNAPSHOT @transactions.amount
       # SYNC: Should get "Account Balance" / "currency" from accounts.balance
       synced_balance:
-        type: numeric(10,2)
+        definition: numeric(10,2)
         automation: SYNC @accounts.balance
     foreign_keys:
       transaction_id: transactions

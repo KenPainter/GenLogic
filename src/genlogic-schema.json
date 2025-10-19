@@ -62,9 +62,9 @@
               "description": "Name of reusable column to inherit from",
               "pattern": "^[a-zA-Z_][a-zA-Z0-9_]{0,62}$"
             },
-            "type": {
+            "definition": {
               "type": "string",
-              "description": "Override SQL type string (completely replaces)"
+              "description": "Override SQL definition string (completely replaces)"
             },
             "automation": {
               "$ref": "#/definitions/automationDefinition",
@@ -94,11 +94,11 @@
     },
     "columnDefinition": {
       "type": "object",
-      "description": "Column definition with SQL type string and optional GenLogic features (automation, generated, comment)",
+      "description": "Column definition with SQL definition string and optional GenLogic features (automation, generated, comment)",
       "properties": {
-        "type": {
+        "definition": {
           "type": "string",
-          "description": "SQL type string (e.g., 'varchar(100)', 'serial primary key', 'numeric(10,2) not null default 0')"
+          "description": "SQL definition string (e.g., 'varchar(100)', 'serial primary key', 'numeric(10,2) not null default 0')"
         },
         "automation": {
           "$ref": "#/definitions/automationDefinition",
@@ -123,7 +123,7 @@
       },
       "anyOf": [
         {
-          "required": ["type"]
+          "required": ["definition"]
         },
         {
           "required": ["automation"]
@@ -154,9 +154,9 @@
               "description": "Name of reusable column to inherit from",
               "pattern": "^[a-zA-Z_][a-zA-Z0-9_]{0,62}$"
             },
-            "type": {
+            "definition": {
               "type": "string",
-              "description": "Override SQL type string (completely replaces)"
+              "description": "Override SQL definition string (completely replaces)"
             },
             "automation": {
               "$ref": "#/definitions/automationDefinition",

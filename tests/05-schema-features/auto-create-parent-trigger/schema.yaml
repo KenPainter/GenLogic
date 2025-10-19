@@ -3,7 +3,7 @@ tables:
   categories:
     columns:
       category_name:
-        type: varchar(100) primary key
+        definition: varchar(100) primary key
       total_amount:
         automation: SUM @transactions.amount
 
@@ -11,9 +11,9 @@ tables:
   transactions:
     columns:
       transaction_id:
-        type: serial primary key
+        definition: serial primary key
       amount:
-        type: integer not null
+        definition: integer not null
     foreign_keys:
       category_name:
         table: categories

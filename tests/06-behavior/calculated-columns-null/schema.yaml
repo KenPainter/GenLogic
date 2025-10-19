@@ -5,5 +5,5 @@ tables:
       price: numeric(10,2)
       discount: numeric(10,2)
       final_price:
-        type: numeric(10,2)
+        definition: numeric(10,2)
         generated: "COALESCE(@price, 0) - COALESCE(@discount, 0)"

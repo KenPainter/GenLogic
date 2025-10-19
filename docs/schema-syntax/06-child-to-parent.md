@@ -11,7 +11,7 @@ tables:
   parent_table:
     columns:
       aggregate_column:
-        type: *result type*
+        definition: *result type*
         automation: *TYPE child_table.source_column*
 
   child_table:
@@ -44,7 +44,7 @@ tables:
 
       # Automatically maintained sum
       balance:
-        type: numeric(10,2)
+        definition: numeric(10,2)
         automation: SUM @transactions.amount
 
   transactions:
@@ -91,7 +91,7 @@ tables:
 
       # Count products in category
       product_count:
-        type: integer
+        definition: integer
         automation: COUNT @products.product_id
 
   products:
@@ -132,12 +132,12 @@ tables:
 
       # Track highest item price
       max_item_price:
-        type: numeric(10,2)
+        definition: numeric(10,2)
         automation: MAX @order_items.unit_price
 
       # Track lowest item price
       min_item_price:
-        type: numeric(10,2)
+        definition: numeric(10,2)
         automation: MIN @order_items.unit_price
 
   order_items:
@@ -162,7 +162,7 @@ tables:
 
       # Track most recent order date
       last_order_date:
-        type: date
+        definition: date
         automation: LAST_VALUE @orders.order_date
 
   orders:
@@ -191,12 +191,12 @@ tables:
 
       # Sum of line item amounts
       order_total:
-        type: numeric(10,2)
+        definition: numeric(10,2)
         automation: SUM @order_items.line_total
 
       # Count of line items
       item_count:
-        type: integer
+        definition: integer
         automation: COUNT @order_items.item_id
 
   order_items:

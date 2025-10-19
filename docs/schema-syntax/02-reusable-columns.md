@@ -9,7 +9,7 @@ Column definitions can be declared once and reused across multiple tables.
 ```yaml
 columns:
   template_name:
-    type: *any valid PostgreSQL type*
+    definition: *any valid PostgreSQL type*
     comment: *description*
 
 tables:
@@ -23,15 +23,15 @@ tables:
 ```yaml
 columns:
   id:
-    type: serial primary key
+    definition: serial primary key
     comment: Auto-incrementing primary key
 
   name:
-    type: varchar(100)
+    definition: varchar(100)
     comment: Name field
 
   email:
-    type: varchar(255)
+    definition: varchar(255)
     comment: Email address
 
 tables:
@@ -72,7 +72,7 @@ Reference a column template by name:
 ```yaml
 columns:
   timestamp:
-    type: timestamptz
+    definition: timestamptz
     comment: Timestamp with timezone
 
 tables:
@@ -87,7 +87,7 @@ Use null to inherit with the same column name:
 ```yaml
 columns:
   id:
-    type: serial primary key
+    definition: serial primary key
     comment: Auto-incrementing primary key
 
 tables:
@@ -105,11 +105,11 @@ Use $ref to inherit and override specific properties:
 ```yaml
 columns:
   id:
-    type: serial primary key
+    definition: serial primary key
     comment: Primary key
 
   text_column:
-    type: varchar(100)
+    definition: varchar(100)
     comment: Text field
 
 tables:
@@ -120,7 +120,7 @@ tables:
 
       title:
         $ref: text_column
-        type: varchar(200)  # Override: increase size to 200
+        definition: varchar(200)  # Override: increase size to 200
 
       summary:
         $ref: text_column  # Use default size of 100
@@ -141,27 +141,27 @@ CREATE TABLE articles (
 ```yaml
 columns:
   id:
-    type: serial primary key
+    definition: serial primary key
     comment: Auto-incrementing primary key
 
   name:
-    type: varchar(100)
+    definition: varchar(100)
     comment: Name field
 
   description:
-    type: text
+    definition: text
     comment: Description field
 
   price:
-    type: numeric(10,2)
+    definition: numeric(10,2)
     comment: Price amount
 
   timestamp:
-    type: timestamptz
+    definition: timestamptz
     comment: Timestamp with timezone
 
   active:
-    type: boolean
+    definition: boolean
     comment: Active status
 
 tables:
@@ -204,39 +204,39 @@ When a table column references a template:
 columns:
   # Auto-incrementing primary key
   id:
-    type: serial primary key
+    definition: serial primary key
     comment: Auto-incrementing primary key
 
   # Standard timestamps
   created_at:
-    type: timestamptz
+    definition: timestamptz
     comment: Creation timestamp
 
   updated_at:
-    type: timestamptz
+    definition: timestamptz
     comment: Last update timestamp
 
   # Standard text fields
   short_text:
-    type: varchar(100)
+    definition: varchar(100)
     comment: Short text field
 
   medium_text:
-    type: varchar(255)
+    definition: varchar(255)
     comment: Medium text field
 
   long_text:
-    type: text
+    definition: text
     comment: Long text field
 
   # Money
   currency:
-    type: numeric(15,2)
+    definition: numeric(15,2)
     comment: Currency amount
 
   # Boolean flags
   flag:
-    type: boolean
+    definition: boolean
     comment: Boolean flag
 ```
 
@@ -253,8 +253,8 @@ These tests verify that GenLogic correctly inherits and overrides reusable colum
 - [x] [$ref with type override](../../tests/05-schema-features/ref-type-override) - Override type when using $ref
 - [x] [$ref with automation override](../../tests/05-schema-features/ref-automation-override) - Override automation when using $ref
 - [x] [$ref with label/format override](../../tests/05-schema-features/ref-label-format-override) - Override label/format in $ref
-- [x] [SQL type string in reusable column](../../tests/05-schema-features/sql-type-string-reusable) - Reusable columns with SQL type strings
-- [x] [SQL type string in table column](../../tests/05-schema-features/sql-type-string-table) - Table columns with SQL type strings
+- [x] [SQL definition string in reusable column](../../tests/05-schema-features/sql-type-string-reusable) - Reusable columns with SQL definition strings
+- [x] [SQL definition string in table column](../../tests/05-schema-features/sql-type-string-table) - Table columns with SQL definition strings
 - [x] [SQL type with modifiers](../../tests/05-schema-features/sql-type-with-modifiers) - VARCHAR(50) PRIMARY KEY syntax
 
 ---

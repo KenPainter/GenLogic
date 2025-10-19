@@ -129,7 +129,7 @@ tables:
   accounts:
     columns:
       balance:
-        type: numeric(10,2)
+        definition: numeric(10,2)
         automation: SUM @transactions.amount  # PROTECTED
 ```
 
@@ -151,7 +151,7 @@ tables:
   orders:
     columns:
       total:
-        type: numeric(10,2)
+        definition: numeric(10,2)
         generated: "@subtotal + @tax"  # PROTECTED
 ```
 

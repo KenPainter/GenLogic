@@ -12,7 +12,7 @@ tables:
       foreign_keys: 0
     columns:
       id:
-        type: integer
+        definition: integer
         primary_key: true
         expect_null_on_read: false
         can_write_null: false
@@ -21,7 +21,7 @@ tables:
         update_behavior: immutable
         note: Application must provide this value, cannot change after insert
       name:
-        type: varchar
+        definition: varchar
         size: 100
         expect_null_on_read: true
         can_write_null: true
@@ -30,7 +30,7 @@ tables:
         update_behavior: allowed
         note: Application controls this value
       tax_rate:
-        type: numeric
+        definition: numeric
         size: 5
         decimal: 2
         expect_null_on_read: true
@@ -46,7 +46,7 @@ tables:
       foreign_keys: 1
     columns:
       id:
-        type: integer
+        definition: integer
         primary_key: true
         expect_null_on_read: false
         can_write_null: false
@@ -55,7 +55,7 @@ tables:
         update_behavior: immutable
         note: Application must provide this value, cannot change after insert
       category_id:
-        type: integer
+        definition: integer
         expect_null_on_read: true
         can_write_null: true
         writable: always
@@ -63,7 +63,7 @@ tables:
         update_behavior: allowed
         note: Application controls this value
       name:
-        type: varchar
+        definition: varchar
         size: 100
         expect_null_on_read: true
         can_write_null: true
@@ -72,19 +72,19 @@ tables:
         update_behavior: allowed
         note: Application controls this value
       category_tax:
-        type: numeric(5,2)
+        definition: numeric(5,2)
         expect_null_on_read: true
         can_write_null: false
         writable: never
         reason: database_automation
         managed_by:
-          type: trigger_aggregation
+          definition: trigger_aggregation
         insert_behavior: omit
         update_behavior: forbidden
         query_note: Always reflects current state via triggers
         warning: ⚠️  AUTOMATED IN DATABASE - DO NOT SET IN APPLICATION
       category:
-        type: integer
+        definition: integer
         expect_null_on_read: true
         can_write_null: true
         writable: always

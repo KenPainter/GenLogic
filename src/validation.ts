@@ -100,10 +100,10 @@ export class SchemaValidator {
               }
             }
 
-            // Check string references (inherit named column) vs SQL type strings
+            // Check string references (inherit named column) vs SQL definition strings
             if (typeof column === 'string') {
-              // Detect if it's a SQL type string by checking for common patterns
-              // SQL type strings contain: parentheses, spaces, or SQL keywords
+              // Detect if it's a SQL definition string by checking for common patterns
+              // SQL definition strings contain: parentheses, spaces, or SQL keywords
               const isSQLType = /[\(\)\s]|^(serial|bigserial|smallserial|varchar|char|numeric|decimal|integer|bigint|smallint|text|date|timestamp|timestamptz|boolean|real|uuid|bit|json|jsonb|double\s+precision)/i.test(column);
 
               if (!isSQLType && !reusableColumns.has(column)) {

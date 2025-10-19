@@ -174,7 +174,7 @@ export class DatabaseManager {
   }
 
   /**
-   * Build PostgreSQL type string from column information
+   * Build PostgreSQL definition string from column information
    */
   private buildPostgreSQLType(row: any): string {
     let type = row.data_type;

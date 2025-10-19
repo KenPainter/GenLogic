@@ -33,7 +33,7 @@ tables:
 ```yaml
 columns:
   id:
-    type: serial primary key
+    definition: serial primary key
 
 tables:
   users:

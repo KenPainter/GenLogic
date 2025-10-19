@@ -53,36 +53,10 @@ tables:
       metadata: jsonb
 ```
 
-## Generated SQL
-
-```sql
-CREATE TABLE products (
-  id SERIAL PRIMARY KEY,
-  stock_count BIGINT,
-  priority SMALLINT,
-  name VARCHAR(100),
-  code CHAR(10),
-  description TEXT,
-  price NUMERIC(10,2),
-  weight DECIMAL(8,3),
-  unlimited_precision NUMERIC,
-  ratio REAL,
-  precise_ratio DOUBLE PRECISION,
-  active BOOLEAN,
-  manufacture_date DATE,
-  created_at TIMESTAMP,
-  updated_at TIMESTAMPTZ,
-  external_id UUID,
-  bit_flags BIT(8),
-  settings JSON,
-  metadata JSONB
-);
-```
-
 ## Column Definition Formats
 
 ### SQL String (Simple)
-The simplest format uses SQL type strings directly:
+The simplest format uses SQL definition strings directly:
 
 ```yaml
 columns:
@@ -98,12 +72,12 @@ Use object format when you need GenLogic-specific features like automation or ge
 ```yaml
 columns:
   total_sales:
-    type: numeric(12,2)
+    definition: numeric(12,2)
     automation: SUM @orders.amount
     comment: Total from all orders
 
   net_balance:
-    type: numeric(15,2)
+    definition: numeric(15,2)
     # use quotes if the first symbol is @ in the string
     generated: "@debits - @credits"
     comment: Calculated balance

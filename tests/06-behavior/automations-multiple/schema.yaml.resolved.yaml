@@ -13,7 +13,7 @@ tables:
       foreign_keys: 0
     columns:
       id:
-        type: integer
+        definition: integer
         primary_key: true
         expect_null_on_read: false
         can_write_null: false
@@ -22,7 +22,7 @@ tables:
         update_behavior: immutable
         note: Application must provide this value, cannot change after insert
       name:
-        type: varchar
+        definition: varchar
         size: 50
         expect_null_on_read: true
         can_write_null: true
@@ -31,37 +31,37 @@ tables:
         update_behavior: allowed
         note: Application controls this value
       total_amount:
-        type: numeric(10,2)
+        definition: numeric(10,2)
         expect_null_on_read: true
         can_write_null: false
         writable: never
         reason: database_automation
         managed_by:
-          type: trigger_aggregation
+          definition: trigger_aggregation
         insert_behavior: omit
         update_behavior: forbidden
         query_note: Always reflects current state via triggers
         warning: ⚠️  AUTOMATED IN DATABASE - DO NOT SET IN APPLICATION
       transaction_count:
-        type: integer
+        definition: integer
         expect_null_on_read: true
         can_write_null: false
         writable: never
         reason: database_automation
         managed_by:
-          type: trigger_aggregation
+          definition: trigger_aggregation
         insert_behavior: omit
         update_behavior: forbidden
         query_note: Always reflects current state via triggers
         warning: ⚠️  AUTOMATED IN DATABASE - DO NOT SET IN APPLICATION
       max_transaction:
-        type: numeric(10,2)
+        definition: numeric(10,2)
         expect_null_on_read: true
         can_write_null: false
         writable: never
         reason: database_automation
         managed_by:
-          type: trigger_aggregation
+          definition: trigger_aggregation
         insert_behavior: omit
         update_behavior: forbidden
         query_note: Always reflects current state via triggers
@@ -72,7 +72,7 @@ tables:
       foreign_keys: 1
     columns:
       id:
-        type: integer
+        definition: integer
         primary_key: true
         expect_null_on_read: false
         can_write_null: false
@@ -81,7 +81,7 @@ tables:
         update_behavior: immutable
         note: Application must provide this value, cannot change after insert
       account_id:
-        type: integer
+        definition: integer
         expect_null_on_read: true
         can_write_null: true
         writable: always
@@ -89,7 +89,7 @@ tables:
         update_behavior: allowed
         note: Application controls this value
       amount:
-        type: numeric
+        definition: numeric
         size: 10
         decimal: 2
         expect_null_on_read: true
@@ -99,7 +99,7 @@ tables:
         update_behavior: allowed
         note: Application controls this value
       account:
-        type: integer
+        definition: integer
         expect_null_on_read: true
         can_write_null: true
         writable: always

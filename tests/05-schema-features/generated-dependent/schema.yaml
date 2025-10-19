@@ -5,8 +5,8 @@ tables:
       base_price: numeric(10,2)
       tax_rate: numeric(4,2)
       tax_amount:
-        type: numeric(10,2)
+        definition: numeric(10,2)
         generated: "@base_price * @tax_rate"
       total_price:
-        type: numeric(10,2)
+        definition: numeric(10,2)
         generated: "@base_price + @tax_amount"

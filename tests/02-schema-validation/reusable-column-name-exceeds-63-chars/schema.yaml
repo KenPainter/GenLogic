@@ -1,10 +1,10 @@
 columns:
   # This reusable column name has exactly 64 characters (exceeds PostgreSQL 63-char limit)
   reusable_col_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:
-    type: varchar(100)
+    definition: varchar(100)
 
 tables:
   products:
     columns:
       id:
-        type: serial primary key
+        definition: serial primary key

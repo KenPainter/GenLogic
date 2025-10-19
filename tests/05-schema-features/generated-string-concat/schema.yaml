@@ -5,5 +5,5 @@ tables:
       first_name: varchar(50)
       last_name: varchar(50)
       full_name:
-        type: varchar(101)
+        definition: varchar(101)
         generated: "@first_name || ' ' || @last_name"

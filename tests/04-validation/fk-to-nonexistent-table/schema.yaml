@@ -2,9 +2,9 @@ tables:
   orders:
     columns:
       id:
-        type: serial primary key
+        definition: serial primary key
       product_name:
-        type: varchar(100)
+        definition: varchar(100)
     foreign_keys:
       # References a table that doesn't exist
       customer_id: customers

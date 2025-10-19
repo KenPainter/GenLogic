@@ -101,7 +101,7 @@ export class SchemaProcessor {
 
     if (!schema.tables) return processed;
 
-    // Preprocess global columns section to parse SQL type strings
+    // Preprocess global columns section to parse SQL definition strings
     const processedReusableColumns = this.processReusableColumns(schema.columns || {});
 
     // If table layers provided, process in layer order
@@ -156,29 +156,29 @@ export class SchemaProcessor {
   }
 
   /**
-   * Preprocess reusable columns section to parse SQL type strings
+   * Preprocess reusable columns section to parse SQL definition strings
    */
   private processReusableColumns(reusableColumns: Record<string, ColumnDefinition | string>): Record<string, ColumnDefinition> {
     const processed: Record<string, ColumnDefinition> = {};
 
     for (const [columnName, column] of Object.entries(reusableColumns)) {
       if (typeof column === 'string') {
-        // Parse SQL type string
+        // Parse SQL definition string
         try {
           processed[columnName] = parseSQLType(column);
         } catch (error) {
-          throw new Error(`Invalid SQL type string for reusable column '${columnName}': ${error instanceof Error ? error.message : String(error)}`);
+          throw new Error(`Invalid SQL definition string for reusable column '${columnName}': ${error instanceof Error ? error.message : String(error)}`);
         }
       } else {
         // ColumnDefinition object - check if type field needs parsing
         const colDef = column as ColumnDefinition;
 
-        if (colDef.type) {
-          const isSQLType = /[\(\)\s]|^(serial|bigserial|smallserial|varchar|char|numeric|decimal|integer|bigint|smallint|text|date|timestamp|timestamptz|boolean|real|uuid|bit|json|jsonb|double\s+precision)/i.test(colDef.type);
+        if (colDef.definition) {
+          const isSQLType = /[\(\)\s]|^(serial|bigserial|smallserial|varchar|char|numeric|decimal|integer|bigint|smallint|text|date|timestamp|timestamptz|boolean|real|uuid|bit|json|jsonb|double\s+precision)/i.test(colDef.definition);
           if (isSQLType) {
-            // Parse the SQL type string and merge with other properties
+            // Parse the SQL definition string and merge with other properties
             try {
-              const parsed = parseSQLType(colDef.type);
+              const parsed = parseSQLType(colDef.definition);
               processed[columnName] = {
                 ...parsed,
                 ...(colDef.automation && { automation: colDef.automation }),
@@ -188,7 +188,7 @@ export class SchemaProcessor {
                 ...(colDef.format && { format: colDef.format })
               };
             } catch (error) {
-              throw new Error(`Invalid SQL type string for reusable column '${columnName}': ${error instanceof Error ? error.message : String(error)}`);
+              throw new Error(`Invalid SQL definition string for reusable column '${columnName}': ${error instanceof Error ? error.message : String(error)}`);
             }
           } else {
             // Type doesn't look like SQL string, use as-is
@@ -298,7 +298,7 @@ export class SchemaProcessor {
   /**
    * Resolve column inheritance using our mixed syntax:
    * - null: inherit same name
-   * - string: SQL type string OR inherit named column
+   * - string: SQL definition string OR inherit named column
    * - object with $ref: inherit + override
    * - full object: no inheritance
    */
@@ -317,19 +317,19 @@ export class SchemaProcessor {
       return { ...reusableColumn };
     }
 
-    // Case 2: string - SQL type string OR inherit from named reusable column
+    // Case 2: string - SQL definition string OR inherit from named reusable column
     if (typeof column === 'string') {
-      // Try to detect if it's a SQL type string by checking for common patterns
-      // SQL type strings contain: parentheses, spaces, or SQL keywords
+      // Try to detect if it's a SQL definition string by checking for common patterns
+      // SQL definition strings contain: parentheses, spaces, or SQL keywords
       const isSQLType = /[\(\)\s]|^(serial|bigserial|smallserial|varchar|char|numeric|decimal|integer|bigint|smallint|text|date|timestamp|timestamptz|boolean|real|uuid|bit|json|jsonb|double\s+precision)/i.test(column);
 
       if (isSQLType) {
-        // Parse SQL type string
+        // Parse SQL definition string
         try {
           const parsed = parseSQLType(column);
           return { ...parsed };
         } catch (error) {
-          throw new Error(`Invalid SQL type string for column '${columnName}': ${error instanceof Error ? error.message : String(error)}`);
+          throw new Error(`Invalid SQL definition string for column '${columnName}': ${error instanceof Error ? error.message : String(error)}`);
         }
       } else {
         // Treat as reference to reusable column
@@ -353,13 +353,13 @@ export class SchemaProcessor {
       const merged = { ...reusableColumn };
 
       // Apply overrides - complete replacement for each property
-      if (refColumn.type !== undefined) {
-        // Type override completely replaces the type and all parsed modifiers
-        const isSQLType = /[\(\)\s]|^(serial|bigserial|smallserial|varchar|char|numeric|decimal|integer|bigint|smallint|text|date|timestamp|timestamptz|boolean|real|uuid|bit|json|jsonb|double\s+precision)/i.test(refColumn.type);
+      if (refColumn.definition !== undefined) {
+        // Definition override completely replaces the definition and all parsed modifiers
+        const isSQLType = /[\(\)\s]|^(serial|bigserial|smallserial|varchar|char|numeric|decimal|integer|bigint|smallint|text|date|timestamp|timestamptz|boolean|real|uuid|bit|json|jsonb|double\s+precision)/i.test(refColumn.definition);
         if (isSQLType) {
-          // Parse SQL type string and completely replace type definition
-          const parsed = parseSQLType(refColumn.type);
-          // Clear old type-related fields
+          // Parse SQL definition string and completely replace definition
+          const parsed = parseSQLType(refColumn.definition);
+          // Clear old definition-related fields
           delete merged.size;
           delete merged.decimal;
           delete merged.primary_key;
@@ -370,7 +370,7 @@ export class SchemaProcessor {
           // Apply new parsed values
           Object.assign(merged, parsed);
         } else {
-          merged.type = refColumn.type;
+          merged.definition = refColumn.definition;
         }
       }
       // Complete replacement for other properties
@@ -387,12 +387,12 @@ export class SchemaProcessor {
     if (typeof column === 'object' && column !== null) {
       const colDef = column as ColumnDefinition;
 
-      // If type field exists and looks like a SQL type string, parse it
-      if (colDef.type) {
-        const isSQLType = /[\(\)\s]|^(serial|bigserial|smallserial|varchar|char|numeric|decimal|integer|bigint|smallint|text|date|timestamp|timestamptz|boolean|real|uuid|bit|json|jsonb|double\s+precision)/i.test(colDef.type);
+      // If definition field exists and looks like a SQL definition string, parse it
+      if (colDef.definition) {
+        const isSQLType = /[\(\)\s]|^(serial|bigserial|smallserial|varchar|char|numeric|decimal|integer|bigint|smallint|text|date|timestamp|timestamptz|boolean|real|uuid|bit|json|jsonb|double\s+precision)/i.test(colDef.definition);
         if (isSQLType) {
-          // Parse the SQL type string and merge with other properties
-          const parsed = parseSQLType(colDef.type);
+          // Parse the SQL definition string and merge with other properties
+          const parsed = parseSQLType(colDef.definition);
           return {
             ...parsed,
             ...(colDef.automation && { automation: colDef.automation }),

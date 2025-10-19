@@ -12,7 +12,7 @@ tables:
       foreign_keys: 0
     columns:
       id:
-        type: integer
+        definition: integer
         primary_key: true
         expect_null_on_read: false
         can_write_null: false
@@ -21,7 +21,7 @@ tables:
         update_behavior: immutable
         note: Application must provide this value, cannot change after insert
       base_price:
-        type: numeric
+        definition: numeric
         size: 10
         decimal: 2
         expect_null_on_read: true
@@ -31,7 +31,7 @@ tables:
         update_behavior: allowed
         note: Application controls this value
       markup:
-        type: numeric
+        definition: numeric
         size: 5
         decimal: 2
         expect_null_on_read: true
@@ -41,7 +41,7 @@ tables:
         update_behavior: allowed
         note: Application controls this value
       final_price:
-        type: numeric(10,2)
+        definition: numeric(10,2)
         expect_null_on_read: true
         can_write_null: true
         writable: always

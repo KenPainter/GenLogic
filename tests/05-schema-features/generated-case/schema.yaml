@@ -4,5 +4,5 @@ tables:
       id: serial primary key
       status: varchar(20)
       is_pending:
-        type: boolean
+        definition: boolean
         generated: "CASE WHEN @status = 'pending' THEN TRUE ELSE FALSE END"

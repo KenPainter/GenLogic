@@ -4,7 +4,7 @@ tables:
       id: integer primary key
       name: varchar(50)
       min_price:
-        type: numeric(10,2)
+        definition: numeric(10,2)
         automation: MIN @prices.amount
 
   prices:

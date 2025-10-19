@@ -4,13 +4,13 @@ tables:
       id: integer primary key
       name: varchar(50)
       total_amount:
-        type: numeric(10,2)
+        definition: numeric(10,2)
         automation: SUM @transactions.amount
       transaction_count:
-        type: integer
+        definition: integer
         automation: COUNT @transactions.id
       max_transaction:
-        type: numeric(10,2)
+        definition: numeric(10,2)
         automation: MAX @transactions.amount
 
   transactions:

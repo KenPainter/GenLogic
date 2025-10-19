@@ -3,6 +3,6 @@ tables:
   select:
     columns:
       id:
-        type: serial primary key
+        definition: serial primary key
       name:
-        type: varchar(100)
+        definition: varchar(100)

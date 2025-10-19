@@ -4,7 +4,7 @@ tables:
       id: integer primary key
       name: varchar(50)
       order_count:
-        type: integer
+        definition: integer
         automation: COUNT @orders.id
 
   orders:

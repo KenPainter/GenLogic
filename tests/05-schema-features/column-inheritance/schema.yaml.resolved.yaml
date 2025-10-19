@@ -12,7 +12,7 @@ tables:
       foreign_keys: 0
     columns:
       id:
-        type: integer
+        definition: integer
         primary_key: true
         expect_null_on_read: false
         can_write_null: false
@@ -22,7 +22,7 @@ tables:
         update_behavior: immutable
         note: Database generates this value
       name:
-        type: varchar
+        definition: varchar
         size: 100
         expect_null_on_read: true
         can_write_null: true
@@ -31,7 +31,7 @@ tables:
         update_behavior: allowed
         note: Application controls this value
       created_at:
-        type: timestamp
+        definition: timestamp
         expect_null_on_read: true
         can_write_null: true
         writable: always

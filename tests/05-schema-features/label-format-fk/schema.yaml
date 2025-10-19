@@ -2,7 +2,7 @@ tables:
   users:
     columns:
       id:
-        type: serial primary key
+        definition: serial primary key
         label: User ID
         format: id
 

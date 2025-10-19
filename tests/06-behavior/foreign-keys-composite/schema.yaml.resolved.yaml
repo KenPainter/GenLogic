@@ -12,7 +12,7 @@ tables:
       foreign_keys: 0
     columns:
       order_id:
-        type: integer
+        definition: integer
         primary_key: true
         expect_null_on_read: false
         can_write_null: false
@@ -21,7 +21,7 @@ tables:
         update_behavior: immutable
         note: Application must provide this value, cannot change after insert
       order_year:
-        type: integer
+        definition: integer
         primary_key: true
         expect_null_on_read: false
         can_write_null: false
@@ -30,7 +30,7 @@ tables:
         update_behavior: immutable
         note: Application must provide this value, cannot change after insert
       customer_name:
-        type: varchar
+        definition: varchar
         size: 100
         expect_null_on_read: true
         can_write_null: true
@@ -44,7 +44,7 @@ tables:
       foreign_keys: 1
     columns:
       line_id:
-        type: integer
+        definition: integer
         primary_key: true
         expect_null_on_read: false
         can_write_null: false
@@ -54,7 +54,7 @@ tables:
         update_behavior: immutable
         note: Database generates this value
       product:
-        type: varchar
+        definition: varchar
         size: 100
         expect_null_on_read: true
         can_write_null: true
@@ -63,7 +63,7 @@ tables:
         update_behavior: allowed
         note: Application controls this value
       quantity:
-        type: integer
+        definition: integer
         expect_null_on_read: true
         can_write_null: true
         writable: always
@@ -71,7 +71,7 @@ tables:
         update_behavior: allowed
         note: Application controls this value
       order_id:
-        type: integer
+        definition: integer
         expect_null_on_read: true
         can_write_null: true
         writable: always
@@ -84,7 +84,7 @@ tables:
         update_behavior: allowed
         note: Application controls this value to establish relationships
       order_year:
-        type: integer
+        definition: integer
         expect_null_on_read: true
         can_write_null: true
         writable: always

@@ -1,7 +1,7 @@
 /**
  * SQL Type Parser
  *
- * Parses SQL type strings into GenLogic column definitions
+ * Parses SQL definition strings into GenLogic column definitions
  * Examples: "varchar(100)", "numeric(10,2)", "serial primary key", "varchar(100) not null unique default 'pending'"
  */
 
@@ -17,7 +17,7 @@ export interface ParsedSQLType {
 }
 
 /**
- * Parse a SQL type string into component parts
+ * Parse a SQL definition string into component parts
  */
 export function parseSQLType(sqlTypeString: string): ParsedSQLType {
   const result: ParsedSQLType = {
@@ -53,7 +53,7 @@ export function parseSQLType(sqlTypeString: string): ParsedSQLType {
     // Extract base type and size/precision
     const typeMatch = sql.match(/^(\w+)(?:\((\d+)(?:,\s*(\d+))?\))?/i);
     if (!typeMatch) {
-      throw new Error(`Invalid SQL type string: ${sqlTypeString}`);
+      throw new Error(`Invalid SQL definition string: ${sqlTypeString}`);
     }
 
     result.type = typeMatch[1].toLowerCase();

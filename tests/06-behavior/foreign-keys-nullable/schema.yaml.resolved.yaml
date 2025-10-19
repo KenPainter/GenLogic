@@ -12,7 +12,7 @@ tables:
       foreign_keys: 0
     columns:
       id:
-        type: integer
+        definition: integer
         primary_key: true
         expect_null_on_read: false
         can_write_null: false
@@ -21,7 +21,7 @@ tables:
         update_behavior: immutable
         note: Application must provide this value, cannot change after insert
       name:
-        type: varchar
+        definition: varchar
         size: 50
         expect_null_on_read: true
         can_write_null: true
@@ -35,7 +35,7 @@ tables:
       foreign_keys: 1
     columns:
       id:
-        type: integer
+        definition: integer
         primary_key: true
         expect_null_on_read: false
         can_write_null: false
@@ -44,7 +44,7 @@ tables:
         update_behavior: immutable
         note: Application must provide this value, cannot change after insert
       title:
-        type: varchar
+        definition: varchar
         size: 100
         expect_null_on_read: true
         can_write_null: true
@@ -53,7 +53,7 @@ tables:
         update_behavior: allowed
         note: Application controls this value
       user_id:
-        type: integer
+        definition: integer
         expect_null_on_read: true
         can_write_null: true
         writable: always
@@ -61,7 +61,7 @@ tables:
         update_behavior: allowed
         note: Application controls this value
       user:
-        type: integer
+        definition: integer
         expect_null_on_read: true
         can_write_null: true
         writable: always

@@ -2,10 +2,10 @@ tables:
   products:
     columns:
       id:
-        type: serial primary key
+        definition: serial primary key
       price:
-        type: numeric(10,2)
+        definition: numeric(10,2)
       # Generated column references non-existent column @quantity
       total:
-        type: numeric(10,2)
+        definition: numeric(10,2)
         generated: "@price * @quantity"

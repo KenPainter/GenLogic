@@ -12,7 +12,7 @@ tables:
       foreign_keys: 0
     columns:
       price:
-        type: numeric
+        definition: numeric
         size: 10
         decimal: 2
         expect_null_on_read: true
@@ -22,7 +22,7 @@ tables:
         update_behavior: allowed
         note: Application controls this value
       quantity:
-        type: integer
+        definition: integer
         expect_null_on_read: true
         can_write_null: true
         writable: always
@@ -30,7 +30,7 @@ tables:
         update_behavior: allowed
         note: Application controls this value
       total:
-        type: numeric(10,2)
+        definition: numeric(10,2)
         expect_null_on_read: true
         can_write_null: true
         writable: always

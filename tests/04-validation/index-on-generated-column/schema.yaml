@@ -2,13 +2,13 @@ tables:
   products:
     columns:
       id:
-        type: serial primary key
+        definition: serial primary key
       price:
-        type: numeric(10,2)
+        definition: numeric(10,2)
       quantity:
-        type: integer
+        definition: integer
       total:
-        type: numeric(10,2)
+        definition: numeric(10,2)
         generated: "@price * @quantity"
     # Index on generated column (valid)
     indexes:

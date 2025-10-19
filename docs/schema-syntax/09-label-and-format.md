@@ -16,7 +16,7 @@ GenLogic provides `label` and `format` properties for columns to enhance UI gene
 ```yaml
 columns:
   email:
-    type: varchar(255)
+    definition: varchar(255)
     label: Email Address
     format: email
 
@@ -25,14 +25,14 @@ tables:
     columns:
       id: serial primary key
       name:
-        type: varchar(200) not null
+        definition: varchar(200) not null
         label: Product Name
       price:
-        type: numeric(10,2) not null
+        definition: numeric(10,2) not null
         label: Unit Price
         format: currency
       created_at:
-        type: timestamp not null default now()
+        definition: timestamp not null default now()
         label: Date Created
         format: datetime
 ```
@@ -46,7 +46,7 @@ tables:
   users:
     columns:
       id:
-        type: serial primary key
+        definition: serial primary key
         label: User ID
         format: id
       name: varchar(100) not null
@@ -60,7 +60,7 @@ tables:
 ```
 
 The generated `user_id` column in `orders` will have:
-- type: integer (copied from users.id)
+- definition: integer (copied from users.id)
 - label: "User ID" (copied from users.id)
 - format: "id" (copied from users.id)
 
@@ -74,7 +74,7 @@ tables:
     columns:
       id: serial primary key
       balance:
-        type: numeric(10,2) not null default 0
+        definition: numeric(10,2) not null default 0
         label: Account Balance
         format: currency
 
@@ -82,7 +82,7 @@ tables:
     columns:
       id: serial primary key
       amount:
-        type: numeric(10,2) not null
+        definition: numeric(10,2) not null
         label: Transaction Amount
         format: currency
     foreign_keys:
@@ -93,7 +93,7 @@ tables:
       id: serial primary key
       # SNAPSHOT: Gets label and format from transactions.amount
       transaction_amount:
-        type: numeric(10,2)
+        definition: numeric(10,2)
         automation: SNAPSHOT @transactions.amount
         # Automatically gets:
         # label: "Transaction Amount"
@@ -111,7 +111,7 @@ tables:
   users:
     columns:
       id:
-        type: serial primary key
+        definition: serial primary key
         label: User ID
         format: id
 
@@ -135,12 +135,12 @@ Label and format work with reusable column definitions:
 ```yaml
 columns:
   currency_field:
-    type: numeric(10,2) not null default 0
+    definition: numeric(10,2) not null default 0
     label: Amount
     format: currency
 
   email_field:
-    type: varchar(255) not null
+    definition: varchar(255) not null
     label: Email Address
     format: email
 
@@ -194,35 +194,35 @@ Don't use them if:
 ```yaml
 columns:
   currency:
-    type: numeric(10,2) not null default 0
+    definition: numeric(10,2) not null default 0
     format: currency
 
 tables:
   products:
     columns:
       id:
-        type: serial primary key
+        definition: serial primary key
         label: Product ID
         format: id
       name:
-        type: varchar(200) not null
+        definition: varchar(200) not null
         label: Product Name
       price:
         $ref: currency
         label: Unit Price
       created_at:
-        type: timestamp not null default now()
+        definition: timestamp not null default now()
         label: Created
         format: datetime
 
   orders:
     columns:
       id:
-        type: serial primary key
+        definition: serial primary key
         label: Order ID
         format: id
       order_date:
-        type: timestamp not null default now()
+        definition: timestamp not null default now()
         label: Order Date
         format: datetime
       total:
@@ -235,11 +235,11 @@ tables:
   order_items:
     columns:
       id:
-        type: serial primary key
+        definition: serial primary key
         label: Item ID
         format: id
       quantity:
-        type: integer not null
+        definition: integer not null
         label: Quantity
       item_total:
         $ref: currency

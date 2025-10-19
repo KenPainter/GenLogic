@@ -20,13 +20,11 @@ export interface MatchingTableDefinition {
 }
 
 export interface ColumnDefinition {
-  type: string;
-  automation?: AutomationDefinition;
-  generated?: string;
-  comment?: string;
-  label?: string;      // Human-readable label for UI display
-  format?: string;     // Format hint (e.g., 'currency', 'date', 'email')
-  // Internal fields populated by SQL type parser:
+  // SCHEMA INPUT: User provides either 'definition' (SQL string) OR individual fields below
+  definition?: string;  // Full SQL definition string (e.g., "varchar(100) not null default 'foo'")
+
+  // PROCESSED OUTPUT: After parsing SQL definition string
+  type?: string;        // Base SQL type (e.g., "varchar", "integer") - populated by parser
   size?: number;
   decimal?: number;
   primary_key?: boolean;
@@ -34,6 +32,13 @@ export interface ColumnDefinition {
   not_null?: boolean;
   sequence?: boolean;
   default?: string;
+
+  // GenLogic features (input and output)
+  automation?: AutomationDefinition;
+  generated?: string;
+  comment?: string;
+  label?: string;      // Human-readable label for UI display
+  format?: string;     // Format hint (e.g., 'currency', 'date', 'email')
 }
 
 export interface TableDefinition {
