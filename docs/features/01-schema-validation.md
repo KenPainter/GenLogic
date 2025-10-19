@@ -1,4 +1,4 @@
-Previous: [Column Types](../20-schema-syntax/11-column-types.md) | Next: [Non-Subvertible Calculations](02-non-subvertible-calculations.md)
+Previous: [Label, Format, and Comment](../20-schema-syntax/13-label-format-comment.md) | Next: [Non-Subvertible Calculations](02-non-subvertible-calculations.md)
 
 # Schema Validation
 
@@ -194,4 +194,4 @@ The following validations are performed by the AJV JSON Schema validator (third-
 
 ---
 
-Previous: [Column Types](../20-schema-syntax/11-column-types.md) | Next: [Non-Subvertible Calculations](02-non-subvertible-calculations.md)
+Previous: [Label, Format, and Comment](../20-schema-syntax/13-label-format-comment.md) | Next: [Non-Subvertible Calculations](02-non-subvertible-calculations.md)

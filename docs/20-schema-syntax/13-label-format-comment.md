@@ -1,4 +1,4 @@
-Previous: [Indexes and Unique Constraints](08-indexes-and-constraints.md) | Next: [Seed Data](10-seed-data.md)
+Previous: [Reusable Columns](12-reusable-columns.md) | Next: [Schema Validation](../features/01-schema-validation.md)
 
 # Label, Format, and Comment
 
@@ -131,4 +131,4 @@ tables:
 
 ---
 
-Previous: [Indexes and Unique Constraints](08-indexes-and-constraints.md) | Next: [Seed Data](10-seed-data.md)
+Previous: [Reusable Columns](12-reusable-columns.md) | Next: [Schema Validation](../features/01-schema-validation.md)

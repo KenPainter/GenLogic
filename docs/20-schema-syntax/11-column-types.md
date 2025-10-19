@@ -1,4 +1,4 @@
-Previous: [Tables and Columns](10-tables-and-columns.md) | Next: [Schema Validation](../features/01-schema-validation.md)
+Previous: [Tables and Columns](10-tables-and-columns.md) | Next: [Reusable Columns](12-reusable-columns.md)
 
 # Column Types
 
@@ -117,4 +117,4 @@ tables:
 
 ---
 
-Previous: [Tables and Columns](10-tables-and-columns.md) | Next: [Schema Validation](../features/01-schema-validation.md)
+Previous: [Tables and Columns](10-tables-and-columns.md) | Next: [Reusable Columns](12-reusable-columns.md)

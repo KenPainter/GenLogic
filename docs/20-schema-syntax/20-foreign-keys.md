@@ -2,158 +2,133 @@ Previous: [Reusable Columns](02-reusable-columns.md) | Next: [Moving Values from
 
 # Foreign Keys
 
-Foreign keys establish relationships between tables.
+Foreign keys establish relationships between tables.  GenLogic depends
+on foreign keys for automated transfer of values between tables.
 
-GenLogic defines foreign keys differently than traditional SQL syntax.
+GenLogic specifies foreign keys differently than SQL. In SQL, you define columns then add 
+constraints. In GenLogic, you declare a foreign key relationship and GenLogic
+creates the column(s), constraint, and index.
 
-In SQL, we define the columns in the table, then we establish the
-constraint.
+## Basic Syntax
 
-By contrast, in GenLogic we specify that we need a foreign key to
-a table, and GenLogic copies the primary key columns into the
-child table's definition.
-
-## Basic Structure
-
-```yaml
-tables:
-  parent_table:
-    columns:
-      id: serial primary key
-
-  child_table:
-    foreign_keys:
-      fk_name: parent_table  # Simple shorthand - auto-generates FK column
-    columns:
-      name: *any valid PostgreSQL type*
-```
-
-## Simple Example
+Declare a foreign key in the `foreign_keys` section.
+The shorthand below is useful when the parent table
+has a single-column primary key.
 
 ```yaml
-columns:
-  id:
-    definition: serial primary key
-
 tables:
   users:
     columns:
-      user_id: id
+      id: serial primary key
       username: varchar(100)
 
   posts:
     foreign_keys:
-      user_fk: users  # creates column 'user_fk' automatically
+      user_id: users  # creates user_id from users.id 
 
     columns:
-      post_id: id
+      id: serial primary key
       title: varchar(200)
-      user_fk: integer
+      #  user_id: integer  # created automatically
 ```
-
-## Generated SQL
 
 GenLogic automatically creates:
-1. Foreign key constraint (referential integrity)
-2. Index on foreign key columns (query performance)
+- Foreign key column(s)
+- Foreign key constraint
+- Index on the foreign key column
 
-```sql
-CREATE TABLE users (
-  user_id SERIAL PRIMARY KEY,
-  username VARCHAR(100)
-);
+## Column Naming
 
-CREATE TABLE posts (
-  post_id SERIAL PRIMARY KEY,
-  title VARCHAR(200),
-  user_fk INTEGER
-);
-
-ALTER TABLE posts
-  ADD CONSTRAINT fk_posts_user_fk
-  FOREIGN KEY (user_fk)
-  REFERENCES users(user_id);
-
--- Index automatically created for query performance
-CREATE INDEX idx_posts_user_fk ON posts(user_fk);
-```
-
-## Foreign Key Column Creation
-
-GenLogic automatically creates the foreign key column if it does not exist:
-
-```yaml
-tables:
-  categories:
-    columns:
-      id: serial primary key
-      name: varchar(100)
-
-  products:
-    foreign_keys:
-      category_fk: categories  # Shorthand syntax
-
-    columns:
-      id: serial primary key
-      name: varchar(100)
-      # category_fk column automatically created as INTEGER
-```
-
-To control the foreign key column properties, re-declare it explicitly:
-
-```yaml
-  products:
-    foreign_keys:
-      category_fk: categories
-
-    columns:
-      id: serial primary key
-      name: varchar(100)
-      category_fk: integer not null  # Explicit declaration with constraints
-```
-
-## Multiple Foreign Keys
-
-A table can have multiple foreign keys:
+Use `prefix` and `suffix` to control the foreign key column name.
+The prefix and suffix are both optional.  If the parent table
+has a compound primary key, the prefix and suffix are added to
+all created columns.
 
 ```yaml
 tables:
   users:
     columns:
-      id: serial primary key
+      id: integer primary key
 
+  posts:
+    foreign_keys:
+      owner:
+        table: users
+        prefix: owner_  # Creates column: owner_id
+
+      author:
+        table: users
+        suffix: _author  # Creates column: id_author
+
+      creator:
+        table: users
+        prefix: created_
+        suffix: _by  # Creates column: created_id_by
+```
+
+## Nullable vs Required
+
+Foreign key columns are nullable by default. Declare the column explicitly to make it required:
+
+```yaml
+tables:
   categories:
     columns:
       id: serial primary key
 
   products:
     foreign_keys:
-      user_fk: users        # Shorthand
-      category_fk: categories  # Shorthand
+      category_id: categories
 
     columns:
       id: serial primary key
       name: varchar(100)
-      user_fk: integer
-      category_fk: integer not null
+      category_id: integer not null  # redefine column and set not null
 ```
 
-Generated SQL:
+## Comment
 
-```sql
-ALTER TABLE products
-  ADD CONSTRAINT fk_products_user_fk
-  FOREIGN KEY (user_fk)
-  REFERENCES users(id);
+Document foreign key relationships with the `comment` property:
 
-ALTER TABLE products
-  ADD CONSTRAINT fk_products_category_fk
-  FOREIGN KEY (category_fk)
-  REFERENCES categories(id);
+```yaml
+tables:
+  users:
+    columns:
+      id: integer primary key
 
-CREATE INDEX idx_products_user_fk ON products(user_fk);
-CREATE INDEX idx_products_category_fk ON products(category_fk);
+  posts:
+    columns:
+      id: integer primary key
+    foreign_keys:
+      user:
+        table: users
+        comment: Link to author
 ```
+
+## Delete Actions
+
+Control what happens when a parent row is deleted:
+
+```yaml
+tables:
+  customers:
+    columns:
+      id: serial primary key
+
+  orders:
+    foreign_keys:
+      customer_id:
+        table: customers
+        delete: cascade  # or 'restrict' (default)
+
+    columns:
+      id: serial primary key
+      customer_id: integer
+```
+
+Delete actions:
+- `cascade` - Delete child rows when parent is deleted
+- `restrict` - Prevent parent deletion if child rows exist (default)
 
 ## Composite Foreign Keys
 
@@ -172,20 +147,8 @@ tables:
 
     columns:
       line_id: serial primary key
-      order_id: integer
-      order_year: integer
-```
-
-Generated SQL:
-
-```sql
-ALTER TABLE order_lines
-  ADD CONSTRAINT fk_order_lines_order_fk
-  FOREIGN KEY (order_id, order_year)
-  REFERENCES order_headers(order_id, order_year);
-
--- Composite index for multi-column FK
-CREATE INDEX idx_order_lines_order_id_order_year ON order_lines(order_id, order_year);
+      #order_id: integer    # automatically created
+      #order_year: integer  # automatically created
 ```
 
 ## Self-Referencing Foreign Keys
@@ -196,77 +159,20 @@ Tables can reference themselves for hierarchical data:
 tables:
   employees:
     foreign_keys:
-      manager_fk: employees  # Self-referencing
+      manager_id: employees
 
     columns:
       id: serial primary key
       name: varchar(100)
-      manager_fk: integer
+      manager_id: integer
 ```
-
-Generated SQL:
-
-```sql
-CREATE TABLE employees (
-  id SERIAL PRIMARY KEY,
-  name VARCHAR(100),
-  manager_fk INTEGER
-);
-
-ALTER TABLE employees
-  ADD CONSTRAINT fk_employees_manager_fk
-  FOREIGN KEY (manager_fk)
-  REFERENCES employees(id);
-
-CREATE INDEX idx_employees_manager_fk ON employees(manager_fk);
-```
-
-## Delete Actions
-
-Control what happens when a parent row is deleted:
-
-```yaml
-tables:
-  customers:
-    columns:
-      id: serial primary key
-
-  orders:
-    foreign_keys:
-      customer_fk:
-        table: customers
-        delete: cascade  # or 'restrict'
-
-    columns:
-      id: serial primary key
-      customer_fk: integer
-```
-
-Generated SQL with CASCADE:
-
-```sql
-ALTER TABLE orders
-  ADD CONSTRAINT fk_orders_customer_fk
-  FOREIGN KEY (customer_fk)
-  REFERENCES customers(id)
-  ON DELETE CASCADE;
-```
-
-Generated SQL with RESTRICT:
-
-```sql
-ALTER TABLE orders
-  ADD CONSTRAINT fk_orders_customer_fk
-  FOREIGN KEY (customer_fk)
-  REFERENCES customers(id)
-  ON DELETE RESTRICT;
-```
-
-Delete actions:
-- cascade: Delete child rows when parent is deleted
-- restrict: Prevent parent deletion if child rows exist (default)
 
 ## Auto-Create Parent
+
+GenLogic can create summary tables that serve the same purpose
+as materialized views.  The "auto-create_parent" feature
+allows all such "views" to be embedded and automatically
+updated within the database.
 
 Automatically create parent rows when inserting child rows with non-existent foreign key values:
 
@@ -290,69 +196,36 @@ tables:
       category_name: varchar(100)
 ```
 
-Generated SQL includes a BEFORE INSERT trigger:
+When inserting a transaction with a new category name, GenLogic creates the category row
+automatically with only the primary key populated. Other columns receive default values.
 
-```sql
-CREATE OR REPLACE FUNCTION transactions_before_insert_genlogic()
-RETURNS TRIGGER AS $$
-BEGIN
-  -- Auto-create parent 'categories' if it doesn't exist
-  IF NEW.category_name IS NOT NULL AND NOT EXISTS (
-    SELECT 1 FROM categories WHERE category_name = NEW.category_name
-  ) THEN
-    INSERT INTO categories (category_name)
-    VALUES (NEW.category_name)
-    ON CONFLICT DO NOTHING;  -- Handle race conditions
-  END IF;
+## Example
 
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+```yaml
+tables:
+  users:
+    columns:
+      id: serial primary key
+      username: varchar(100)
 
-CREATE TRIGGER transactions_before_insert_genlogic
-  BEFORE INSERT ON transactions
-  FOR EACH ROW EXECUTE FUNCTION transactions_before_insert_genlogic();
+  categories:
+    columns:
+      id: serial primary key
+      name: varchar(100)
+
+  posts:
+    foreign_keys:
+      user_id: users
+      category_id:
+        table: categories
+        delete: cascade
+
+    columns:
+      id: serial primary key
+      title: varchar(200)
+      user_id: integer not null  # Required
+      category_id: integer        # Nullable
 ```
-
-### How It Works
-
-When inserting a child row:
-1. BEFORE INSERT trigger checks if parent row exists
-2. If parent doesn't exist, creates it with only the primary key populated
-3. Other parent columns (like aggregations) get their default values
-4. FK constraint validation then succeeds because parent exists
-
-Example:
-
-```sql
--- Parent table is empty
-SELECT * FROM categories;
--- (no rows)
-
--- Insert transaction with new category
-INSERT INTO transactions (amount, category_name)
-VALUES (100, 'Office Supplies');
-
--- Parent row automatically created
-SELECT * FROM categories;
--- category_name    | total_amount
--- -----------------|-------------
--- Office Supplies  | 100
-```
-
-### Use Cases
-
-**Auto-create parent** is useful for:
-- Summary tables where parent only contains PK + aggregations
-- Automatic category creation (categories are just labels with counts/totals)
-- Data entry simplification (no need to pre-create parent records)
-- Denormalized reporting tables
-
-### Requirements
-
-- Parent table **must have a primary key**
-- Parent columns (except PK) should have defaults or allow NULL
-- Best for summary tables where parent row has no user-entered data
 
 ## Test Coverage
 
@@ -377,6 +250,7 @@ These tests verify that GenLogic generates correct foreign key DDL and database 
 - [x] [FK with prefix](../../tests/05-schema-features/fk-with-prefix) - FK column named with prefix
 - [x] [FK with suffix](../../tests/05-schema-features/fk-with-suffix) - FK column named with suffix
 - [x] [FK with prefix and suffix](../../tests/05-schema-features/fk-with-prefix-and-suffix) - FK column with both prefix and suffix
+- [x] [Composite FK with prefix](../../tests/05-schema-features/fk-composite-with-prefix) - Prefix applied to all columns in composite FK
 - [x] [Nullable FK](../../tests/05-schema-features/fk-nullable) - FK with not_null: false
 - [x] [Required FK](../../tests/05-schema-features/fk-required) - FK with not_null: true
 - [x] [FK delete: restrict](../../tests/05-schema-features/fk-delete-restrict) - ON DELETE RESTRICT

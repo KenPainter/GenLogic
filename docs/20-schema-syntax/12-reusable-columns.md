@@ -1,4 +1,4 @@
-Previous: [Introduction](00-introduction.md) | Next: [Foreign Keys](03-foreign-keys.md)
+Previous: [Column Types](11-column-types.md) | Next: [Label, Format, and Comment](13-label-format-comment.md)
 
 # Reusable Column Definitions
 
@@ -113,4 +113,4 @@ tables:
 
 ---
 
-Previous: [Introduction](00-introduction.md) | Next: [Foreign Keys](03-foreign-keys.md)
+Previous: [Column Types](11-column-types.md) | Next: [Label, Format, and Comment](13-label-format-comment.md)
