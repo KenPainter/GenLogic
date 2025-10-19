@@ -1,4 +1,4 @@
-Previous: [Single Table Basics](01-single-table.md) | Next: [Foreign Keys](03-foreign-keys.md)
+Previous: [Introduction](00-introduction.md) | Next: [Foreign Keys](03-foreign-keys.md)
 
 # Reusable Column Definitions
 
@@ -259,4 +259,4 @@ These tests verify that GenLogic correctly inherits and overrides reusable colum
 
 ---
 
-Previous: [Single Table Basics](01-single-table.md) | Next: [Foreign Keys](03-foreign-keys.md)
+Previous: [Introduction](00-introduction.md) | Next: [Foreign Keys](03-foreign-keys.md)

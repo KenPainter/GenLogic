@@ -1,0 +1,8 @@
+tables:
+  parent_table:
+    columns:
+      id: serial primary key
+  child_table:
+    columns:
+      id: serial primary key
+      parent_id: integer references parent_table(id)

@@ -1,0 +1,6 @@
+tables:
+  test_table:
+    columns:
+      id: serial primary key
+      price: numeric(10,2)
+      tax: numeric(10,2) generated always as (price * 0.1) stored

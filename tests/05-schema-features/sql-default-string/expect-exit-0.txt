@@ -1,0 +1,1 @@
+# Test DEFAULT with quoted string literals

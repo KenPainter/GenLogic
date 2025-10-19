@@ -17,9 +17,10 @@
  *     expect-exit-1.txt        - Failure marker
  *     expect-stdout.txt        - Patterns that must appear in stdout (supports regex: /pattern/)
  *     expect-stderr.txt        - Patterns that must appear in stderr (supports regex: /pattern/)
+ *     test-setup.sql           - SQL to run BEFORE CLI execution (set up initial DB state)
+ *     test-result.sql          - SQL to run AFTER CLI execution (insert data to test result)
  *     verify-*.sql             - SQL queries to run against DB
  *     expect-*.txt             - Expected output for corresponding verify-*.sql
- *     setup-data.sql           - SQL to run before verify queries
  *     args.txt                 - Extra CLI args
  *
  * Pattern matching:
@@ -54,7 +55,8 @@ interface TestCase {
   expectedStdout?: string[];
   expectedStderr?: string[];
   verifySqlFiles: string[];  // e.g., verify-no-table.sql, verify-behavior.sql
-  setupDataSql?: string;
+  testSetupSql?: string;     // SQL to run BEFORE CLI execution
+  testResultSql?: string;    // SQL to run AFTER CLI execution (was setupDataSql)
   extraArgs: string[];
   skipCommon: boolean;
 }
@@ -93,7 +95,8 @@ function discoverTests(): TestCase[] {
         const stdoutPath = join(fullPath, 'expect-stdout.txt');
         const stderrPath = join(fullPath, 'expect-stderr.txt');
         const argsPath = join(fullPath, 'args.txt');
-        const setupDataPath = join(fullPath, 'setup-data.sql');
+        const testSetupPath = join(fullPath, 'test-setup.sql');
+        const testResultPath = join(fullPath, 'test-result.sql');
 
         const expectedStdout = existsSync(stdoutPath)
           ? readFileSync(stdoutPath, 'utf-8').trim().split('\n').filter(l => l.length > 0 && !l.trim().startsWith('#'))
@@ -130,7 +133,8 @@ function discoverTests(): TestCase[] {
           expectedStdout,
           expectedStderr,
           verifySqlFiles,
-          setupDataSql: existsSync(setupDataPath) ? setupDataPath : undefined,
+          testSetupSql: existsSync(testSetupPath) ? testSetupPath : undefined,
+          testResultSql: existsSync(testResultPath) ? testResultPath : undefined,
           extraArgs,
           skipCommon
         });
@@ -155,6 +159,21 @@ async function runTest(test: TestCase, pool: PgPool): Promise<boolean> {
     return false;
   }
 
+  let passed = true;
+  const errors: string[] = [];
+
+  // Run test-setup.sql if present (BEFORE CLI execution)
+  if (test.testSetupSql) {
+    const setupSql = readFileSync(test.testSetupSql, 'utf-8');
+    try {
+      await pool.query(setupSql);
+    } catch (e) {
+      passed = false;
+      errors.push(`Failed to run test-setup.sql: ${e}`);
+      return false; // Cannot continue if setup fails
+    }
+  }
+
   // Common args - Unix socket peer authentication
   const commonArgs = [
     '-d', TEST_DB
@@ -170,9 +189,6 @@ async function runTest(test: TestCase, pool: PgPool): Promise<boolean> {
   ];
 
   const result = await $`bun ${args}`.nothrow().quiet();
-
-  let passed = true;
-  const errors: string[] = [];
 
   // Check exit code
   if (result.exitCode !== test.expectedExit) {
@@ -220,14 +236,14 @@ async function runTest(test: TestCase, pool: PgPool): Promise<boolean> {
     }
   }
 
-  // Run setup-data.sql if present
-  if (test.setupDataSql) {
-    const setupSql = readFileSync(test.setupDataSql, 'utf-8');
+  // Run test-result.sql if present (AFTER CLI execution)
+  if (test.testResultSql) {
+    const resultSql = readFileSync(test.testResultSql, 'utf-8');
     try {
-      await pool.query(setupSql);
+      await pool.query(resultSql);
     } catch (e) {
       passed = false;
-      errors.push(`Failed to run setup-data.sql: ${e}`);
+      errors.push(`Failed to run test-result.sql: ${e}`);
     }
   }
 

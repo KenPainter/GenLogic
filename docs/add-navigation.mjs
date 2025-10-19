@@ -42,7 +42,7 @@ function findFile(filename, docsDir) {
 }
 
 // Read toc.md and extract ordered list of files
-function extractFileList(tocPath, docsDir) {
+function extractFileList(tocPath, docsDir, warnings) {
   const content = fs.readFileSync(tocPath, 'utf-8');
   const files = [];
 
@@ -69,7 +69,7 @@ function extractFileList(tocPath, docsDir) {
         actualPath  // Path where file actually exists
       });
     } else {
-      console.warn(`Warning: File not found: ${pathInToc}`);
+      warnings.push(`File referenced in toc.md not found on disk: ${pathInToc}`);
     }
   }
 
@@ -157,9 +157,10 @@ function addNavigation(content, currentPath, prev, next) {
 function main() {
   const docsDir = __dirname;
   const tocPath = path.join(docsDir, 'toc.md');
+  const warnings = [];
 
   console.log('Step 1: Extracting file list from toc.md...');
-  const files = extractFileList(tocPath, docsDir);
+  const files = extractFileList(tocPath, docsDir, warnings);
   console.log(`Found ${files.length} files in toc.md`);
 
   console.log('\nStep 2: Updating toc.md with corrected paths...');
@@ -170,7 +171,7 @@ function main() {
     const filePath = path.join(docsDir, file.actualPath);
 
     if (!fs.existsSync(filePath)) {
-      console.warn(`Warning: File not found: ${filePath}`);
+      warnings.push(`File found by search but doesn't exist: ${filePath}`);
       return;
     }
 
@@ -192,6 +193,14 @@ function main() {
   });
 
   console.log('\nDone!');
+
+  // Print warnings
+  console.log('\n==WARNINGS==');
+  if (warnings.length === 0) {
+    console.log('None - all files in TOC match to files on disk');
+  } else {
+    warnings.forEach(warning => console.log(`  - ${warning}`));
+  }
 }
 
 main();

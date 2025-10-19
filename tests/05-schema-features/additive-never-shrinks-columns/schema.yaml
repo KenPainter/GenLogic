@@ -1,0 +1,7 @@
+tables:
+  users:
+    columns:
+      id: serial primary key
+      name: varchar(50)      # Database has varchar(200) but GenLogic never shrinks
+      code: char(5)          # Database has char(20) but GenLogic never shrinks
+      price: numeric(8,2)    # Database has numeric(12,4) but GenLogic never shrinks

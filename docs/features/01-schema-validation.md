@@ -1,4 +1,4 @@
-Previous: [Seed Data](../schema-syntax/10-seed-data.md) | Next: [Non-Subvertible Calculations](02-non-subvertible-calculations.md)
+Previous: [Column Types](../20-schema-syntax/11-column-types.md) | Next: [Non-Subvertible Calculations](02-non-subvertible-calculations.md)
 
 # Schema Validation
 
@@ -194,4 +194,4 @@ The following validations are performed by the AJV JSON Schema validator (third-
 
 ---
 
-Previous: [Seed Data](../schema-syntax/10-seed-data.md) | Next: [Non-Subvertible Calculations](02-non-subvertible-calculations.md)
+Previous: [Column Types](../20-schema-syntax/11-column-types.md) | Next: [Non-Subvertible Calculations](02-non-subvertible-calculations.md)
