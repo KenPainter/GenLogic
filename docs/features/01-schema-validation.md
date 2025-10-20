@@ -1,4 +1,4 @@
-Previous: [Label, Format, and Comment](../20-schema-syntax/13-label-format-comment.md) | Next: [Non-Subvertible Calculations](02-non-subvertible-calculations.md)
+Previous: [Moving Values from Child to Parent](../30-column-automation/30-child-to-parent.md) | Next: [Non-Subvertible Calculations](02-non-subvertible-calculations.md)
 
 # Schema Validation
 
@@ -194,4 +194,4 @@ The following validations are performed by the AJV JSON Schema validator (third-
 
 ---
 
-Previous: [Label, Format, and Comment](../20-schema-syntax/13-label-format-comment.md) | Next: [Non-Subvertible Calculations](02-non-subvertible-calculations.md)
+Previous: [Moving Values from Child to Parent](../30-column-automation/30-child-to-parent.md) | Next: [Non-Subvertible Calculations](02-non-subvertible-calculations.md)

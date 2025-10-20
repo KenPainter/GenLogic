@@ -1,4 +1,4 @@
-Previous: [Moving Values from Parent to Child](04-parent-to-child.md) | Next: [Moving Values from Child to Parent](06-child-to-parent.md)
+Previous: [Moving Values from Parent to Child](10-parent-to-child.md) | Next: [Moving Values from Child to Parent](30-child-to-parent.md)
 
 # Calculating Values Within a Row
 
@@ -236,4 +236,4 @@ These tests verify generated column behavior with actual data:
 
 ---
 
-Previous: [Moving Values from Parent to Child](04-parent-to-child.md) | Next: [Moving Values from Child to Parent](06-child-to-parent.md)
+Previous: [Moving Values from Parent to Child](10-parent-to-child.md) | Next: [Moving Values from Child to Parent](30-child-to-parent.md)

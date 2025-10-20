@@ -1,4 +1,4 @@
-Previous: [Reusable Columns](02-reusable-columns.md) | Next: [Moving Values from Parent to Child](04-parent-to-child.md)
+Previous: [Label, Format, and Comment](13-label-format-comment.md) | Next: [Indexes and Unique Constraints](30-indexes-and-constraints.md)
 
 # Foreign Keys
 
@@ -267,4 +267,4 @@ These tests verify foreign key behavior with actual data:
 
 ---
 
-Previous: [Reusable Columns](02-reusable-columns.md) | Next: [Moving Values from Parent to Child](04-parent-to-child.md)
+Previous: [Label, Format, and Comment](13-label-format-comment.md) | Next: [Indexes and Unique Constraints](30-indexes-and-constraints.md)

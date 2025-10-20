@@ -1,4 +1,4 @@
-Previous: [Generating Values Within a Row](05-generated-columns.md) | Next: [Pattern Matching Tables](07-matching-tables.md)
+Previous: [Generating Values Within a Row](20-calculated-columns.md) | Next: [Schema Validation](../features/01-schema-validation.md)
 
 # Moving Values from Child to Parent
 
@@ -257,4 +257,4 @@ These tests verify aggregation automation behavior with actual data:
 
 ---
 
-Previous: [Generating Values Within a Row](05-generated-columns.md) | Next: [Pattern Matching Tables](07-matching-tables.md)
+Previous: [Generating Values Within a Row](20-calculated-columns.md) | Next: [Schema Validation](../features/01-schema-validation.md)

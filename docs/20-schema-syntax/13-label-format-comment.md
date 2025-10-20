@@ -1,4 +1,4 @@
-Previous: [Reusable Columns](12-reusable-columns.md) | Next: [Schema Validation](../features/01-schema-validation.md)
+Previous: [Reusable Columns](12-reusable-columns.md) | Next: [Foreign Keys](20-foreign-keys.md)
 
 # Label, Format, and Comment
 
@@ -131,4 +131,4 @@ tables:
 
 ---
 
-Previous: [Reusable Columns](12-reusable-columns.md) | Next: [Schema Validation](../features/01-schema-validation.md)
+Previous: [Reusable Columns](12-reusable-columns.md) | Next: [Foreign Keys](20-foreign-keys.md)

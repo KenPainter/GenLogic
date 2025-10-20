@@ -1,4 +1,4 @@
-Previous: [Pattern Matching Tables](07-matching-tables.md) | Next: [Label and Format](09-label-and-format.md)
+Previous: [Foreign Keys](20-foreign-keys.md) | Next: [Moving Values from Parent to Child](../30-column-automation/10-parent-to-child.md)
 
 # Indexes and Unique Constraints
 
@@ -118,4 +118,4 @@ These tests verify that GenLogic generates correct index and constraint DDL:
 
 ---
 
-Previous: [Pattern Matching Tables](07-matching-tables.md) | Next: [Label and Format](09-label-and-format.md)
+Previous: [Foreign Keys](20-foreign-keys.md) | Next: [Moving Values from Parent to Child](../30-column-automation/10-parent-to-child.md)

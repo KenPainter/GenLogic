@@ -1,0 +1,16 @@
+tables:
+  products:
+    columns:
+      id: integer primary key
+      name: varchar(100)
+      base_price: numeric(10,2)
+
+  orders:
+    columns:
+      id: integer primary key
+      product_id: integer
+      price_at_purchase:
+        definition: numeric(10,2)
+        automation: SNAPSHOT @products.base_price
+    foreign_keys:
+      product: { table: products }

@@ -13,14 +13,19 @@
 1. [Column Types](20-schema-syntax/11-column-types.md)
 1. [Reusable Columns](20-schema-syntax/12-reusable-columns.md)
 1. [Label, Format, and Comment](20-schema-syntax/13-label-format-comment.md)
-1. [Foreign Keys](schema-syntax/20-foreign-keys.md)
-1. [Indexes and Unique Constraints](20-schema-syntax/08-indexes-and-constraints.md)
+1. [Foreign Keys](20-schema-syntax/20-foreign-keys.md)
+1. [Indexes and Unique Constraints](20-schema-syntax/30-indexes-and-constraints.md)
 
-## Genlogic Automations Syntax
+## Column Automations Syntax
 
-1. [Moving Values from Parent to Child](schema-syntax/30-parent-to-child.md)
-1. [Generating Values Within a Row](schema-syntax/05-generated-columns.md)
-1. [Moving Values from Child to Parent](schema-syntax/06-child-to-parent.md)
+1. [Moving Values from Parent to Child](30-column-automation/10-parent-to-child.md)
+1. [Generating Values Within a Row](30-column-automation/20-calculated-columns.md)
+1. [Moving Values from Child to Parent](30-column-automation/30-child-to-parent.md)
+
+## Row and Table Automation Syntax
+
+1. spread
+1. auto-create (rows in child table)
 1. [Pattern Matching Tables](schema-syntax/07-matching-tables.md)
 1. [Seed Data](schema-syntax/10-seed-data.md)
 
