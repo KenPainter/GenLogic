@@ -1,4 +1,4 @@
-Previous: [Calculating Values Within a Row](20-calculate-within-row.md) | Next: [Schema Validation](../50-integrity-features/01-schema-validation.md)
+Previous: [Generating Values Within a Row](20-calculate-within-row.md) | Next: [Auto-Creating Parent Rows](../40-row-automation/10-auto-create-parent.md)
 
 # Moving Values from Child to Parent
 
@@ -312,4 +312,4 @@ Tests that verify aggregation automation behavior with actual data:
 
 ---
 
-Previous: [Calculating Values Within a Row](20-calculate-within-row.md) | Next: [Schema Validation](../50-integrity-features/01-schema-validation.md)
+Previous: [Generating Values Within a Row](20-calculate-within-row.md) | Next: [Auto-Creating Parent Rows](../40-row-automation/10-auto-create-parent.md)

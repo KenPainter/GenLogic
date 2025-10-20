@@ -24,9 +24,9 @@
 
 ## Row and Table Automation Syntax
 
-1. spread
-1. auto-create (rows in child table)
-1. [Pattern Matching Tables](schema-syntax/07-matching-tables.md)
+1. [Auto-Creating Parent Rows](40-row-automation/10-auto-create-parent.md)
+1. [Spreading Parent to Multiple Children](40-row-automation/20-spread-to-children.md)
+1. [Syncing Parent to Children](40-row-automation/30-sync-to-children.md)
 
 ## Data Integrity Features
 
@@ -38,6 +38,7 @@
 
 ## Application Development Features
 
+1. [Pattern Matching Tables](schema-syntax/07-matching-tables.md)
 1. [Seed Data](schema-syntax/10-seed-data.md)
 5. [The Resolved File] - no link yet, does not exist
 1. [The genlogic-schema.json file] - no link yet, doc does not exist

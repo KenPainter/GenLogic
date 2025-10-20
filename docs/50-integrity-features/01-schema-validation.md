@@ -1,4 +1,4 @@
-Previous: [Moving Values from Child to Parent](../30-column-automation/30-child-to-parent.md) | Next: [Non-Subvertible Calculations](02-non-subvertible-calculations.md)
+Previous: [Syncing Parent to Children](../40-row-automation/30-sync-to-children.md) | Next: [Non-Subvertible Calculations](02-non-subvertible-calculations.md)
 
 # Schema Validation
 
@@ -194,4 +194,4 @@ The following validations are performed by the AJV JSON Schema validator (third-
 
 ---
 
-Previous: [Moving Values from Child to Parent](../30-column-automation/30-child-to-parent.md) | Next: [Non-Subvertible Calculations](02-non-subvertible-calculations.md)
+Previous: [Syncing Parent to Children](../40-row-automation/30-sync-to-children.md) | Next: [Non-Subvertible Calculations](02-non-subvertible-calculations.md)

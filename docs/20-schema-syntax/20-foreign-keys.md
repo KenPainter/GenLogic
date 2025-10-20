@@ -167,37 +167,9 @@ tables:
       manager_id: integer
 ```
 
-## Auto-Create Parent
+## Row Automation Features
 
-GenLogic can create summary tables that serve the same purpose
-as materialized views.  The "auto-create_parent" feature
-allows all such "views" to be embedded and automatically
-updated within the database.
-
-Automatically create parent rows when inserting child rows with non-existent foreign key values:
-
-```yaml
-tables:
-  categories:
-    columns:
-      category_name: varchar(100) primary key
-      total_amount:
-        automation: SUM @transactions.amount
-
-  transactions:
-    foreign_keys:
-      category_name:
-        table: categories
-        auto_create_parent: true
-
-    columns:
-      transaction_id: serial primary key
-      amount: integer not null
-      category_name: varchar(100)
-```
-
-When inserting a transaction with a new category name, GenLogic creates the category row
-automatically with only the primary key populated. Other columns receive default values.
+Foreign keys support row automation features like auto-creating parent rows. See the [Row Automation](../40-row-automation/10-auto-create-parent.md) section for details.
 
 ## Example
 

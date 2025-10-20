@@ -1,0 +1,27 @@
+tables:
+  # Parent table
+  orders:
+    columns:
+      order_id: serial primary key
+      customer_name: varchar(100)
+      order_total: numeric(10,2)
+      status: varchar(20) default 'pending'
+
+  # Child table with auto_create sync (1:1 relationship)
+  order_audit:
+    foreign_keys:
+      order_id:
+        table: orders
+        auto_create:
+          on: [insert, update, delete]
+          copy_columns:
+            customer_name: audited_customer
+            order_total: audited_total
+          literals:
+            audit_type: "'SYNC'"
+
+    columns:
+      audit_id: serial primary key
+      audited_customer: varchar(100)
+      audited_total: numeric(10,2)
+      audit_type: varchar(20)

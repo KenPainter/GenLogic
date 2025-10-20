@@ -73,6 +73,9 @@ Before Release 1.0:
 - Replace add-navigation.mjs with a general reconciler
   that looks for widows and orphans in both docs and
   tests/
+- re-run risks analysis, like bad data in a spread
+  creating an infinite loop.  Resolve and block
+  all corrupt data paths.
 
 Anytime sorta-kinda maybe someday:
 - Support views

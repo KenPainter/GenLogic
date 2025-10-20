@@ -1,0 +1,30 @@
+tables:
+  projects:
+    columns:
+      project_id: serial primary key
+      project_name: varchar(100)
+      default_assignee: varchar(50)
+      start_date: date
+      end_date: date
+      frequency: varchar(20)
+
+  tasks:
+    foreign_keys:
+      project_id:
+        table: projects
+        auto_create:
+          on: [insert]
+          spread:
+            start: start_date
+            end: end_date
+            interval: frequency
+            generated_column: task_date
+          copy_columns:
+            project_name: task_prefix
+            default_assignee: assignee
+
+    columns:
+      task_id: serial primary key
+      task_date: date
+      task_prefix: varchar(100)
+      assignee: varchar(50)
