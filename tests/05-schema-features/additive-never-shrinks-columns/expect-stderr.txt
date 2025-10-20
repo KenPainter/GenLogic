@@ -1,0 +1,3 @@
+/Cannot narrow column users\.name:/
+/VARCHAR\(200\).*VARCHAR\(50\)/
+/Narrowing columns would truncate data/

@@ -2,11 +2,11 @@ Previous: [Calculation Integrity](30-calculation-integrity.md) | Next: [IDE Supp
 
 # Additive Changes Only
 
-GenLogic guarantees that it will never destroy data. All schema changes are **additive only** - GenLogic can create new tables, add new columns, and widen existing columns, but it cannot and will not delete or narrow anything.
+GenLogic guarantees that it will never destroy data. All schema changes are additive only - GenLogic can create new tables, add new columns, and widen existing columns, but it cannot and will not delete or narrow anything.
 
 ## The Guarantee
 
-**GenLogic can not, in any code path, destroy data.**
+GenLogic cannot, in any code path, destroy data.
 
 This means:
 - No tables are ever dropped
@@ -114,9 +114,9 @@ tables:
   # orders removed from YAML
 ```
 
-**Result**: GenLogic will NOT drop the `orders` table. The table remains in the database.
+Result: GenLogic will NOT drop the `orders` table. The table remains in the database.
 
-**Rationale**: Removing a table from the YAML might be accidental. Requiring explicit database operations for destructive changes prevents data loss from configuration errors.
+Rationale: Removing a table from the YAML might be accidental. Requiring explicit database operations for destructive changes prevents data loss from configuration errors.
 
 ### Drop Columns
 
@@ -138,7 +138,7 @@ tables:
       # email removed from YAML
 ```
 
-**Result**: GenLogic will NOT drop the `email` column. The column remains in the database.
+Result: GenLogic will NOT drop the `email` column. The column remains in the database.
 
 ### Narrow Columns
 
@@ -152,9 +152,15 @@ columns:
   name: varchar(100)  # Would truncate data!
 ```
 
-**Result**: GenLogic will NOT alter the column. It remains VARCHAR(200).
+Result: GenLogic throws an error and refuses to proceed.
 
-**Rationale**: Narrowing VARCHAR(200) to VARCHAR(100) could truncate existing data. This is a destructive operation.
+Error message:
+```
+Cannot narrow column users.name: database has VARCHAR(200), schema specifies VARCHAR(100).
+Narrowing columns would truncate data. Use manual ALTER TABLE if needed.
+```
+
+Rationale: Narrowing VARCHAR(200) to VARCHAR(100) could truncate existing data. GenLogic fails fast to prevent silent data loss risks.
 
 ### Change Data Types
 
@@ -168,9 +174,15 @@ columns:
   age: varchar(10)  # Incompatible type change
 ```
 
-**Result**: GenLogic will NOT alter the column type.
+Result: GenLogic throws an error and refuses to proceed.
 
-**Rationale**: Changing `integer` to `varchar` is not a simple widening operation and could fail or corrupt data.
+Error message:
+```
+Cannot change column type for users.age: database has integer, schema specifies varchar(10).
+Type changes are not supported. Use manual ALTER TABLE if needed.
+```
+
+Rationale: Changing `integer` to `varchar` is not a simple widening operation and could fail or corrupt data. GenLogic fails fast to prevent accidental schema mismatches.
 
 ### Remove Constraints
 
@@ -184,9 +196,9 @@ columns:
   email: varchar(255)  # Lost NOT NULL and UNIQUE
 ```
 
-**Result**: Constraints remain on the column.
+Result: Constraints remain on the column.
 
-**Rationale**: GenLogic focuses on additive changes. Removing constraints is not currently supported.
+Rationale: GenLogic focuses on additive changes. Removing constraints is not currently supported.
 
 ## Manual Destructive Operations
 
@@ -205,13 +217,43 @@ ALTER TABLE users ALTER COLUMN code TYPE VARCHAR(20);
 
 After manual changes, re-run GenLogic to ensure automated columns and triggers are correctly regenerated.
 
+## Technical Approach
+
+GenLogic enforces additive-only changes through design - there is no code path that can generate destructive operations.
+
+The diff engine (`src/diff-engine.ts`) only generates these operation types:
+- `tablesToCreate` - Create new tables
+- `columnsToAdd` - Add new columns to existing tables
+- `columnsToModify` - Widen existing columns (safe expansions only)
+- `foreignKeysToAdd` - Add new foreign key constraints
+- `indexesToCreate` - Create new indexes
+- `checkConstraintsToAdd` - Add new CHECK constraints
+
+There are NO corresponding "drop" or "delete" operations:
+- No `tablesToDrop`
+- No `columnsToDrop`
+- No `DROP TABLE` statements anywhere in codebase
+- No `DROP COLUMN` statements anywhere in codebase
+
+Column modifications are actively validated in `detectSafeColumnModification()`:
+- Throws error if base types differ (type change not supported)
+- Throws error if narrowing is detected (e.g., VARCHAR size decrease)
+- Throws error if NUMERIC precision or scale would decrease
+- Only returns a modification for proven-safe expansions
+
+This means:
+- Removed tables/columns in YAML are simply ignored (no error)
+- Type changes throw errors (prevents schema mismatches)
+- Narrowing operations throw errors (prevents data loss)
+- Only explicitly safe widening operations are generated
+
 ## Benefits of Additive-Only
 
-1. **Safety**: Schema changes cannot accidentally destroy data
-2. **Confidence**: Run GenLogic in production without fear
-3. **Rollback**: Keep old columns during migrations, drop later
-4. **Auditing**: Old columns remain for historical queries
-5. **Simplicity**: No complex migration coordination needed
+1. Safety: Schema changes cannot accidentally destroy data
+2. Confidence: Run GenLogic in production without fear
+3. Rollback: Keep old columns during migrations, drop later
+4. Auditing: Old columns remain for historical queries
+5. Simplicity: No complex migration coordination needed
 
 ## Workflow Recommendations
 
@@ -244,34 +286,82 @@ Renaming is seen as: delete old + create new
 
 ## Widening Rules
 
-### Safe Widening
+### Safe Widening (Implemented)
+
+GenLogic will automatically generate ALTER TABLE statements for these safe expansions:
 
 - VARCHAR(n) → VARCHAR(m) where m > n
 - CHAR(n) → CHAR(m) where m > n
 - NUMERIC(p1,s1) → NUMERIC(p2,s2) where p2 ≥ p1 and s2 ≥ s1
 
-### Unsafe Changes (Rejected)
+### Unsafe Changes (Rejected with Error)
 
-- VARCHAR(n) → VARCHAR(m) where m < n (narrowing)
-- NUMERIC(p1,s1) → NUMERIC(p2,s2) where p2 < p1 or s2 < s1 (precision loss)
-- integer → bigint (might be safe but not implemented)
-- Any other type change
+GenLogic throws an error and refuses to proceed for these unsafe changes:
+
+- VARCHAR(n) → VARCHAR(m) where m < n (narrowing - would truncate data)
+- CHAR(n) → CHAR(m) where m < n (narrowing - would truncate data)
+- NUMERIC(p1,s1) → NUMERIC(p2,s2) where p2 < p1 or s2 < s1 (precision/scale loss)
+- Any type change (e.g., integer → varchar, integer → bigint)
+
+Not yet implemented (silently ignored):
+- Adding/removing NOT NULL, UNIQUE, or other constraints
 
 ## Test Coverage
 
-Additive changes are tested in the schema features and behavior test suites:
+Additive-only behavior is verified by these tests:
 
-### Schema Features (Isolated Tests)
+### Schema Features
 
-- [x] [New table added](../../tests/05-schema-features/additive-new-table) - New table added to existing database
-- [x] [New column added](../../tests/05-schema-features/additive-new-column) - New column added to existing table
-- [x] [Column widening](../../tests/05-schema-features/additive-widen-column) - Columns widened for CHAR, VARCHAR, NUMERIC
+- [x] [Empty Database](../../tests/05-schema-features/additive-empty-database)
+  - GenLogic creates initial schema safely
+  - No pre-existing tables affected
 
-### Behavior (End-to-End Tests)
+- [x] [New Table Added](../../tests/05-schema-features/additive-new-table)
+  - New table added to existing database
+  - Existing tables remain unchanged
+  - No data loss from existing tables
 
-- [x] [VARCHAR size expansion](../../tests/06-behavior/column-expansion-varchar) - Widening VARCHAR columns
-- [x] [NUMERIC precision expansion](../../tests/06-behavior/column-expansion-numeric) - Widening NUMERIC precision/scale
-- [x] [Expansion via reusable columns](../../tests/06-behavior/column-expansion-reusable) - Column expansion through $ref
+- [x] [New Column Added](../../tests/05-schema-features/additive-new-column)
+  - New column added to existing table
+  - Existing columns remain unchanged
+  - Existing data preserved
+
+- [x] [Column Widening](../../tests/05-schema-features/additive-widen-column)
+  - VARCHAR, CHAR, and NUMERIC columns safely widened
+  - Existing data fits in widened columns
+  - ALTER TABLE TYPE generated correctly
+
+- [x] [Never Drops Tables](../../tests/05-schema-features/additive-never-drops-tables)
+  - Table removed from YAML schema
+  - GenLogic does NOT drop the table
+  - Table and all data remain in database
+
+- [x] [Never Drops Columns](../../tests/05-schema-features/additive-never-drops-columns)
+  - Column removed from YAML schema
+  - GenLogic does NOT drop the column
+  - Column and all data remain in table
+
+- [x] [Never Shrinks Columns](../../tests/05-schema-features/additive-never-shrinks-columns)
+  - Schema specifies narrower VARCHAR, CHAR, and NUMERIC
+  - GenLogic throws error refusing to narrow columns
+  - Error message indicates narrowing would lose data
+
+### Behavior Tests
+
+- [x] [VARCHAR Size Expansion](../../tests/06-behavior/column-expansion-varchar)
+  - End-to-end test of VARCHAR widening
+  - Data preserved after expansion
+  - Application can use wider column
+
+- [x] [NUMERIC Precision Expansion](../../tests/06-behavior/column-expansion-numeric)
+  - End-to-end test of NUMERIC precision/scale expansion
+  - Existing values remain valid
+  - Wider precision/scale available
+
+- [x] [Expansion via Reusable Columns](../../tests/06-behavior/column-expansion-reusable)
+  - Column expansion through $ref mechanism
+  - Reusable column definition widened
+  - All tables using $ref get widened columns
 
 ---
 

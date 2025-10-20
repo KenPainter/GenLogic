@@ -273,62 +273,98 @@ export class DiffEngine {
     const desiredNormalized = this.normalizeTypeName(desiredParsed.baseType);
 
     if (currentNormalized !== desiredNormalized) {
-      return null;
+      throw new Error(
+        `Cannot change column type for ${tableName}.${columnName}: ` +
+        `database has ${currentType}, schema specifies ${desiredType}. ` +
+        `Type changes are not supported. Use manual ALTER TABLE if needed.`
+      );
     }
 
     // Check for safe expansions (using normalized type names)
     if (currentNormalized === 'varchar') {
       // VARCHAR expansion
-      if (desiredParsed.size && currentParsed.size && desiredParsed.size > currentParsed.size) {
-        return {
-          tableName,
-          columnName,
-          currentType,
-          newType: desiredType,
-          reason: `VARCHAR size expanded from ${currentParsed.size} to ${desiredParsed.size}`
-        };
+      if (desiredParsed.size && currentParsed.size) {
+        if (desiredParsed.size < currentParsed.size) {
+          throw new Error(
+            `Cannot narrow column ${tableName}.${columnName}: ` +
+            `database has VARCHAR(${currentParsed.size}), schema specifies VARCHAR(${desiredParsed.size}). ` +
+            `Narrowing columns would truncate data. Use manual ALTER TABLE if needed.`
+          );
+        }
+        if (desiredParsed.size > currentParsed.size) {
+          return {
+            tableName,
+            columnName,
+            currentType,
+            newType: desiredType,
+            reason: `VARCHAR size expanded from ${currentParsed.size} to ${desiredParsed.size}`
+          };
+        }
       }
     } else if (currentNormalized === 'char') {
       // CHAR expansion
-      if (desiredParsed.size && currentParsed.size && desiredParsed.size > currentParsed.size) {
-        return {
-          tableName,
-          columnName,
-          currentType,
-          newType: desiredType,
-          reason: `CHAR size expanded from ${currentParsed.size} to ${desiredParsed.size}`
-        };
+      if (desiredParsed.size && currentParsed.size) {
+        if (desiredParsed.size < currentParsed.size) {
+          throw new Error(
+            `Cannot narrow column ${tableName}.${columnName}: ` +
+            `database has CHAR(${currentParsed.size}), schema specifies CHAR(${desiredParsed.size}). ` +
+            `Narrowing columns would truncate data. Use manual ALTER TABLE if needed.`
+          );
+        }
+        if (desiredParsed.size > currentParsed.size) {
+          return {
+            tableName,
+            columnName,
+            currentType,
+            newType: desiredType,
+            reason: `CHAR size expanded from ${currentParsed.size} to ${desiredParsed.size}`
+          };
+        }
       }
     } else if (currentNormalized === 'numeric') {
       // NUMERIC expansion - both precision and scale can increase
-      const precisionExpanded = desiredParsed.precision && currentParsed.precision &&
-                                desiredParsed.precision > currentParsed.precision;
-      const scaleExpanded = desiredParsed.scale !== undefined && currentParsed.scale !== undefined &&
-                           desiredParsed.scale > currentParsed.scale;
+      if (currentParsed.precision && desiredParsed.precision && currentParsed.scale !== undefined && desiredParsed.scale !== undefined) {
+        // Check for narrowing (precision decrease OR scale decrease)
+        const precisionNarrowed = desiredParsed.precision < currentParsed.precision;
+        const scaleNarrowed = desiredParsed.scale < currentParsed.scale;
 
-      // Allow if precision expanded OR scale expanded (both are safe)
-      if (precisionExpanded || scaleExpanded) {
-        // Scale cannot decrease
-        if (currentParsed.scale !== undefined && desiredParsed.scale !== undefined &&
-            desiredParsed.scale < currentParsed.scale) {
-          return null; // UNSAFE: scale decrease
+        if (precisionNarrowed || scaleNarrowed) {
+          const problems: string[] = [];
+          if (precisionNarrowed) {
+            problems.push(`precision ${currentParsed.precision} → ${desiredParsed.precision}`);
+          }
+          if (scaleNarrowed) {
+            problems.push(`scale ${currentParsed.scale} → ${desiredParsed.scale}`);
+          }
+          throw new Error(
+            `Cannot narrow column ${tableName}.${columnName}: ` +
+            `database has NUMERIC(${currentParsed.precision},${currentParsed.scale}), ` +
+            `schema specifies NUMERIC(${desiredParsed.precision},${desiredParsed.scale}). ` +
+            `Narrowing ${problems.join(' and ')} would lose data. Use manual ALTER TABLE if needed.`
+          );
         }
 
-        const changes: string[] = [];
-        if (precisionExpanded) {
-          changes.push(`precision ${currentParsed.precision} → ${desiredParsed.precision}`);
-        }
-        if (scaleExpanded) {
-          changes.push(`scale ${currentParsed.scale} → ${desiredParsed.scale}`);
-        }
+        // Check for expansion
+        const precisionExpanded = desiredParsed.precision > currentParsed.precision;
+        const scaleExpanded = desiredParsed.scale > currentParsed.scale;
 
-        return {
-          tableName,
-          columnName,
-          currentType,
-          newType: desiredType,
-          reason: `NUMERIC expanded (${changes.join(', ')})`
-        };
+        if (precisionExpanded || scaleExpanded) {
+          const changes: string[] = [];
+          if (precisionExpanded) {
+            changes.push(`precision ${currentParsed.precision} → ${desiredParsed.precision}`);
+          }
+          if (scaleExpanded) {
+            changes.push(`scale ${currentParsed.scale} → ${desiredParsed.scale}`);
+          }
+
+          return {
+            tableName,
+            columnName,
+            currentType,
+            newType: desiredType,
+            reason: `NUMERIC expanded (${changes.join(', ')})`
+          };
+        }
       }
     }
 
