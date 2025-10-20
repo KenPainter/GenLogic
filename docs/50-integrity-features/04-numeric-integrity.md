@@ -22,7 +22,7 @@ SELECT SUM(amount) FROM transactions;
 
 Once NaN or Infinity enters your database, it spreads through:
 - SUM aggregations: SUM(100, 200, NaN) = NaN
-- Generated columns: @price * @quantity where price is NaN = NaN
+- Formula columns: @price * @quantity where price is NaN = NaN
 - Arithmetic: balance - withdrawal where withdrawal is Infinity = -Infinity
 
 This corruption is permanent - you cannot "filter out" NaN values since NaN != NaN in SQL comparisons.
@@ -90,7 +90,7 @@ INSERT INTO test (amount) VALUES ('-Infinity'::numeric);
 Business applications must guarantee data integrity. With NaN/Infinity protection:
 
 1. SUM aggregations are reliable - one bad insert cannot corrupt entire account balances
-2. Generated column calculations are safe - arithmetic always produces valid results
+2. Formula column calculations are safe - arithmetic always produces valid results
 3. Reports are trustworthy - no mysterious "NaN" values appear in financial reports
 4. Data migrations are clean - no special case handling needed for corrupt data
 

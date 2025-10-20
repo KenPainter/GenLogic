@@ -7,9 +7,6 @@ tables:
         definition: numeric(10,2)
       quantity:
         definition: integer
+      # ERROR: generated column without type or $ref
       total:
-        definition: numeric(10,2)
-        generated: "@price * @quantity"
-    # Index on generated column (valid)
-    indexes:
-      - [total]
+        formula: "@price * @quantity"

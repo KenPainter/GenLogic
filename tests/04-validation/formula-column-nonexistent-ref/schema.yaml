@@ -8,4 +8,4 @@ tables:
       # Generated column references non-existent column @quantity
       total:
         definition: numeric(10,2)
-        generated: "@price * @quantity"
+        formula: "@price * @quantity"

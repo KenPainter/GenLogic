@@ -6,7 +6,7 @@ tables:
       # Circular dependency: a references b, b references a
       column_a:
         definition: numeric(10,2)
-        generated: "@column_b + 1"
+        formula: "@column_b + 1"
       column_b:
         definition: numeric(10,2)
-        generated: "@column_a * 2"
+        formula: "@column_a * 2"

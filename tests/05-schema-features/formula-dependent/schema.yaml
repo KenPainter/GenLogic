@@ -6,7 +6,7 @@ tables:
       tax_rate: numeric(4,2)
       tax_amount:
         definition: numeric(10,2)
-        generated: "@base_price * @tax_rate"
+        formula: "@base_price * @tax_rate"
       total_price:
         definition: numeric(10,2)
-        generated: "@base_price + @tax_amount"
+        formula: "@base_price + @tax_amount"

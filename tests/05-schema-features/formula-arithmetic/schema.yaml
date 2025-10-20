@@ -6,4 +6,4 @@ tables:
       quantity: integer
       total:
         definition: numeric(10,2)
-        generated: "@price * @quantity"
+        formula: "@price * @quantity"

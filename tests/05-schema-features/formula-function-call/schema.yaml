@@ -5,4 +5,4 @@ tables:
       name: varchar(100)
       name_upper:
         definition: varchar(100)
-        generated: "UPPER(@name)"
+        formula: "UPPER(@name)"

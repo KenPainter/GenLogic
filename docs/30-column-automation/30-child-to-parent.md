@@ -1,25 +1,10 @@
-Previous: [Generating Values Within a Row](20-calculated-columns.md) | Next: [Schema Validation](../features/01-schema-validation.md)
+Previous: [Generating Values Within a Row](20-calculate-within-row.md) | Next: [Schema Validation](../50-integrity-features/01-schema-validation.md)
 
 # Moving Values from Child to Parent
 
 Parent tables can automatically maintain aggregate values from child tables.
 
 ## Basic Structure
-
-```yaml
-tables:
-  parent_table:
-    columns:
-      aggregate_column:
-        definition: *result type*
-        automation: *TYPE child_table.source_column*
-
-  child_table:
-    foreign_keys:
-      parent_fk: parent_table
-    columns:
-      source_column: *any valid PostgreSQL type*
-```
 
 The automation format is: `TYPE @table.column` where:
 - `TYPE` is one of: SUM, COUNT, MAX, MIN, LAST_VALUE
@@ -177,7 +162,8 @@ tables:
 
 ## What Happens
 
-Triggers on the child table maintain parent aggregations. When child rows are inserted, updated, or deleted, the parent aggregate column is automatically recalculated.
+Triggers on the child table maintain parent aggregations. When child rows are inserted,
+updated, or deleted, the parent aggregate column is automatically recalculated.
 
 ## Multiple Aggregations
 
@@ -257,4 +243,4 @@ These tests verify aggregation automation behavior with actual data:
 
 ---
 
-Previous: [Generating Values Within a Row](20-calculated-columns.md) | Next: [Schema Validation](../features/01-schema-validation.md)
+Previous: [Generating Values Within a Row](20-calculate-within-row.md) | Next: [Schema Validation](../50-integrity-features/01-schema-validation.md)

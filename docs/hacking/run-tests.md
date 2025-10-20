@@ -1,4 +1,4 @@
-Previous: [Numeric Integrity Protection](../features/04-numeric-integrity.md)
+Previous: [Numeric Integrity Protection](../50-integrity-features/04-numeric-integrity.md)
 
 # Running Tests
 
@@ -22,4 +22,4 @@ Filters match any part of the test path.
 
 ---
 
-Previous: [Numeric Integrity Protection](../features/04-numeric-integrity.md)
+Previous: [Numeric Integrity Protection](../50-integrity-features/04-numeric-integrity.md)

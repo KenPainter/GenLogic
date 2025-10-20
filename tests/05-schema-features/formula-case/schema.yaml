@@ -5,4 +5,4 @@ tables:
       status: varchar(20)
       is_pending:
         definition: boolean
-        generated: "CASE WHEN @status = 'pending' THEN TRUE ELSE FALSE END"
+        formula: "CASE WHEN @status = 'pending' THEN TRUE ELSE FALSE END"

@@ -123,7 +123,7 @@ export class TriggerGenerator {
   /**
    * Identify automated columns in a table
    * These columns must not be modified directly by users
-   * Returns column names that have automation or generated properties
+   * Returns column names that have automation or formula properties
    */
   private getAutomatedColumns(tableName: string, schema: GenLogicSchema, processedSchema: ProcessedSchema): string[] {
     const automatedColumns: string[] = [];
@@ -140,8 +140,8 @@ export class TriggerGenerator {
         continue;
       }
 
-      // Column with generated expression
-      if (column.generated) {
+      // Column with formula expression
+      if (column.formula) {
         automatedColumns.push(columnName);
         continue;
       }
@@ -155,7 +155,7 @@ export class TriggerGenerator {
    * Set to appropriate initial values based on automation type
    * - Aggregations (SUM, COUNT): Initialize to 0
    * - Other aggregations (MAX, MIN, LAST_VALUE): Initialize to NULL
-   * - Generated columns: Initialize to NULL (will be calculated immediately)
+   * - Formula columns: Initialize to NULL (will be calculated immediately)
    * - SNAPSHOT/SYNC: Initialize to NULL (will be pulled immediately)
    */
   private generateAutomatedColumnProtection(
@@ -190,8 +190,8 @@ export class TriggerGenerator {
           // MAX, MIN, LAST_VALUE, SNAPSHOT, SYNC: NULL
           lines.push(`  NEW.${col} := NULL;`);
         }
-      } else if (columnDef.generated) {
-        // Generated columns: NULL (will be calculated immediately after)
+      } else if (columnDef.formula) {
+        // Formula columns: NULL (will be calculated immediately after)
         lines.push(`  NEW.${col} := NULL;`);
       } else {
         // Default: NULL
@@ -204,7 +204,7 @@ export class TriggerGenerator {
 
   /**
    * Generate protection code for automated columns on UPDATE
-   * - Generated columns: Reset to NULL (will be recalculated immediately)
+   * - Formula columns: Reset to NULL (will be recalculated immediately)
    * - SYNC/SNAPSHOT: DO NOT reset - allow parent triggers to update them
    *   (Column-level permissions prevent user modification)
    * - Aggregations (SUM/COUNT/etc): DO NOT reset - updated by child triggers
@@ -217,25 +217,25 @@ export class TriggerGenerator {
     processedSchema: ProcessedSchema
   ): string {
     const lines: string[] = [];
-    const generatedColumns: string[] = [];
+    const formulaColumns: string[] = [];
 
-    // Only reset GENERATED columns - they need recalculation
+    // Only reset FORMULA columns - they need recalculation
     for (const col of automatedColumns) {
       const columnDef = processedSchema.tables[tableName]?.columns[col];
-      if (columnDef?.generated) {
-        generatedColumns.push(col);
+      if (columnDef?.formula) {
+        formulaColumns.push(col);
       }
       // IMPORTANT: Do NOT reset SYNC/SNAPSHOT/aggregation columns!
       // They must be updatable by triggers (parent SYNC pushes, child aggregation pushes)
       // Column-level permissions prevent USER modification
     }
 
-    if (generatedColumns.length === 0) {
-      return '';  // No protection needed if no generated columns
+    if (formulaColumns.length === 0) {
+      return '';  // No protection needed if no formula columns
     }
 
-    lines.push('  -- INTEGRITY: Reset generated columns for recalculation');
-    for (const col of generatedColumns) {
+    lines.push('  -- INTEGRITY: Reset formula columns for recalculation');
+    for (const col of formulaColumns) {
       lines.push(`  NEW.${col} := NULL;`);
     }
 
@@ -275,10 +275,10 @@ export class TriggerGenerator {
       // Collect calculated columns
       const calculatedCols: Array<{ name: string; expression: string }> = [];
       for (const [columnName, column] of Object.entries(table.columns)) {
-        if (column && typeof column === 'object' && 'generated' in column) {
+        if (column && typeof column === 'object' && 'formula' in column) {
           calculatedCols.push({
             name: columnName,
-            expression: (column as any).generated
+            expression: (column as any).formula
           });
         }
       }

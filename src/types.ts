@@ -35,7 +35,7 @@ export interface ColumnDefinition {
 
   // GenLogic features (input and output)
   automation?: AutomationDefinition;
-  generated?: string;
+  formula?: string;
   comment?: string;
   label?: string;      // Human-readable label for UI display
   format?: string;     // Format hint (e.g., 'currency', 'date', 'email')

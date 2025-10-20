@@ -95,7 +95,7 @@ END $$;`);
       const userColumns: string[] = [];
 
       for (const [columnName, column] of Object.entries(processedTable.columns)) {
-        if (column.automation || column.generated) {
+        if (column.automation || column.formula) {
           automatedColumns.push(columnName);
         } else {
           userColumns.push(columnName);

@@ -2,7 +2,7 @@ Previous: [Schema Validation](01-schema-validation.md) | Next: [Additive Changes
 
 # Non-Subvertible Calculated Columns
 
-GenLogic provides automated and generated columns that are automatically maintained by the database. To ensure data integrity, these calculated values must be protected from direct modification by application code.
+GenLogic provides automated and formula columns that are automatically maintained by the database. To ensure data integrity, these calculated values must be protected from direct modification by application code.
 
 ## The Problem
 
@@ -152,7 +152,7 @@ tables:
     columns:
       total:
         definition: numeric(10,2)
-        generated: "@subtotal + @tax"  # PROTECTED
+        formula: "@subtotal + @tax"  # PROTECTED
 ```
 
 ## Implementation Details

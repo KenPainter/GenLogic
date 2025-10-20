@@ -111,9 +111,9 @@ export class SchemaValidator {
               }
             }
 
-            // Check mutual exclusion: automation and generated cannot coexist
-            if (column && typeof column === 'object' && 'automation' in column && 'generated' in column) {
-              errors.push(`Table '${tableName}', column '${columnName}': cannot have both 'automation' and 'generated' properties`);
+            // Check mutual exclusion: automation and formula cannot coexist
+            if (column && typeof column === 'object' && 'automation' in column && 'formula' in column) {
+              errors.push(`Table '${tableName}', column '${columnName}': cannot have both 'automation' and 'formula' properties`);
             }
 
             // Check automation references
@@ -254,22 +254,22 @@ export class SchemaValidator {
       // All columns are now in a single location (FK columns have been merged)
       const allColumns = new Set<string>(Object.keys(tableObj.columns || {}));
 
-      // Check all columns for generated expressions
+      // Check all columns for formula expressions
       for (const [columnName, columnDef] of Object.entries(tableObj.columns || {})) {
         const colDef = columnDef as any;
 
-        if (colDef.generated) {
-          const generatedExpr = colDef.generated;
+        if (colDef.formula) {
+          const formulaExpr = colDef.formula;
 
           // Extract @column_name references
-          const atMatches = generatedExpr.match(/@(\w+)/g) || [];
+          const atMatches = formulaExpr.match(/@(\w+)/g) || [];
           const referencedCols = atMatches.map((m: string) => m.substring(1)); // Remove "@"
 
           // Require at least one @ reference
           if (atMatches.length === 0) {
             errors.push(
               `Table '${tableName}', column '${columnName}': ` +
-              `generated expression must reference at least one column using '@column_name' syntax`
+              `formula expression must reference at least one column using '@column_name' syntax`
             );
             continue; // Skip further validation for this expression
           }
@@ -279,14 +279,14 @@ export class SchemaValidator {
             if (!allColumns.has(refCol)) {
               errors.push(
                 `Table '${tableName}', column '${columnName}': ` +
-                `generated expression references non-existent column '@${refCol}'`
+                `formula expression references non-existent column '@${refCol}'`
               );
             }
           }
 
           // Check for bare identifiers that match column names (user forgot @ sigil)
           // Use negative lookbehind to exclude identifiers preceded by @
-          const allIdentifiers = generatedExpr.match(/(?<!@)\b([a-z_][a-z0-9_]*)\b/gi) || [];
+          const allIdentifiers = formulaExpr.match(/(?<!@)\b([a-z_][a-z0-9_]*)\b/gi) || [];
 
           // SQL keywords that are OK to appear bare
           const sqlKeywords = new Set([
@@ -312,7 +312,7 @@ export class SchemaValidator {
           if (bareColumnRefs.length > 0) {
             errors.push(
               `Table '${tableName}', column '${columnName}': ` +
-              `generated expression contains bare column reference(s) without '@' sigil: ${bareColumnRefs.join(', ')}. ` +
+              `formula expression contains bare column reference(s) without '@' sigil: ${bareColumnRefs.join(', ')}. ` +
               `Use '@column_name' syntax for all column references.`
             );
           }

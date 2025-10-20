@@ -70,9 +70,9 @@
               "$ref": "#/definitions/automationDefinition",
               "description": "Override automation (completely replaces)"
             },
-            "generated": {
+            "formula": {
               "type": "string",
-              "description": "Override generated expression (completely replaces)"
+              "description": "Override formula expression (completely replaces)"
             },
             "comment": {
               "type": "string",
@@ -94,7 +94,7 @@
     },
     "columnDefinition": {
       "type": "object",
-      "description": "Column definition with SQL definition string and optional GenLogic features (automation, generated, comment)",
+      "description": "Column definition with SQL definition string and optional GenLogic features (automation, formula, comment)",
       "properties": {
         "definition": {
           "type": "string",
@@ -104,9 +104,9 @@
           "$ref": "#/definitions/automationDefinition",
           "description": "GENLOGIC CORE: Automation that references FK names, not table names"
         },
-        "generated": {
+        "formula": {
           "type": "string",
-          "description": "SQL expression for generated column (e.g., 'column1 + column2'). Mutually exclusive with automation."
+          "description": "SQL expression for formula column (e.g., 'column1 + column2'). Mutually exclusive with automation."
         },
         "comment": {
           "type": "string",
@@ -129,7 +129,7 @@
           "required": ["automation"]
         },
         {
-          "required": ["generated"]
+          "required": ["formula"]
         }
       ],
       "additionalProperties": false
@@ -162,9 +162,9 @@
               "$ref": "#/definitions/automationDefinition",
               "description": "Override automation (completely replaces)"
             },
-            "generated": {
+            "formula": {
               "type": "string",
-              "description": "Override generated expression (completely replaces)"
+              "description": "Override formula expression (completely replaces)"
             },
             "comment": {
               "type": "string",

@@ -7,6 +7,7 @@ tables:
         definition: numeric(10,2)
       quantity:
         definition: integer
-      # ERROR: generated column without type or $ref
+      # Bare column reference without @ (should use @ sigil)
       total:
-        generated: "@price * @quantity"
+        definition: numeric(10,2)
+        formula: "price * @quantity"

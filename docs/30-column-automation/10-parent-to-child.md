@@ -1,4 +1,4 @@
-Previous: [Indexes and Unique Constraints](../20-schema-syntax/30-indexes-and-constraints.md) | Next: [Generating Values Within a Row](20-calculated-columns.md)
+Previous: [Indexes and Unique Constraints](../20-schema-syntax/30-indexes-and-constraints.md) | Next: [Generating Values Within a Row](20-calculate-within-row.md)
 
 # Moving Values from Parent to Child
 
@@ -106,4 +106,4 @@ tables:
 
 ---
 
-Previous: [Indexes and Unique Constraints](../20-schema-syntax/30-indexes-and-constraints.md) | Next: [Generating Values Within a Row](20-calculated-columns.md)
+Previous: [Indexes and Unique Constraints](../20-schema-syntax/30-indexes-and-constraints.md) | Next: [Generating Values Within a Row](20-calculate-within-row.md)

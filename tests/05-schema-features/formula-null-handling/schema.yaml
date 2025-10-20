@@ -6,4 +6,4 @@ tables:
       discount: numeric(10,2)
       final_price:
         definition: numeric(10,2)
-        generated: "COALESCE(@price - @discount, @price)"
+        formula: "COALESCE(@price - @discount, @price)"

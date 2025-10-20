@@ -5,4 +5,4 @@ tables:
       amount: numeric(10,2)
       status:
         definition: varchar(20)
-        generated: "CASE WHEN @amount > 0 THEN 'credit' WHEN @amount < 0 THEN 'debit' ELSE 'zero' END"
+        formula: "CASE WHEN @amount > 0 THEN 'credit' WHEN @amount < 0 THEN 'debit' ELSE 'zero' END"

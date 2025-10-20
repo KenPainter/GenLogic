@@ -278,8 +278,8 @@ export class SQLGenerator {
       sql += ` CHECK ("${columnName}" IS NULL OR ("${columnName}" = "${columnName}" AND abs("${columnName}") < 'Infinity'::numeric))`;
     }
 
-    // Add DEFAULT clause (but skip if automation/generated already handles the value)
-    if (definition.default !== undefined && !definition.automation && !definition.generated) {
+    // Add DEFAULT clause (but skip if automation/formula already handles the value)
+    if (definition.default !== undefined && !definition.automation && !definition.formula) {
       // Determine if default value needs quotes
       const defaultValue = definition.default;
       if (defaultValue.match(/^-?\d+(\.\d+)?$/) || // number

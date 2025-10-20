@@ -10,4 +10,4 @@ tables:
       # Generated column with no @ references (invalid)
       total:
         definition: numeric(10,2)
-        generated: price * quantity
+        formula: price * quantity

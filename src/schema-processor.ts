@@ -182,7 +182,7 @@ export class SchemaProcessor {
               processed[columnName] = {
                 ...parsed,
                 ...(colDef.automation && { automation: colDef.automation }),
-                ...(colDef.generated && { generated: colDef.generated }),
+                ...(colDef.formula && { formula: colDef.formula }),
                 ...(colDef.comment && { comment: colDef.comment }),
                 ...(colDef.label && { label: colDef.label }),
                 ...(colDef.format && { format: colDef.format })
@@ -215,12 +215,12 @@ export class SchemaProcessor {
       for (const [columnName, column] of Object.entries(table.columns)) {
         // Check if this is an FK extension (automation/generated only on FK column)
         if (typeof column === 'object' && column !== null && !('$ref' in column) && !('type' in column)) {
-          // No type field - might be an FK extension OR a SYNC/SNAPSHOT column OR a generated column
+          // No type field - might be an FK extension OR a SYNC/SNAPSHOT column OR a formula column
           const hasOnlyExtensions = Object.keys(column).every(k =>
             k === 'automation' || k === 'generated' || k === 'comment'
           );
 
-          if (hasOnlyExtensions && (column.automation || column.generated)) {
+          if (hasOnlyExtensions && (column.automation || column.formula)) {
             // Check if this is a SYNC/SNAPSHOT automation (regular column, needs type inference)
             const isSyncSnapshot = typeof column.automation === 'string' &&
               (column.automation.startsWith('SYNC ') || column.automation.startsWith('SNAPSHOT '));
@@ -231,28 +231,28 @@ export class SchemaProcessor {
               processedColumns[columnName] = {
                 type: '', // Empty placeholder - will be replaced during propagateTypeAndMetadata
                 automation: column.automation,
-                ...(column.generated && { generated: column.generated }),
+                ...(column.formula && { formula: column.formula }),
                 ...(column.comment && { comment: column.comment })
               } as ColumnDefinition;
               continue;
             }
 
             // If it has 'generated' but no 'automation', check if it's an FK extension
-            if (column.generated && !column.automation) {
+            if (column.formula && !column.automation) {
               // Check if this column matches a foreign key name
               const isFKExtension = table.foreign_keys && columnName in table.foreign_keys;
 
               if (!isFKExtension) {
-                // ERROR: Not an FK extension, generated column must have type or $ref
+                // ERROR: Not an FK extension, formula column must have type or $ref
                 throw new Error(
                   `Table '${_tableName}', column '${columnName}': ` +
                   `generated columns must specify a type or use $ref to inherit from a reusable column`
                 );
               }
 
-              // It's an FK extension with generated expression
+              // It's an FK extension with formula expression
               fkExtensions[columnName] = {
-                generated: column.generated
+                generated: column.formula
               };
               continue; // Don't add to processedColumns - it's an FK extension
             }
@@ -260,7 +260,7 @@ export class SchemaProcessor {
             // Otherwise, it's an FK extension - save it for later
             fkExtensions[columnName] = {
               automation: column.automation,
-              generated: column.generated
+              generated: column.formula
             };
             continue; // Don't add to processedColumns - it's an FK extension
           }
@@ -375,7 +375,7 @@ export class SchemaProcessor {
       }
       // Complete replacement for other properties
       if (refColumn.automation !== undefined) merged.automation = refColumn.automation;
-      if (refColumn.generated !== undefined) merged.generated = refColumn.generated;
+      if (refColumn.formula !== undefined) merged.formula = refColumn.formula;
       if (refColumn.comment !== undefined) merged.comment = refColumn.comment;
       if (refColumn.label !== undefined) merged.label = refColumn.label;
       if (refColumn.format !== undefined) merged.format = refColumn.format;
@@ -396,7 +396,7 @@ export class SchemaProcessor {
           return {
             ...parsed,
             ...(colDef.automation && { automation: colDef.automation }),
-            ...(colDef.generated && { generated: colDef.generated }),
+            ...(colDef.formula && { formula: colDef.formula }),
             ...(colDef.comment && { comment: colDef.comment }),
             ...(colDef.label && { label: colDef.label }),
             ...(colDef.format && { format: colDef.format })
@@ -481,8 +481,8 @@ export class SchemaProcessor {
           if (extension.automation) {
             fkColumnDef.automation = extension.automation;
           }
-          if (extension.generated) {
-            fkColumnDef.generated = extension.generated;
+          if (extension.formula) {
+            fkColumnDef.formula = extension.formula;
           }
         }
 
@@ -747,7 +747,7 @@ export class SchemaProcessor {
             k === 'automation' || k === 'generated' || k === 'comment'
           );
 
-          if (hasOnlyExtensions && (column.automation || column.generated)) {
+          if (hasOnlyExtensions && (column.automation || column.formula)) {
             // Check if this is a SYNC/SNAPSHOT automation (regular column, needs type inference)
             const isSyncSnapshot = typeof column.automation === 'string' &&
               (column.automation.startsWith('SYNC ') || column.automation.startsWith('SNAPSHOT '));
@@ -757,28 +757,28 @@ export class SchemaProcessor {
               columns.set(columnName, {
                 type: '', // Empty placeholder
                 automation: column.automation,
-                ...(column.generated && { generated: column.generated }),
+                ...(column.formula && { formula: column.formula }),
                 ...(column.comment && { comment: column.comment })
               } as ColumnDefinition);
               continue;
             }
 
             // If it has 'generated' but no 'automation', check if it's an FK extension
-            if (column.generated && !column.automation) {
+            if (column.formula && !column.automation) {
               // Check if this column matches a foreign key name
               const isFKExtension = table.foreign_keys && columnName in table.foreign_keys;
 
               if (!isFKExtension) {
-                // ERROR: Not an FK extension, generated column must have type or $ref
+                // ERROR: Not an FK extension, formula column must have type or $ref
                 throw new Error(
                   `Table '${tableName}', column '${columnName}': ` +
                   `generated columns must specify a type or use $ref to inherit from a reusable column`
                 );
               }
 
-              // It's an FK extension with generated expression
+              // It's an FK extension with formula expression
               fkExtensions[columnName] = {
-                generated: column.generated
+                generated: column.formula
               };
               continue;
             }
@@ -786,7 +786,7 @@ export class SchemaProcessor {
             // Otherwise, it's an FK extension
             fkExtensions[columnName] = {
               automation: column.automation,
-              generated: column.generated
+              generated: column.formula
             };
             continue;
           }
@@ -896,8 +896,8 @@ export class SchemaProcessor {
           if (extension.automation) {
             fkColumnDef.automation = extension.automation;
           }
-          if (extension.generated) {
-            fkColumnDef.generated = extension.generated;
+          if (extension.formula) {
+            fkColumnDef.formula = extension.formula;
           }
         }
 
@@ -913,9 +913,9 @@ export class SchemaProcessor {
       columns.set(colName, colDef);
     }
 
-    // Step 3: Validate generated columns (dependencies must exist in THIS table)
+    // Step 3: Validate formula columns (dependencies must exist in THIS table)
     for (const [colName, col] of columns) {
-      if (col.generated) {
+      if (col.formula) {
         this.validateGeneratedColumn(tableName, colName, col, columns);
       }
     }
@@ -1003,7 +1003,7 @@ export class SchemaProcessor {
   }
 
   /**
-   * Validate a generated column's references
+   * Validate a formula column's references
    */
   private validateGeneratedColumn(
     tableName: string,
@@ -1011,7 +1011,7 @@ export class SchemaProcessor {
     columnDef: ColumnDefinition,
     allColumns: Map<string, ColumnDefinition>
   ): void {
-    const generatedExpr = columnDef.generated!;
+    const generatedExpr = columnDef.formula!;
 
     // Extract @column_name references
     const atMatches = generatedExpr.match(/@(\w+)/g) || [];
@@ -1021,7 +1021,7 @@ export class SchemaProcessor {
     if (atMatches.length === 0) {
       throw new Error(
         `Table '${tableName}', column '${columnName}': ` +
-        `generated expression must reference at least one column using '@column_name' syntax`
+        `formula expression must reference at least one column using '@column_name' syntax`
       );
     }
 
@@ -1030,7 +1030,7 @@ export class SchemaProcessor {
       if (!allColumns.has(refCol)) {
         throw new Error(
           `Table '${tableName}', column '${columnName}': ` +
-          `generated expression references non-existent column '@${refCol}'`
+          `formula expression references non-existent column '@${refCol}'`
         );
       }
     }
@@ -1060,7 +1060,7 @@ export class SchemaProcessor {
     if (bareColumnRefs.length > 0) {
       throw new Error(
         `Table '${tableName}', column '${columnName}': ` +
-        `generated expression contains bare column reference(s) without '@' sigil: ${bareColumnRefs.join(', ')}. ` +
+        `formula expression contains bare column reference(s) without '@' sigil: ${bareColumnRefs.join(', ')}. ` +
         `Use '@column_name' syntax for all column references.`
       );
     }

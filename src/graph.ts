@@ -82,8 +82,8 @@ export class DataFlowGraphValidator {
       for (const [columnName, column] of Object.entries(table.columns)) {
         let calculated: string | undefined = undefined;
 
-        if (column && typeof column === 'object' && 'generated' in column) {
-          calculated = (column as any).generated;
+        if (column && typeof column === 'object' && 'formula' in column) {
+          calculated = (column as any).formula;
         }
 
         if (calculated) {

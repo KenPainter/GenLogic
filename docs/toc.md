@@ -19,7 +19,7 @@
 ## Column Automations Syntax
 
 1. [Moving Values from Parent to Child](30-column-automation/10-parent-to-child.md)
-1. [Generating Values Within a Row](30-column-automation/20-calculated-columns.md)
+1. [Generating Values Within a Row](30-column-automation/20-calculate-within-row.md)
 1. [Moving Values from Child to Parent](30-column-automation/30-child-to-parent.md)
 
 ## Row and Table Automation Syntax
@@ -29,13 +29,18 @@
 1. [Pattern Matching Tables](schema-syntax/07-matching-tables.md)
 1. [Seed Data](schema-syntax/10-seed-data.md)
 
-## Features
+## Data Integrity Features
 
-1. [Schema Validation](features/01-schema-validation.md)
-2. [Non-Subvertible Calculations](features/02-non-subvertible-calculations.md)
-3. [Additive Changes Only](features/03-additive-changes.md)
-4. [Numeric Integrity Protection](features/04-numeric-integrity.md)
+1. Introduction
+1. [Schema Validation](50-integrity-features/01-schema-validation.md)
+2. [Non-Subvertible Calculations](50-integrity-features/02-non-subvertible-calculations.md)
+3. [Additive Changes Only](50-integrity-features/03-additive-changes.md)
+4. [Numeric Integrity Protection](50-integrity-features/04-numeric-integrity.md)
+
+## Application Development Features
+
 5. [The Resolved File] - no link yet, does not exist
+1. [The genlogic-schema.json file] - no link yet, doc does not exist
 
 ## Hacking GenLogic
 

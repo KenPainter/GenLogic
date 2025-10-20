@@ -17,7 +17,7 @@ GenLogic performs validation in two stages:
 
 2. **Runtime Validation** (Phase 04)
    - Validates references (columns, tables) actually exist
-   - Detects circular dependencies in automations and generated columns
+   - Detects circular dependencies in automations and formula columns
    - Validates foreign key relationships
    - Validates index and constraint references
    - **Requires schema processing, before database operations**

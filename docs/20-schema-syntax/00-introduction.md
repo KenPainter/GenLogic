@@ -12,7 +12,7 @@ The syntax follows a couple of rules:
 - Avoid SQL or Postgres terms for GenLogic features.
   So we define "calculated" columns instead of the
   Postgres term "generated" because we are not using
-  the Postgres generated column feature.
+  the Postgres formula column feature.
 
 GenLogic schema syntax also favors "magic" or shortcuts
 in many places, but does not require the use of shortcuts.

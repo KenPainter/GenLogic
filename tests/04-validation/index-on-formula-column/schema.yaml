@@ -7,7 +7,9 @@ tables:
         definition: numeric(10,2)
       quantity:
         definition: integer
-      # Bare column reference without @ (should use @ sigil)
       total:
         definition: numeric(10,2)
-        generated: "price * @quantity"
+        formula: "@price * @quantity"
+    # Index on generated column (valid)
+    indexes:
+      - [total]
