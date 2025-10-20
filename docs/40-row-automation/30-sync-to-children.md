@@ -1,4 +1,4 @@
-Previous: [Spreading Parent to Multiple Children](20-spread-to-children.md) | Next: [Schema Validation](../50-integrity-features/01-schema-validation.md)
+Previous: [Auto-Creating Parent Rows](10-auto-create-parent.md) | Next: [Spreading Parent to Multiple Children](20-spread-to-children.md)
 
 # Syncing Parent to Children
 
@@ -368,4 +368,4 @@ Tests that verify sync behavior with actual data:
 
 ---
 
-Previous: [Spreading Parent to Multiple Children](20-spread-to-children.md) | Next: [Schema Validation](../50-integrity-features/01-schema-validation.md)
+Previous: [Auto-Creating Parent Rows](10-auto-create-parent.md) | Next: [Spreading Parent to Multiple Children](20-spread-to-children.md)

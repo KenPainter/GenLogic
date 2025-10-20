@@ -1,4 +1,4 @@
-Previous: [Non-Subvertible Calculations](02-non-subvertible-calculations.md) | Next: [Numeric Integrity Protection](04-numeric-integrity.md)
+Previous: [Calculation Integrity](30-calculation-integrity.md) | Next: [IDE Support](../90-application/10-ide-support.md)
 
 # Additive Changes Only
 
@@ -275,4 +275,4 @@ Additive changes are tested in the schema features and behavior test suites:
 
 ---
 
-Previous: [Non-Subvertible Calculations](02-non-subvertible-calculations.md) | Next: [Numeric Integrity Protection](04-numeric-integrity.md)
+Previous: [Calculation Integrity](30-calculation-integrity.md) | Next: [IDE Support](../90-application/10-ide-support.md)

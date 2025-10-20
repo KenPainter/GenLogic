@@ -1,4 +1,4 @@
-Previous: [Auto-Creating Parent Rows](10-auto-create-parent.md) | Next: [Syncing Parent to Children](30-sync-to-children.md)
+Previous: [Syncing Parent to Children 1:1](30-sync-to-children.md) | Next: [Introduction](../50-integrity-features/00-introduction.md)
 
 # Spreading Parent to Multiple Children
 
@@ -397,4 +397,4 @@ Tests that verify spread behavior with actual data:
 
 ---
 
-Previous: [Auto-Creating Parent Rows](10-auto-create-parent.md) | Next: [Syncing Parent to Children](30-sync-to-children.md)
+Previous: [Syncing Parent to Children 1:1](30-sync-to-children.md) | Next: [Introduction](../50-integrity-features/00-introduction.md)

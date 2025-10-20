@@ -1,4 +1,4 @@
-Previous: [Numeric Integrity Protection](../50-integrity-features/04-numeric-integrity.md)
+Previous: [IDE Support](../90-application/10-ide-support.md)
 
 # Running Tests
 
@@ -22,4 +22,4 @@ Filters match any part of the test path.
 
 ---
 
-Previous: [Numeric Integrity Protection](../50-integrity-features/04-numeric-integrity.md)
+Previous: [IDE Support](../90-application/10-ide-support.md)

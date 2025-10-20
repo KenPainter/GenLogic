@@ -1,4 +1,4 @@
-Previous: [Schema Validation](01-schema-validation.md) | Next: [Additive Changes Only](03-additive-changes.md)
+Previous: [Numeric Integrity](20-numeric-integrity.md) | Next: [Additive Changes Only](40-additive-changes.md)
 
 # Non-Subvertible Calculated Columns
 
@@ -190,4 +190,4 @@ Users can rely on automated columns with the same confidence as PRIMARY KEY or F
 
 ---
 
-Previous: [Schema Validation](01-schema-validation.md) | Next: [Additive Changes Only](03-additive-changes.md)
+Previous: [Numeric Integrity](20-numeric-integrity.md) | Next: [Additive Changes Only](40-additive-changes.md)

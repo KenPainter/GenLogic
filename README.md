@@ -79,6 +79,8 @@ Before Release 1.0:
 
 Anytime sorta-kinda maybe someday:
 - Support views
+- Write a "drop script" (but do not execute) that will
+  drop unused tables and columns.
 - Separate project: genlogic-db, convenient client app
   that does all of the SQL generation.
 - Separate project: genlogic-routes, dynamically creates

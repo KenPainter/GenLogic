@@ -1,4 +1,4 @@
-Previous: [Moving Values from Child to Parent](../30-column-automation/30-child-to-parent.md) | Next: [Spreading Parent to Multiple Children](20-spread-to-children.md)
+Previous: [Moving Values from Child to Parent](../30-column-automation/30-child-to-parent.md) | Next: [Syncing Parent to Children 1:1](30-sync-to-children.md)
 
 # Auto-Creating Parent Rows
 
@@ -232,4 +232,4 @@ Tests that verify auto-create parent behavior with actual data:
 
 ---
 
-Previous: [Moving Values from Child to Parent](../30-column-automation/30-child-to-parent.md) | Next: [Spreading Parent to Multiple Children](20-spread-to-children.md)
+Previous: [Moving Values from Child to Parent](../30-column-automation/30-child-to-parent.md) | Next: [Syncing Parent to Children 1:1](30-sync-to-children.md)
