@@ -45,4 +45,4 @@
 
 ## Hacking GenLogic
 
-1. [Running Tests](hacking/run-tests.md)
+1. [Running Tests](./95-hacking/run-tests.md)

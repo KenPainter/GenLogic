@@ -27,6 +27,7 @@ export class DiffEngine {
       columnsToModify: [],
       indexesToCreate: [],
       foreignKeysToAdd: [],
+      checkConstraintsToAdd: [],
       triggersToRecreate: []
     };
 
@@ -150,6 +151,29 @@ export class DiffEngine {
                 indexName,
                 columns,
                 isUnique: false
+              });
+            }
+          }
+        }
+
+        // INTEGRITY: Check for missing numeric NaN/Infinity protection CHECK constraints
+        // For any existing numeric column that lacks the GenLogic protection constraint
+        for (const dbColumn of currentTable.columns) {
+          if (this.isFloatingPointNumeric(dbColumn.type)) {
+            // Generate expected constraint name following GenLogic convention
+            const constraintName = `${tableName}_${dbColumn.name}_check`;
+
+            // Check if this constraint already exists
+            const constraintExists = currentTable.checkConstraints.some(
+              cc => cc.name === constraintName && cc.columnName === dbColumn.name
+            );
+
+            if (!constraintExists) {
+              diff.checkConstraintsToAdd.push({
+                tableName,
+                columnName: dbColumn.name,
+                constraintName,
+                columnType: dbColumn.type
               });
             }
           }
@@ -415,6 +439,20 @@ export class DiffEngine {
 
     return newForeignKeys;
   }
+
+  /**
+   * Check if a database type is a floating-point numeric type that can have NaN/Infinity
+   * Integer types (integer, bigint, smallint) cannot have NaN/Infinity
+   *
+   * NOTE: This parses PostgreSQL types from database introspection, which may include
+   * precision/scale like "numeric(10,2)" - we extract just the base type name
+   */
+  private isFloatingPointNumeric(dbType: string): boolean {
+    // Extract base type from "numeric(10,2)" or "character varying(50)" etc
+    const baseType = dbType.toLowerCase().split('(')[0].trim();
+    const floatingPointTypes = ['numeric', 'decimal', 'real', 'double precision', 'float'];
+    return floatingPointTypes.includes(baseType);
+  }
 }
 
 // Diff result types
@@ -424,6 +462,7 @@ export interface SchemaDiff {
   columnsToModify: ColumnModification[];
   indexesToCreate: IndexCreation[];
   foreignKeysToAdd: ForeignKeyAddition[];
+  checkConstraintsToAdd: CheckConstraintAddition[];
   triggersToRecreate: string[]; // Table names that need trigger recreation
 }
 
@@ -461,4 +500,11 @@ export interface ForeignKeyAddition {
   fkName: string;
   definition: any;
   columnNames: string[];
+}
+
+export interface CheckConstraintAddition {
+  tableName: string;
+  columnName: string;
+  constraintName: string;
+  columnType: string;
 }

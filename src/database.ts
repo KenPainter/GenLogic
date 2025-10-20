@@ -7,7 +7,8 @@ import type {
   DatabaseColumn,
   DatabaseForeignKey,
   DatabaseIndex,
-  DatabaseTrigger
+  DatabaseTrigger,
+  DatabaseCheckConstraint
 } from './types.js';
 
 /**
@@ -105,7 +106,8 @@ export class DatabaseManager {
         columns: await this.getColumns(tableName),
         foreignKeys: await this.getForeignKeys(tableName),
         indexes: await this.getIndexes(tableName),
-        triggers: await this.getTriggers(tableName)
+        triggers: await this.getTriggers(tableName),
+        checkConstraints: await this.getCheckConstraints(tableName)
       };
     }
 
@@ -280,6 +282,34 @@ export class DatabaseManager {
    */
   private isGenLogicTrigger(triggerName: string): boolean {
     return triggerName.endsWith('_genlogic');
+  }
+
+  /**
+   * Get CHECK constraints for a table
+   * Extracts column name from constraint definition for GenLogic numeric protection constraints
+   */
+  private async getCheckConstraints(tableName: string): Promise<DatabaseCheckConstraint[]> {
+    const result = await this.pool.query(`
+      SELECT
+        con.conname as constraint_name,
+        pg_get_constraintdef(con.oid) as constraint_definition,
+        att.attname as column_name
+      FROM pg_constraint con
+      JOIN pg_class rel ON rel.oid = con.conrelid
+      JOIN pg_namespace nsp ON nsp.oid = rel.relnamespace
+      LEFT JOIN pg_attribute att ON att.attrelid = con.conrelid
+        AND att.attnum = ANY(con.conkey)
+      WHERE con.contype = 'c'
+        AND rel.relname = $1
+        AND nsp.nspname = 'public'
+      ORDER BY con.conname
+    `, [tableName]);
+
+    return result.rows.map(row => ({
+      name: row.constraint_name,
+      columnName: row.column_name,
+      definition: row.constraint_definition
+    }));
   }
 
   /**

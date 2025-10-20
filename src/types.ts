@@ -132,6 +132,7 @@ export interface DatabaseTable {
   foreignKeys: DatabaseForeignKey[];
   indexes: DatabaseIndex[];
   triggers: DatabaseTrigger[];
+  checkConstraints: DatabaseCheckConstraint[];
 }
 
 export interface DatabaseColumn {
@@ -163,4 +164,10 @@ export interface DatabaseTrigger {
   event: 'INSERT' | 'UPDATE' | 'DELETE';
   when: 'BEFORE' | 'AFTER';
   isGenLogicTrigger: boolean; // Based on naming convention
+}
+
+export interface DatabaseCheckConstraint {
+  name: string;
+  columnName: string;  // The column this constraint applies to
+  definition: string;   // The CHECK constraint definition (e.g., the expression)
 }

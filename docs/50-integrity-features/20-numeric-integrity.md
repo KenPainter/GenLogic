@@ -2,7 +2,9 @@ Previous: [Schema Validation](10-schema-validation.md) | Next: [Calculation Inte
 
 # Numeric Integrity Protection
 
-GenLogic automatically protects all numeric columns from NaN (Not a Number) and Infinity values. These special numeric values corrupt calculations and have no place in business applications.
+GenLogic automatically protects all numeric columns from NaN (Not a Number)
+and Infinity values. These special numeric values corrupt calculations
+and are not valid in the business application space that GenLogic serves.
 
 ## The Problem
 
@@ -25,7 +27,7 @@ Once NaN or Infinity enters your database, it spreads through:
 - Formula columns: @price * @quantity where price is NaN = NaN
 - Arithmetic: balance - withdrawal where withdrawal is Infinity = -Infinity
 
-This corruption is permanent - you cannot "filter out" NaN values since NaN != NaN in SQL comparisons.
+This corruption is difficult to detect and clean because NaN has inconsistent equality behavior across PostgreSQL numeric types.
 
 ## GenLogic's Solution
 
@@ -35,14 +37,28 @@ GenLogic automatically adds CHECK constraints to ALL floating-point numeric colu
 CREATE TABLE accounts (
   id INTEGER PRIMARY KEY,
   balance NUMERIC(10,2)
-    CHECK (balance IS NULL OR (balance = balance AND abs(balance) < 'Infinity'::numeric))
+    CHECK (balance IS NULL OR balance::text NOT IN ('NaN', 'Infinity', '-Infinity'))
 );
 ```
 
 This constraint blocks:
-- NaN: The check `balance = balance` fails because NaN != NaN
-- Infinity: The check `abs(balance) < 'Infinity'` fails for both Infinity and -Infinity
+- NaN: The text representation check catches 'NaN'
+- Infinity: The text representation check catches 'Infinity' and '-Infinity'
 - NULL: Explicitly allowed (NULL is different from NaN)
+
+## Technical Approach
+
+GenLogic uses text representation (`::text NOT IN`) rather than mathematical equality checks because:
+
+PostgreSQL's numeric types have inconsistent NaN behavior:
+- For `numeric`/`decimal`: NaN = NaN returns TRUE (not IEEE 754 standard)
+- For `real`/`double precision`: NaN = NaN returns FALSE (IEEE 754 standard)
+
+A mathematical check like `value = value` would fail for `real`/`double precision` but pass for `numeric`. Text representation is consistent across all types.
+
+The `::text` cast has negligible performance impact for business applications - constraints are evaluated only on INSERT/UPDATE, not on queries.
+
+Constraint naming follows the pattern `{table_name}_{column_name}_check` for easy identification in PostgreSQL system catalogs.
 
 ## Protected Types
 
@@ -98,13 +114,31 @@ Business applications must guarantee data integrity. With NaN/Infinity protectio
 
 Protection is automatic for all numeric columns. No schema configuration needed.
 
+GenLogic adds CHECK constraints:
+- To all new numeric columns when tables are created
+- To all new numeric columns when added to existing tables
+- To all existing numeric columns that lack protection (retroactive)
+
 The CHECK constraint is generated in `src/sql-generator.ts` during table creation and column addition.
+Missing constraints on existing columns are detected in `src/diff-engine.ts` and added automatically.
 
 ## Test Coverage
 
 This feature is verified by:
 
-- [x] [Numeric NaN/Infinity Protection](../../tests/05-schema-features/numeric-nan-infinity-protection) - Valid numbers allowed, NaN/Infinity blocked
+- [x] [Numeric NaN/Infinity Protection](../../tests/05-schema-features/numeric-nan-infinity-protection)
+  - Valid numeric values allowed (positive, negative, zero)
+  - NULL values allowed
+  - NaN rejected with CHECK constraint violation
+  - Infinity rejected with CHECK constraint violation
+  - -Infinity rejected with CHECK constraint violation
+  - All floating-point types tested: numeric, numeric(p,s), decimal, real, double precision
+
+- [x] [Numeric Constraint Detection](../../tests/05-schema-features/numeric-constraint-detection)
+  - CHECK constraints automatically created for all numeric columns
+  - Constraint naming follows pattern: {table_name}_{column_name}_check
+  - Correct count of constraints matches number of numeric columns
+  - Text representation check verified in constraint definition
 
 ---
 

@@ -5,3 +5,5 @@ tables:
       amount: numeric(10,2)
       price: numeric
       weight: real
+      distance: double precision
+      cost: decimal

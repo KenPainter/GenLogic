@@ -4,7 +4,8 @@ import type {
   TableCreation,
   ColumnAddition,
   ColumnModification,
-  ForeignKeyAddition
+  ForeignKeyAddition,
+  CheckConstraintAddition
 } from './diff-engine.js';
 import type { ProcessedSchema } from './schema-processor.js';
 import { parseAutomationString } from './automation-parser.js';
@@ -28,6 +29,7 @@ export class SQLGenerator {
       modifyColumns: [],
       cleanupForeignKeys: [],
       addForeignKeys: [],
+      addCheckConstraints: [],
       createIndexes: [],
       createTriggers: [],
       addComments: []
@@ -79,7 +81,12 @@ export class SQLGenerator {
       statements.addForeignKeys.push(this.generateAddForeignKeySQL(fk));
     }
 
-    // 4. Create indexes (if any)
+    // 4.5. Add CHECK constraints for numeric NaN/Infinity protection
+    for (const check of diff.checkConstraintsToAdd) {
+      statements.addCheckConstraints.push(this.generateAddCheckConstraintSQL(check));
+    }
+
+    // 5. Create indexes (if any)
     for (const index of diff.indexesToCreate) {
       statements.createIndexes.push(this.generateCreateIndexSQL(index));
     }
@@ -125,6 +132,17 @@ export class SQLGenerator {
    */
   private generateModifyColumnSQL(column: ColumnModification): string {
     return `ALTER TABLE "${column.tableName}" ALTER COLUMN "${column.columnName}" TYPE ${column.newType.toUpperCase()};`;
+  }
+
+  /**
+   * Generate ALTER TABLE ADD CONSTRAINT for numeric NaN/Infinity protection
+   * INTEGRITY: Blocks NaN and Infinity values from existing numeric columns
+   */
+  private generateAddCheckConstraintSQL(check: CheckConstraintAddition): string {
+    // Generate the same CHECK constraint we add to new columns
+    // Check text representation to block 'NaN', 'Infinity', and '-Infinity'
+    const checkExpr = `"${check.columnName}"::text NOT IN ('NaN', 'Infinity', '-Infinity')`;
+    return `ALTER TABLE "${check.tableName}" ADD CONSTRAINT "${check.constraintName}" CHECK ("${check.columnName}" IS NULL OR ${checkExpr});`;
   }
 
   /**
@@ -273,9 +291,9 @@ export class SQLGenerator {
     // INTEGRITY: Block NaN and Infinity for all numeric types
     // NaN and Infinity are NEVER valid in business applications
     if (this.isFloatingPointNumeric(definition.type)) {
-      // NaN is the only value where x <> x, so "x = x" blocks NaN
-      // abs(x) < 'Infinity' blocks both Infinity and -Infinity
-      sql += ` CHECK ("${columnName}" IS NULL OR ("${columnName}" = "${columnName}" AND abs("${columnName}") < 'Infinity'::numeric))`;
+      // Check text representation to block 'NaN', 'Infinity', and '-Infinity'
+      // For PostgreSQL numeric type, NaN = NaN returns TRUE, so we must use text comparison
+      sql += ` CHECK ("${columnName}" IS NULL OR "${columnName}"::text NOT IN ('NaN', 'Infinity', '-Infinity'))`;
     }
 
     // Add DEFAULT clause (but skip if automation/formula already handles the value)
@@ -363,6 +381,7 @@ export interface SQLStatements {
   modifyColumns: string[];
   cleanupForeignKeys: string[];
   addForeignKeys: string[];
+  addCheckConstraints: string[];
   createIndexes: string[];
   createTriggers: string[];
   addComments: string[];

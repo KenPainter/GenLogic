@@ -148,6 +148,7 @@ export class GenLogicProcessor {
         ...ddlStatements.modifyColumns,
         ...ddlStatements.cleanupForeignKeys,
         ...ddlStatements.addForeignKeys,
+        ...ddlStatements.addCheckConstraints,
         ...ddlStatements.createIndexes,
         ...ddlStatements.addComments,
         ...triggerStatements,

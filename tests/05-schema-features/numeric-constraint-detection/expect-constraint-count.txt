@@ -1,0 +1,4 @@
+ constraint_count
+------------------
+                4
+(1 row)
