@@ -1,0 +1,12 @@
+tables:
+  users:
+    columns:
+      id: serial primary key
+      email: varchar(255) unique
+      name: varchar(100)
+    seed-rows:
+      # PK omitted (serial), uses unique email for conflict resolution
+      - email: admin@example.com
+        name: Administrator
+      - email: user@example.com
+        name: Regular User

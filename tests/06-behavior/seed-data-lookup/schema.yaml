@@ -1,0 +1,35 @@
+tables:
+  categories:
+    columns:
+      id: serial primary key
+      name: varchar(100) unique
+      description: text
+    seed-rows:
+      - name: Electronics
+        description: Electronic devices
+      - name: Books
+        description: Books and publications
+
+  products:
+    columns:
+      id: serial primary key
+      name: varchar(100)
+      price: numeric(10,2)
+      category_id: integer
+    foreign_keys:
+      category: categories
+    seed-rows:
+      - name: Laptop
+        price: 999.99
+        category_id:
+          $lookup:
+            table: categories
+            where: { name: Electronics }
+            column: id
+      - name: Novel
+        price: 19.99
+        category_id:
+          $lookup:
+            table: categories
+            where: { name: Books }
+            column: id

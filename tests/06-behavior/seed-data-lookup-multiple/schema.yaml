@@ -1,0 +1,45 @@
+tables:
+  users:
+    columns:
+      id: serial primary key
+      email: varchar(255) unique
+      name: varchar(100)
+      active: boolean
+    seed-rows:
+      - email: admin@example.com
+        name: Administrator
+        active: true
+      - email: user@example.com
+        name: Regular User
+        active: false
+
+  roles:
+    columns:
+      id: serial primary key
+      name: varchar(50) unique
+    seed-rows:
+      - name: admin
+      - name: user
+
+  user_roles:
+    columns:
+      id: serial primary key
+      user_id: integer
+      role_id: integer
+    foreign_keys:
+      user: users
+      role: roles
+    seed-rows:
+      # Lookup with multiple where conditions
+      - user_id:
+          $lookup:
+            table: users
+            where:
+              email: admin@example.com
+              active: true
+            column: id
+        role_id:
+          $lookup:
+            table: roles
+            where: { name: admin }
+            column: id

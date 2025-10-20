@@ -1,0 +1,2 @@
+admin@example.com|Administrator
+user@example.com|Regular User

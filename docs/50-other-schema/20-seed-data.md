@@ -194,7 +194,6 @@ ON CONFLICT (email) DO NOTHING;
 The Content Manager validates:
 - All referenced columns exist in the table
 - Required columns are provided (except sequences)
-- Data types are compatible
 
 ### $lookup Validation
 
@@ -395,6 +394,14 @@ These tests verify that GenLogic catches invalid seed data definitions:
 These tests verify seed data behavior with actual database insertion:
 
 - [x] [Basic seed data insertion](../../tests/06-behavior/content-seed-data) - seed-rows with static data
+- [x] [$lookup basic functionality](../../tests/06-behavior/seed-data-lookup) - Foreign key resolution using $lookup
+- [x] [$lookup with multiple where conditions](../../tests/06-behavior/seed-data-lookup-multiple) - $lookup with multiple where conditions
+- [x] [Unique column conflict resolution](../../tests/06-behavior/seed-data-unique-conflict) - ON CONFLICT using unique columns
+- [x] [JSON/JSONB data](../../tests/06-behavior/seed-data-json) - JSON and JSONB value insertion
+- [x] [Boolean and NULL values](../../tests/06-behavior/seed-data-bool-null) - Boolean and NULL value handling
+- [x] [Idempotent behavior](../../tests/06-behavior/seed-data-idempotent) - ON CONFLICT DO NOTHING prevents duplicates
+- [x] [Serial column omission](../../tests/06-behavior/seed-data-serial) - Auto-generated serial primary keys
+- [x] [Date/time and string escaping](../../tests/06-behavior/seed-data-dates-strings) - Date, timestamp, and quote escaping
 
 ---
 

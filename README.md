@@ -12,10 +12,11 @@ The author calls this "Augmented Normalization" - there is a normalized
 foundation for externally supplied values that is augmented with
 derived values.
 
-This produces three major simplifications for application development:
-- Declarative business logic in the database layer
-- No ORM in the client
-- Simplified SQL statements in the client
+This produces a few major simplifications for application development:
+- Declarative business logic as part of the schema
+- Business logic is validated and cannot be subverted
+- Simpler DML in the client app
+- No ORM in the client app
 
 This project is the spiritual descendant of [Andromeda](https://github.com/Andromeda-Project/andromeda),
 originally written by [Ken Downs](https://github.com/KenPainter) 
