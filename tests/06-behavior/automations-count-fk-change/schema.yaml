@@ -1,0 +1,16 @@
+tables:
+  categories:
+    columns:
+      category_id: serial primary key
+      category_name: varchar(100)
+      product_count:
+        definition: integer
+        automation: COUNT @products.product_id
+
+  products:
+    foreign_keys:
+      category_fk: categories
+    columns:
+      product_id: serial primary key
+      category_fk: integer
+      product_name: varchar(100)

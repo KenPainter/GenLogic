@@ -1,0 +1,4 @@
+ account_name | balance
+--------------|----------
+ Checking     |   100.00
+ Savings      |    50.00

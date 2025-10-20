@@ -1,0 +1,15 @@
+tables:
+  orders:
+    columns:
+      order_id: serial primary key
+      min_price:
+        definition: numeric(10,2)
+        automation: MIN @order_items.unit_price
+
+  order_items:
+    foreign_keys:
+      order_fk: orders
+    columns:
+      item_id: serial primary key
+      order_fk: integer
+      unit_price: numeric(10,2)

@@ -221,6 +221,14 @@ export class SchemaProcessor {
           );
 
           if (hasOnlyExtensions && (column.automation || column.formula)) {
+            // VALIDATION: Mutual exclusion - cannot have both automation and formula
+            if (column.automation && column.formula) {
+              throw new Error(
+                `Table '${_tableName}', column '${columnName}': ` +
+                `cannot have both 'automation' and 'formula' properties`
+              );
+            }
+
             // Check if this is a SYNC/SNAPSHOT automation (regular column, needs type inference)
             const isSyncSnapshot = typeof column.automation === 'string' &&
               (column.automation.startsWith('SYNC ') || column.automation.startsWith('SNAPSHOT '));
@@ -380,6 +388,13 @@ export class SchemaProcessor {
       if (refColumn.label !== undefined) merged.label = refColumn.label;
       if (refColumn.format !== undefined) merged.format = refColumn.format;
 
+      // VALIDATION: Mutual exclusion - cannot have both automation and formula
+      if (merged.automation && merged.formula) {
+        throw new Error(
+          `Column '${columnName}': cannot have both 'automation' and 'formula' properties`
+        );
+      }
+
       return merged;
     }
 
@@ -393,6 +408,14 @@ export class SchemaProcessor {
         if (isSQLType) {
           // Parse the SQL definition string and merge with other properties
           const parsed = parseSQLType(colDef.definition);
+
+          // VALIDATION: Mutual exclusion - cannot have both automation and formula
+          if (colDef.automation && colDef.formula) {
+            throw new Error(
+              `Column '${columnName}': cannot have both 'automation' and 'formula' properties`
+            );
+          }
+
           return {
             ...parsed,
             ...(colDef.automation && { automation: colDef.automation }),
@@ -402,6 +425,14 @@ export class SchemaProcessor {
             ...(colDef.format && { format: colDef.format })
           };
         }
+      }
+
+      // VALIDATION: Mutual exclusion for non-parsed definitions
+      const colDefAny = column as any;
+      if (colDefAny.automation && colDefAny.formula) {
+        throw new Error(
+          `Column '${columnName}': cannot have both 'automation' and 'formula' properties`
+        );
       }
 
       // Otherwise, just copy as-is
@@ -748,6 +779,14 @@ export class SchemaProcessor {
           );
 
           if (hasOnlyExtensions && (column.automation || column.formula)) {
+            // VALIDATION: Mutual exclusion - cannot have both automation and formula
+            if (column.automation && column.formula) {
+              throw new Error(
+                `Table '${_tableName}', column '${columnName}': ` +
+                `cannot have both 'automation' and 'formula' properties`
+              );
+            }
+
             // Check if this is a SYNC/SNAPSHOT automation (regular column, needs type inference)
             const isSyncSnapshot = typeof column.automation === 'string' &&
               (column.automation.startsWith('SYNC ') || column.automation.startsWith('SNAPSHOT '));

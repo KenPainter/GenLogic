@@ -1,0 +1,9 @@
+tables:
+  subscriptions:
+    columns:
+      subscription_id: serial primary key
+      start_date: date
+      duration_days: integer
+      end_date:
+        definition: date
+        formula: "@start_date + (@duration_days || ' days')::INTERVAL"

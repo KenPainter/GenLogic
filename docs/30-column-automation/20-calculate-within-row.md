@@ -161,7 +161,7 @@ tables:
       # Calculate gross pay
       gross_pay:
         definition: numeric(10,2)
-        formula: "@hourly_rate * @hours_worked"
+        formula: "@hourly_rate * @hours_worked
 
       # Calculate tax
       tax_amount:
