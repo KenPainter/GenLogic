@@ -1,4 +1,4 @@
-Previous: [Additive Changes Only](../50-integrity-features/40-additive-changes.md) | Next: [Running Tests](../hacking/run-tests.md)
+Previous: [Additive Changes Only](../70-integrity-features/40-additive-changes.md) | Next: [Resolved Schema](20-resolved-schema.md)
 
 # IDE Support for GenLogic Schemas
 
@@ -55,4 +55,4 @@ This is useful for:
 
 ---
 
-Previous: [Additive Changes Only](../50-integrity-features/40-additive-changes.md) | Next: [Running Tests](../hacking/run-tests.md)
+Previous: [Additive Changes Only](../70-integrity-features/40-additive-changes.md) | Next: [Resolved Schema](20-resolved-schema.md)

@@ -388,7 +388,14 @@ export class DiffEngine {
       'int2': 'smallint',
       'float8': 'double precision',
       'float4': 'real',
-      'bool': 'boolean'
+      'bool': 'boolean',
+      'serial': 'integer',
+      'bigserial': 'bigint',
+      'smallserial': 'smallint',
+      'timestamp without time zone': 'timestamp',
+      'timestamp with time zone': 'timestamptz',
+      'time without time zone': 'time',
+      'time with time zone': 'timetz'
     };
 
     return typeMap[normalized] || normalized;

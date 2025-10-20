@@ -69,7 +69,6 @@ to do so.
 ## Potential TO-DO List
 
 Before Release 1.0:
-- Move fk auto-create docs to Table automations
 - Replace add-navigation.mjs with a general reconciler
   that looks for widows and orphans in both docs and
   tests/

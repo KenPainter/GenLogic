@@ -1,4 +1,4 @@
-Previous: [Moving Values from Child to Parent](06-child-to-parent.md) | Next: [Indexes and Unique Constraints](08-indexes-and-constraints.md)
+Previous: [Spreading Parent to Multiple Children](../40-row-automation/20-spread-to-children.md) | Next: [Seed Data](20-seed-data.md)
 
 # Pattern Matching Tables
 
@@ -296,4 +296,4 @@ These tests verify pattern matching behavior with actual data:
 
 ---
 
-Previous: [Moving Values from Child to Parent](06-child-to-parent.md) | Next: [Indexes and Unique Constraints](08-indexes-and-constraints.md)
+Previous: [Spreading Parent to Multiple Children](../40-row-automation/20-spread-to-children.md) | Next: [Seed Data](20-seed-data.md)

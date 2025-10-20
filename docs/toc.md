@@ -8,7 +8,7 @@
 
 ## GenLogic Schema Syntax for standard SQL
 
-1. [Introduction](50-integrity-features/00-introduction.md)
+1. [Introduction](70-integrity-features/00-introduction.md)
 1. [Tables and Columns](20-schema-syntax/10-tables-and-columns.md) 
 1. [Column Types](20-schema-syntax/11-column-types.md)
 1. [Reusable Columns](20-schema-syntax/12-reusable-columns.md)
@@ -28,21 +28,25 @@
 1. [Syncing Parent to Children 1:1](40-row-automation/30-sync-to-children.md)
 1. [Spreading Parent to Multiple Children](40-row-automation/20-spread-to-children.md)
 
+## Other Schema Features
+
+1. [Pattern Matching Tables](50-other-schema/10-matching-tables.md)
+1. [Seed Data](50-other-schema/20-seed-data.md)
+
+
 ## Data Integrity Features
 
-1. [Introduction](50-integrity-features/00-introduction.md)
-1. [Schema Validation](50-integrity-features/10-schema-validation.md)
-4. [Numeric Integrity](50-integrity-features/20-numeric-integrity.md)
-2. [Calculation Integrity](50-integrity-features/30-calculation-integrity.md)
-3. [Additive Changes Only](50-integrity-features/40-additive-changes.md)
+1. [Introduction](70-integrity-features/00-introduction.md)
+1. [Schema Validation](70-integrity-features/10-schema-validation.md)
+4. [Numeric Integrity](70-integrity-features/20-numeric-integrity.md)
+2. [Calculation Integrity](70-integrity-features/30-calculation-integrity.md)
+3. [Additive Changes Only](70-integrity-features/40-additive-changes.md)
 
 ## Application Development Features
 
 1. [IDE Support](90-application/10-ide-support.md)
-1. [Pattern Matching Tables](schema-syntax/07-matching-tables.md)
-1. [Seed Data](schema-syntax/10-seed-data.md)
-5. [The Resolved File] - no link yet, does not exist
+1. [Resolved Schema](90-application/20-resolved-schema.md)
 
 ## Hacking GenLogic
 
-1. [Running Tests](./95-hacking/run-tests.md)
+1. [Running Tests](95-hacking/run-tests.md)

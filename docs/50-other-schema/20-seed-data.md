@@ -1,4 +1,4 @@
-Previous: [Label and Format](09-label-and-format.md) | Next: [Schema Validation](../features/01-schema-validation.md)
+Previous: [Pattern Matching Tables](10-matching-tables.md) | Next: [Introduction](../70-integrity-features/00-introduction.md)
 
 # Seed Data
 
@@ -398,4 +398,4 @@ These tests verify seed data behavior with actual database insertion:
 
 ---
 
-Previous: [Label and Format](09-label-and-format.md) | Next: [Schema Validation](../features/01-schema-validation.md)
+Previous: [Pattern Matching Tables](10-matching-tables.md) | Next: [Introduction](../70-integrity-features/00-introduction.md)

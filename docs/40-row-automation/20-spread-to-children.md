@@ -1,4 +1,4 @@
-Previous: [Syncing Parent to Children 1:1](30-sync-to-children.md) | Next: [Introduction](../50-integrity-features/00-introduction.md)
+Previous: [Syncing Parent to Children 1:1](30-sync-to-children.md) | Next: [Pattern Matching Tables](../50-other-schema/10-matching-tables.md)
 
 # Spreading Parent to Multiple Children
 
@@ -397,4 +397,4 @@ Tests that verify spread behavior with actual data:
 
 ---
 
-Previous: [Syncing Parent to Children 1:1](30-sync-to-children.md) | Next: [Introduction](../50-integrity-features/00-introduction.md)
+Previous: [Syncing Parent to Children 1:1](30-sync-to-children.md) | Next: [Pattern Matching Tables](../50-other-schema/10-matching-tables.md)

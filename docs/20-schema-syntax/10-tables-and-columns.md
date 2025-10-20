@@ -1,4 +1,4 @@
-Previous: [Introduction](../50-integrity-features/00-introduction.md) | Next: [Column Types](11-column-types.md)
+Previous: [Introduction](../70-integrity-features/00-introduction.md) | Next: [Column Types](11-column-types.md)
 
 # Tables and Columns
 
@@ -151,4 +151,4 @@ GenLogic diffs against the existing database and performs additive operations:
 
 ---
 
-Previous: [Introduction](../50-integrity-features/00-introduction.md) | Next: [Column Types](11-column-types.md)
+Previous: [Introduction](../70-integrity-features/00-introduction.md) | Next: [Column Types](11-column-types.md)

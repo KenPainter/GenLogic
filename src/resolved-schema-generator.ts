@@ -1,5 +1,6 @@
 import type { GenLogicSchema, ColumnDefinition, AutomationDefinition, MatchingTableDefinition } from './types.js';
 import type { ProcessedSchema, ProcessedTable } from './schema-processor.js';
+import { resolveAutomation } from './automation-parser.js';
 
 /**
  * ResolvedSchemaGenerator - Creates human/AI-readable schema documentation
@@ -64,8 +65,7 @@ export class ResolvedSchemaGenerator {
       source_schema: sourceFile,
       database: database,
       genlogic_version: "1.0.0",
-      note: "This describes the ACTUAL database structure after GenLogic processing",
-      warning: "⚠️  DO NOT implement automations in middleware - they run in the database!"
+      note: "This describes the ACTUAL database structure after GenLogic processing"
     };
   }
 
@@ -80,9 +80,25 @@ export class ResolvedSchemaGenerator {
     processedSchema: ProcessedSchema
   ): any {
     const tableDoc: any = {
-      _table_info: this.generateTableInfo(tableName, tableDefSrc, processedTable),
-      columns: {}
+      _table_info: this.generateTableInfo(tableName, tableDefSrc, processedTable)
     };
+
+    // Add indexes if present
+    if (tableDefSrc.indexes && tableDefSrc.indexes.length > 0) {
+      tableDoc.indexes = tableDefSrc.indexes.map((cols: string[]) => ({
+        columns: cols
+      }));
+    }
+
+    // Add unique constraints if present
+    if (tableDefSrc.unique_constraints && tableDefSrc.unique_constraints.length > 0) {
+      tableDoc.unique_constraints = tableDefSrc.unique_constraints.map((cols: string[]) => ({
+        columns: cols
+      }));
+    }
+
+    // Add columns
+    tableDoc.columns = {};
 
     // Combine explicit columns and generated FK columns
     // All columns (including FK-generated) are now in processedTable.columns
@@ -172,10 +188,8 @@ export class ResolvedSchemaGenerator {
     if (columnDef.primary_key) doc.primary_key = true;
     if (columnDef.unique) doc.unique = true;
 
-    // Determine NULL handling
-    const nullHandling = this.determineNullHandling(columnDef);
-    doc.expect_null_on_read = nullHandling.expectNullOnRead;
-    doc.can_write_null = nullHandling.canWriteNull;
+    // Determine nullable
+    doc.nullable = this.isNullable(columnDef);
 
     // Determine if this is a generated FK column (check fkColumnMapping)
     const isGeneratedFK = Object.values(processedTable.fkColumnMapping || {})
@@ -200,58 +214,36 @@ export class ResolvedSchemaGenerator {
   }
 
   /**
-   * Determine NULL handling for a column
+   * Determine if column is nullable
    */
-  private determineNullHandling(columnDef: ColumnDefinition): {
-    expectNullOnRead: boolean;
-    canWriteNull: boolean;
-  } {
-    // Primary keys: never NULL
+  private isNullable(columnDef: ColumnDefinition): boolean {
+    // Primary keys: NOT NULL
     if (columnDef.primary_key) {
-      return {
-        expectNullOnRead: false,
-        canWriteNull: false
-      };
+      return false;
     }
 
-    // Sequence columns: never NULL (auto-generated)
+    // Sequence columns: NOT NULL (auto-generated)
     if (columnDef.sequence) {
-      return {
-        expectNullOnRead: false,
-        canWriteNull: false
-      };
+      return false;
     }
 
-    // Aggregation automations: DEFAULT 0, never NULL on read, not writable
+    // Aggregation automations: NOT NULL (have DEFAULT 0)
     if (columnDef.automation) {
       const isAggregation = ['SUM', 'COUNT', 'MAX', 'MIN'].includes(columnDef.automation.type);
       if (isAggregation) {
-        return {
-          expectNullOnRead: false,  // Has DEFAULT 0
-          canWriteNull: false        // Not writable at all
-        };
+        return false;  // Has DEFAULT 0
       }
-
-      // FETCH/FETCH_UPDATES/LATEST: may be NULL, not writable
-      return {
-        expectNullOnRead: true,   // May be NULL if not fetched/no children
-        canWriteNull: false        // Not writable at all
-      };
+      // SNAPSHOT, SYNC, LAST_VALUE: nullable (may be NULL before first update)
+      return true;
     }
 
-    // Calculated columns: may be NULL depending on expression, not writable
-    if (columnDef.calculated) {
-      return {
-        expectNullOnRead: true,   // Depends on calculation
-        canWriteNull: false        // Not writable at all
-      };
+    // Formula columns: nullable (depends on calculation)
+    if (columnDef.formula) {
+      return true;
     }
 
     // Regular columns: nullable by default in PostgreSQL
-    return {
-      expectNullOnRead: true,    // May be NULL
-      canWriteNull: true         // Can write NULL
-    };
+    return true;
   }
 
   /**
@@ -270,29 +262,21 @@ export class ResolvedSchemaGenerator {
     // Case 1: Sequence column (auto-increment)
     if (columnDef.sequence) {
       return {
-        writable: 'never',
-        reason: 'auto_increment_sequence',
-        insert_behavior: 'omit',
-        update_behavior: 'immutable',
-        note: 'Database generates this value'
+        controlled_by: 'database server',
+        formula: 'SERIAL'
       };
     }
 
     // Case 2: Calculated column
     if (columnDef.calculated) {
       return {
-        writable: 'never',
-        reason: 'database_calculation',
+        controlled_by: 'database server',
+        formula: columnDef.calculated,
         managed_by: {
           type: 'trigger_calculation',
           trigger_name: `${tableName}_before_insert_genlogic`,
-          calculated_from: columnDef.calculated,
           evaluation_timing: 'before_write'
-        },
-        insert_behavior: 'omit',
-        update_behavior: 'forbidden',
-        query_note: 'Always calculated on write, never stale',
-        warning: '⚠️  AUTOMATED IN DATABASE - DO NOT SET IN APPLICATION'
+        }
       };
     }
 
@@ -309,25 +293,17 @@ export class ResolvedSchemaGenerator {
       // RULE_MATCH is different - middleware controls updates via stored procedures
       if ((columnDef.automation as any).type === 'RULE_MATCH') {
         return {
-          writable: 'hybrid',
-          reason: 'rule_match_automation',
-          managed_by: managedBy,
-          insert_behavior: 'optional',
-          update_behavior: 'allowed',
-          query_note: 'Middleware uses preview functions and performs updates after user approval',
-          note: 'This column uses RULE_MATCH automation. Middleware should preview matches and apply updates.'
+          controlled_by: 'client application',
+          formula: this.generateAutomationFormula(columnDef.automation, tableName, _schema),
+          managed_by: managedBy
         };
       }
 
       // Standard automations (SUM, COUNT, etc.)
       return {
-        writable: 'never',
-        reason: 'database_automation',
-        managed_by: managedBy,
-        insert_behavior: 'omit',
-        update_behavior: 'forbidden',
-        query_note: 'Always reflects current state via triggers',
-        warning: '⚠️  AUTOMATED IN DATABASE - DO NOT SET IN APPLICATION'
+        controlled_by: 'database server',
+        formula: this.generateAutomationFormula(columnDef.automation, tableName, _schema),
+        managed_by: managedBy
       };
     }
 
@@ -337,32 +313,39 @@ export class ResolvedSchemaGenerator {
       const fkInfo = this.findForeignKeyInfo(columnName, processedTable);
 
       return {
-        writable: 'always',
         source: 'foreign_key_column',
-        references: fkInfo,
-        insert_behavior: 'optional',
-        update_behavior: 'allowed',
-        note: 'Application controls this value to establish relationships'
+        controlled_by: 'client application',
+        references: fkInfo
       };
     }
 
     // Case 5: Primary key (non-sequence)
     if (columnDef.primary_key) {
       return {
-        writable: 'always',
-        insert_behavior: 'required',
-        update_behavior: 'immutable',
-        note: 'Application must provide this value, cannot change after insert'
+        controlled_by: 'client application'
       };
     }
 
     // Case 6: Regular column
     return {
-      writable: 'always',
-      insert_behavior: 'optional',
-      update_behavior: 'allowed',
-      note: 'Application controls this value'
+      controlled_by: 'client application'
     };
+  }
+
+  /**
+   * Generate human-readable formula string from automation definition
+   */
+  private generateAutomationFormula(automation: AutomationDefinition, tableName: string, schema: GenLogicSchema): string {
+    // Parse automation if it's a string
+    const parsed = resolveAutomation(automation, tableName, schema);
+
+    // RULE_MATCH automation
+    if (parsed.type === 'RULE_MATCH') {
+      return `RULE_MATCH(${(parsed as any).source_table})`;
+    }
+
+    // Standard automations (SUM, COUNT, etc.)
+    return `${parsed.type}(${parsed.table}.${parsed.column})`;
   }
 
   /**
@@ -375,9 +358,12 @@ export class ResolvedSchemaGenerator {
     _schema: GenLogicSchema,
     _processedSchema: ProcessedSchema
   ): any {
+    // Parse automation if it's a string
+    const parsed = resolveAutomation(automation, tableName, _schema);
+
     // Handle RULE_MATCH automation
-    if ((automation as any).type === 'RULE_MATCH') {
-      const ruleMatch = automation as any;
+    if (parsed.type === 'RULE_MATCH') {
+      const ruleMatch = parsed as any;
       const sprocBaseName = `${tableName}_${columnName}_rule_match`;
 
       return {
@@ -430,31 +416,30 @@ export class ResolvedSchemaGenerator {
     }
 
     // Standard automation handling
-    const stdAutomation = automation as any;
     const info: any = {
       type: 'trigger_aggregation',
-      automation_type: stdAutomation.type,
-      source_table: stdAutomation.table,
-      source_column: stdAutomation.column
+      automation_type: parsed.type,
+      source_table: parsed.table,
+      source_column: parsed.column
     };
 
     // Determine which table has the trigger
-    if (['SUM', 'COUNT', 'MAX', 'MIN', 'LATEST'].includes(stdAutomation.type)) {
+    if (['SUM', 'COUNT', 'MAX', 'MIN', 'LATEST'].includes(parsed.type)) {
       // Aggregations: trigger is on the source (child) table
-      info.trigger_name = `${stdAutomation.table}_before_insert_genlogic`;
-      info.aggregation_path = `${stdAutomation.table}.${stdAutomation.foreign_key} -> ${tableName}`;
+      info.trigger_name = `${parsed.table}_before_insert_genlogic`;
+      info.aggregation_path = `${parsed.table}.${parsed.foreign_key || '?'} -> ${tableName}`;
       info.update_strategy = 'incremental';
-      info.note = `Aggregates ${stdAutomation.type} from ${stdAutomation.table}.${stdAutomation.column}`;
-    } else if (['SNAPSHOT', 'SYNC'].includes(stdAutomation.type)) {
+      info.note = `Aggregates ${parsed.type} from ${parsed.table}.${parsed.column}`;
+    } else if (['SNAPSHOT', 'SYNC'].includes(parsed.type)) {
       // SNAPSHOT: pull-only on INSERT. SYNC: pull on INSERT, push from parent on UPDATE
-      info.trigger_name = stdAutomation.type === 'SYNC'
-        ? `${stdAutomation.table}_before_update_genlogic`
+      info.trigger_name = parsed.type === 'SYNC'
+        ? `${parsed.table}_before_update_genlogic`
         : `${tableName}_before_insert_genlogic`;
-      info.cascade_path = `${stdAutomation.table} -> ${tableName}.${stdAutomation.foreign_key}`;
-      info.update_strategy = stdAutomation.type === 'SYNC' ? 'on_parent_change' : 'on_insert_only';
-      info.note = stdAutomation.type === 'SNAPSHOT'
-        ? `Snapshot from ${stdAutomation.table}.${stdAutomation.column} (captured on INSERT only)`
-        : `Syncs with ${stdAutomation.table}.${stdAutomation.column} (updated when parent changes)`;
+      info.cascade_path = `${parsed.table} -> ${tableName}.${parsed.foreign_key || '?'}`;
+      info.update_strategy = parsed.type === 'SYNC' ? 'on_parent_change' : 'on_insert_only';
+      info.note = parsed.type === 'SNAPSHOT'
+        ? `Snapshot from ${parsed.table}.${parsed.column} (captured on INSERT only)`
+        : `Syncs with ${parsed.table}.${parsed.column} (updated when parent changes)`;
     }
 
     return info;
@@ -492,7 +477,6 @@ export class ResolvedSchemaGenerator {
         type: 'pattern_matching_table',
         description: `Auto-generated pattern matching table with fixed structure for categorization`,
         has_stored_procedures: true,
-        writable: 'always',
         note: 'This table uses fixed structure: id, string_match, result_column, range_low_bound, range_high_bound'
       },
 
@@ -500,42 +484,31 @@ export class ResolvedSchemaGenerator {
         id: {
           type: 'SERIAL',
           primary_key: true,
-          writable: 'never',
-          reason: 'auto_increment_sequence',
-          insert_behavior: 'omit',
-          update_behavior: 'immutable',
-          note: 'Auto-generated primary key'
+          controlled_by: 'database server',
+          formula: 'SERIAL'
         },
         string_match: {
           type: 'VARCHAR(200)',
-          writable: 'always',
-          insert_behavior: 'required',
-          update_behavior: 'allowed',
+          controlled_by: 'client application',
           note: 'Pattern with SQL LIKE wildcards (%, _) to match against descriptions',
           example: '%starbucks%'
         },
         [resultColumn]: {
           type: 'VARCHAR(100)',
-          writable: 'always',
-          insert_behavior: 'required',
-          update_behavior: 'allowed',
+          controlled_by: 'client application',
           note: 'The categorization result value to return when this rule matches',
           example: 'Coffee'
         },
         range_low_bound: {
           type: 'NUMERIC(10,2)',
-          writable: 'always',
-          insert_behavior: 'optional',
-          update_behavior: 'allowed',
+          controlled_by: 'client application',
           nullable: true,
           note: 'Minimum numeric value constraint (NULL = no lower bound)',
           example: '10.00'
         },
         range_high_bound: {
           type: 'NUMERIC(10,2)',
-          writable: 'always',
-          insert_behavior: 'optional',
-          update_behavior: 'allowed',
+          controlled_by: 'client application',
           nullable: true,
           note: 'Maximum numeric value constraint (NULL = no upper bound)',
           example: '50.00'
@@ -615,18 +588,18 @@ export class ResolvedSchemaGenerator {
    */
   private generateUsageGuide(): any {
     return {
-      insert_pattern: `To insert data, only include columns where writable=always and insert_behavior != omit.
+      insert_pattern: `To insert data, only include columns where controlled_by = "client application".
 Example for accounts:
   INSERT INTO accounts (account, category) VALUES ('Checking', 'Asset');
 
-❌ WRONG - don't set automated columns:
+❌ WRONG - don't set database-controlled columns:
   INSERT INTO accounts (account, category, debits, balance) VALUES (...);`,
 
-      update_pattern: `To update data, only modify columns where writable=always and update_behavior=allowed.
+      update_pattern: `To update data, only modify columns where controlled_by = "client application".
 Example for accounts:
   UPDATE accounts SET category = 'Liability' WHERE id = 5;
 
-❌ WRONG - don't update automated columns:
+❌ WRONG - don't update database-controlled columns:
   UPDATE accounts SET balance = 1000 WHERE id = 5;  -- Will be overwritten!`,
 
       query_pattern: `All columns are readable. Automated columns are always current - no need to recalculate.

@@ -1,4 +1,4 @@
-Previous: [IDE Support](../90-application/10-ide-support.md)
+Previous: [Resolved Schema](../90-application/20-resolved-schema.md)
 
 # Running Tests
 
@@ -22,4 +22,4 @@ Filters match any part of the test path.
 
 ---
 
-Previous: [IDE Support](../90-application/10-ide-support.md)
+Previous: [Resolved Schema](../90-application/20-resolved-schema.md)

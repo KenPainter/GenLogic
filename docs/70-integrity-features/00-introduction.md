@@ -1,4 +1,4 @@
-Previous: [Spreading Parent to Multiple Children](../40-row-automation/20-spread-to-children.md) | Next: [Schema Validation](10-schema-validation.md)
+Previous: [Seed Data](../50-other-schema/20-seed-data.md) | Next: [Schema Validation](10-schema-validation.md)
 
 # Data Integrity Features
 
@@ -27,4 +27,4 @@ across INSERT, UPDATE, and DELETE operations.
 
 ---
 
-Previous: [Spreading Parent to Multiple Children](../40-row-automation/20-spread-to-children.md) | Next: [Schema Validation](10-schema-validation.md)
+Previous: [Seed Data](../50-other-schema/20-seed-data.md) | Next: [Schema Validation](10-schema-validation.md)

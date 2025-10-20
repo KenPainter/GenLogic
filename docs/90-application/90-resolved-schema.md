@@ -1,1 +1,0 @@
-# The Resolved Schema
