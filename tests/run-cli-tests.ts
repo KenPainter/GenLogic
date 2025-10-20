@@ -22,6 +22,7 @@
  *     verify-*.sql             - SQL queries to run against DB
  *     expect-*.txt             - Expected output for corresponding verify-*.sql
  *     args.txt                 - Extra CLI args
+ *     run-as-app-user.txt      - Run verify SQL as restricted app user (not setup user)
  *
  * Pattern matching:
  *   - Lines starting with # are comments (ignored)
@@ -59,6 +60,7 @@ interface TestCase {
   testResultSql?: string;    // SQL to run AFTER CLI execution (was setupDataSql)
   extraArgs: string[];
   skipCommon: boolean;
+  runAsAppUser: boolean;     // If true, run verify SQL as app user (not setup user)
 }
 
 function normalizeWhitespace(str: string): string {
@@ -97,6 +99,7 @@ function discoverTests(): TestCase[] {
         const argsPath = join(fullPath, 'args.txt');
         const testSetupPath = join(fullPath, 'test-setup.sql');
         const testResultPath = join(fullPath, 'test-result.sql');
+        const runAsAppUserPath = join(fullPath, 'run-as-app-user.txt');
 
         const expectedStdout = existsSync(stdoutPath)
           ? readFileSync(stdoutPath, 'utf-8').trim().split('\n').filter(l => l.length > 0 && !l.trim().startsWith('#'))
@@ -136,7 +139,8 @@ function discoverTests(): TestCase[] {
           testSetupSql: existsSync(testSetupPath) ? testSetupPath : undefined,
           testResultSql: existsSync(testResultPath) ? testResultPath : undefined,
           extraArgs,
-          skipCommon
+          skipCommon,
+          runAsAppUser: existsSync(runAsAppUserPath)
         });
       } else {
         // Recurse into subdirectory
@@ -149,11 +153,11 @@ function discoverTests(): TestCase[] {
   return tests;
 }
 
-async function runTest(test: TestCase, pool: PgPool): Promise<boolean> {
-  // Clean database before each test
+async function runTest(test: TestCase, setupPool: PgPool, appPool: PgPool | null): Promise<boolean> {
+  // Clean database before each test (always use setup pool for this)
   try {
-    await pool.query('DROP SCHEMA public CASCADE');
-    await pool.query('CREATE SCHEMA public');
+    await setupPool.query('DROP SCHEMA public CASCADE');
+    await setupPool.query('CREATE SCHEMA public');
   } catch (e) {
     console.error(`Failed to clean database: ${e}`);
     return false;
@@ -166,7 +170,7 @@ async function runTest(test: TestCase, pool: PgPool): Promise<boolean> {
   if (test.testSetupSql) {
     const setupSql = readFileSync(test.testSetupSql, 'utf-8');
     try {
-      await pool.query(setupSql);
+      await setupPool.query(setupSql);
     } catch (e) {
       passed = false;
       errors.push(`Failed to run test-setup.sql: ${e}`);
@@ -240,12 +244,15 @@ async function runTest(test: TestCase, pool: PgPool): Promise<boolean> {
   if (test.testResultSql) {
     const resultSql = readFileSync(test.testResultSql, 'utf-8');
     try {
-      await pool.query(resultSql);
+      await setupPool.query(resultSql);
     } catch (e) {
       passed = false;
       errors.push(`Failed to run test-result.sql: ${e}`);
     }
   }
+
+  // Choose pool based on test configuration
+  const verifyPool = test.runAsAppUser ? appPool : setupPool;
 
   // Run all verify-*.sql files and check results
   for (const verifySqlPath of test.verifySqlFiles) {
@@ -260,8 +267,15 @@ async function runTest(test: TestCase, pool: PgPool): Promise<boolean> {
       continue;
     }
 
+    // If test requires app user but none exists, error
+    if (test.runAsAppUser && !verifyPool) {
+      passed = false;
+      errors.push(`Test requires app user but app user pool not available`);
+      continue;
+    }
+
     try {
-      const queryResult = await pool.query(sqlContent);
+      const queryResult = await verifyPool!.query(sqlContent);
       const actualOutput = JSON.stringify(queryResult.rows);
       const expectedOutput = readFileSync(expectPath, 'utf-8').trim();
 
@@ -317,26 +331,58 @@ async function main() {
 
   console.log(`Found ${tests.length} tests\n`);
 
-  // Connect to database using Unix socket
-  let pool: PgPool;
+  // Connect to database as setup user using Unix socket
+  let setupPool: PgPool;
   try {
-    pool = new Pool({
+    setupPool = new Pool({
       host: '/var/run/postgresql',
       database: TEST_DB,
       user: TEST_USER
     });
     // Test connection
-    await pool.query('SELECT 1');
+    await setupPool.query('SELECT 1');
   } catch (e) {
     console.error(`Failed to connect to database: ${e}`);
     process.exit(1);
+  }
+
+  // Create app user if it doesn't exist (for permission testing)
+  const APP_USER = `${TEST_DB}_app_user`;
+  try {
+    await setupPool.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${APP_USER}') THEN
+          CREATE ROLE ${APP_USER} LOGIN;
+        END IF;
+      END $$;
+    `);
+  } catch (e) {
+    console.error(`Failed to create app user: ${e}`);
+    await setupPool.end();
+    process.exit(1);
+  }
+
+  // Connect to database as app user (for permission testing)
+  let appPool: PgPool | null = null;
+  try {
+    appPool = new Pool({
+      host: '/var/run/postgresql',
+      database: TEST_DB,
+      user: APP_USER
+    });
+    // Test connection
+    await appPool.query('SELECT 1');
+  } catch (e) {
+    console.error(`Warning: Failed to connect as app user (${APP_USER}): ${e}`);
+    console.error(`Tests requiring app user will be skipped.`);
   }
 
   let passed = 0;
   let failed = 0;
 
   for (const test of tests) {
-    const result = await runTest(test, pool);
+    const result = await runTest(test, setupPool, appPool);
     if (result) {
       passed++;
     } else {
@@ -347,13 +393,15 @@ async function main() {
         console.error('\n🚨 CRITICAL FAILURE: Test 0 (dry-run safety) failed!');
         console.error('The system is UNSAFE - --dry-run does not prevent database modification.');
         console.error('ABORTING all remaining tests.');
-        await pool.end();
+        await setupPool.end();
+        if (appPool) await appPool.end();
         process.exit(1);
       }
     }
   }
 
-  await pool.end();
+  await setupPool.end();
+  if (appPool) await appPool.end();
 
   console.log(`\n📊 Results: ${passed} passed, ${failed} failed`);
 

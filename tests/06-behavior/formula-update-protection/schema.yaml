@@ -1,0 +1,9 @@
+tables:
+  products:
+    columns:
+      id: integer primary key
+      price: numeric(10,2)
+      tax_rate: numeric(5,2)
+      total:
+        definition: numeric(10,2)
+        formula: "@price * (1 + @tax_rate / 100)"

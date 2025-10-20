@@ -102,15 +102,19 @@ END $$;`);
         }
       }
 
-      // Grant all permissions on table to PUBLIC
-      sql.push(`GRANT ALL ON TABLE "${tableName}" TO PUBLIC;`);
+      // Grant SELECT, INSERT, DELETE (but NOT UPDATE) on table to PUBLIC
+      // UPDATE is granted per-column to exclude automated columns
+      sql.push(`GRANT SELECT, INSERT, DELETE ON TABLE "${tableName}" TO PUBLIC;`);
 
-      // Revoke UPDATE on automated columns from PUBLIC
-      if (automatedColumns.length > 0) {
-        for (const col of automatedColumns) {
-          sql.push(`REVOKE UPDATE ("${col}") ON "${tableName}" FROM PUBLIC;`);
+      // Grant UPDATE only on non-automated columns
+      if (userColumns.length > 0) {
+        for (const col of userColumns) {
+          sql.push(`GRANT UPDATE ("${col}") ON "${tableName}" TO PUBLIC;`);
         }
-        sql.push(`-- Protected columns: ${automatedColumns.join(', ')}`);
+      }
+
+      if (automatedColumns.length > 0) {
+        sql.push(`-- Protected columns (no UPDATE): ${automatedColumns.join(', ')}`);
       }
 
       sql.push(``);

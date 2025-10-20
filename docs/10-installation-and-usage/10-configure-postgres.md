@@ -71,6 +71,30 @@ If the connection fails, verify:
 2. User has CREATEROLE and CREATEDB privileges
 3. `pg_hba.conf` has peer authentication enabled for local connections
 
+## Running Tests (Optional)
+
+If you want to run GenLogic's test suite, you need to configure authentication for the test application user.
+
+The test suite creates a restricted user `<database>_app_user` to verify that calculated columns are properly protected from modification. This user needs trust authentication in `pg_hba.conf`.
+
+Add this line to `/etc/postgresql/*/main/pg_hba.conf` before the general `local all all peer` line:
+
+```
+# GenLogic test suite - app user for permission testing
+local   all             genlogic_test_cli_app_user              trust
+```
+
+The exact location of pg_hba.conf varies by system:
+- Ubuntu/Debian: `/etc/postgresql/*/main/pg_hba.conf`
+- Other systems: Check `SHOW hba_file;` in psql
+
+After editing, reload PostgreSQL:
+
+```bash
+sudo systemctl reload postgresql
+```
+
+This configuration is only needed for running tests. Production GenLogic usage does not require it.
 
 ## Test Coverage
 
