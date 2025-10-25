@@ -1,0 +1,19 @@
+tables:
+  accounts:
+    columns:
+      id: serial primary key
+      name: varchar(100)
+      balance:                    # NEW - should be backfilled
+        definition: numeric(10,2)
+        automation: SUM @transactions.amount
+      transaction_count:          # NEW - should be backfilled
+        definition: integer
+        automation: COUNT @transactions.id
+
+  transactions:
+    columns:
+      id: serial primary key
+      account_id: integer
+      amount: numeric(10,2)
+    foreign_keys:
+      account: { table: accounts }

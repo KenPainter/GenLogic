@@ -60,6 +60,48 @@ tables:
 
 GenLogic generates: `ALTER TABLE users ADD COLUMN email VARCHAR(255)`
 
+#### Aggregation Columns with Backfill
+
+When adding aggregation columns (SUM, COUNT, MAX, MIN) to existing tables with data:
+
+```yaml
+# Add aggregation to existing table with data
+tables:
+  accounts:
+    columns:
+      id: serial primary key
+      name: varchar(100)
+      balance:                              # NEW aggregation column
+        definition: numeric(10,2)
+        automation: SUM @transactions.amount
+
+  transactions:
+    foreign_keys:
+      account_fk: accounts
+    columns:
+      transaction_id: serial primary key
+      account_fk: integer
+      amount: numeric(10,2)
+```
+
+GenLogic generates:
+```sql
+ALTER TABLE accounts ADD COLUMN balance NUMERIC(10,2) DEFAULT 0;
+
+-- BACKFILL: Calculate correct values for existing rows
+UPDATE accounts SET balance = (
+  SELECT COALESCE(SUM(amount), 0)
+  FROM transactions
+  WHERE transactions.account_fk = accounts.id
+);
+```
+
+The backfill ensures existing data has correct aggregation values immediately, not just the default value.
+
+**Note**: LAST_VALUE aggregations are NOT backfilled because GenLogic cannot determine which child row is "last" without an ordering column.
+
+See [Moving Values from Child to Parent](../30-column-automation/30-child-to-parent.md#backfilling-aggregations) for details.
+
 ### Widen Columns
 
 GenLogic allows widening columns in safe ways:
@@ -325,6 +367,16 @@ Additive-only behavior is verified by these tests:
   - New column added to existing table
   - Existing columns remain unchanged
   - Existing data preserved
+
+- [x] [Aggregation Column Backfill](../../tests/05-schema-features/additive-aggregation-backfill)
+  - New SUM and COUNT columns added to existing table with data
+  - Existing parent rows automatically backfilled with correct values
+  - Triggers maintain values for future changes
+
+- [x] [All Aggregation Types Backfill](../../tests/05-schema-features/additive-aggregation-backfill-all-types)
+  - Tests SUM, COUNT, MAX, and MIN backfilling
+  - Verifies NULL handling for MAX/MIN with no child rows
+  - Ensures triggers work correctly after backfill
 
 - [x] [Column Widening](../../tests/05-schema-features/additive-widen-column)
   - VARCHAR, CHAR, and NUMERIC columns safely widened

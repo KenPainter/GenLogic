@@ -4,6 +4,7 @@ import type {
   GenLogicSchema
 } from './types.js';
 import type { ProcessedSchema, ProcessedTable } from './schema-processor.js';
+import { parseAutomationString } from './automation-parser.js';
 
 /**
  * Schema Diff Engine
@@ -28,6 +29,7 @@ export class DiffEngine {
       indexesToCreate: [],
       foreignKeysToAdd: [],
       checkConstraintsToAdd: [],
+      aggregationsToBackfill: [],
       triggersToRecreate: []
     };
 
@@ -89,6 +91,33 @@ export class DiffEngine {
             columnName: column.name,
             definition: column.definition
           });
+
+          // Check if this new column is an aggregation that needs backfilling
+          if (column.definition.automation && typeof column.definition.automation === 'string') {
+            try {
+              const parsed = parseAutomationString(column.definition.automation);
+
+              // Only backfill SUM, COUNT, MAX, MIN (not LAST_VALUE - we don't know which row is "last")
+              if (['SUM', 'COUNT', 'MAX', 'MIN'].includes(parsed.type)) {
+                // Get the FK column name(s) from the mapping
+                const fkColumnName = parsed.foreign_key || desiredTable.fkColumnMapping[parsed.table]?.[0];
+
+                if (fkColumnName) {
+                  diff.aggregationsToBackfill.push({
+                    parentTable: tableName,
+                    aggregationColumn: column.name,
+                    aggregationType: parsed.type as 'SUM' | 'COUNT' | 'MAX' | 'MIN',
+                    childTable: parsed.table,
+                    childColumn: parsed.column,
+                    foreignKey: fkColumnName
+                  });
+                }
+              }
+            } catch (error) {
+              // If automation parsing fails, skip backfill detection
+              // The error will be caught during trigger generation
+            }
+          }
         }
 
         // Check for modified columns (safe expansions only)
@@ -506,6 +535,7 @@ export interface SchemaDiff {
   indexesToCreate: IndexCreation[];
   foreignKeysToAdd: ForeignKeyAddition[];
   checkConstraintsToAdd: CheckConstraintAddition[];
+  aggregationsToBackfill: AggregationBackfill[]; // New aggregation columns needing backfill
   triggersToRecreate: string[]; // Table names that need trigger recreation
 }
 
@@ -550,4 +580,13 @@ export interface CheckConstraintAddition {
   columnName: string;
   constraintName: string;
   columnType: string;
+}
+
+export interface AggregationBackfill {
+  parentTable: string;        // Table with the aggregation column
+  aggregationColumn: string;  // Column to backfill
+  aggregationType: 'SUM' | 'COUNT' | 'MAX' | 'MIN';  // Type of aggregation (not LAST_VALUE)
+  childTable: string;         // Table being aggregated
+  childColumn: string;        // Column in child table
+  foreignKey: string;         // FK column name(s) in child table
 }

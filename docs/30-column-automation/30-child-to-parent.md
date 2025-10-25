@@ -180,6 +180,111 @@ Aggregation columns are initialized with appropriate defaults:
 - MIN: NULL (until first child row exists)
 - LAST_VALUE: NULL (until first child row exists)
 
+## Backfilling Aggregations
+
+When you add a new aggregation column to a table that already contains data, GenLogic automatically backfills the column with correct values.
+
+### How Backfilling Works
+
+When GenLogic detects a new aggregation column:
+
+1. The column is created with its default value (0 for SUM/COUNT, NULL for MAX/MIN/LAST_VALUE)
+2. GenLogic immediately runs a backfill UPDATE to calculate correct values for all existing rows
+3. Triggers are created to maintain the values going forward
+
+Example:
+
+```yaml
+# Original schema
+tables:
+  accounts:
+    columns:
+      account_id: serial primary key
+      account_name: varchar(100)
+      # balance column doesn't exist yet
+
+  transactions:
+    foreign_keys:
+      account_fk: accounts
+    columns:
+      transaction_id: serial primary key
+      account_fk: integer
+      amount: numeric(10,2)
+    # ... existing transaction data ...
+
+# Add balance column to existing database
+tables:
+  accounts:
+    columns:
+      account_id: serial primary key
+      account_name: varchar(100)
+      balance:                              # NEW COLUMN
+        definition: numeric(10,2)
+        automation: SUM @transactions.amount
+
+  transactions:
+    foreign_keys:
+      account_fk: accounts
+    columns:
+      transaction_id: serial primary key
+      account_fk: integer
+      amount: numeric(10,2)
+```
+
+When you run GenLogic:
+```sql
+-- GenLogic executes:
+ALTER TABLE accounts ADD COLUMN balance NUMERIC(10,2) DEFAULT 0;
+
+-- Then immediately backfills:
+UPDATE accounts SET balance = (
+  SELECT COALESCE(SUM(amount), 0)
+  FROM transactions
+  WHERE transactions.account_fk = accounts.account_id
+);
+
+-- Then creates triggers for future updates
+```
+
+All existing accounts will have correct balances immediately, not just 0.
+
+### What Gets Backfilled
+
+Backfilling is supported for these aggregation types:
+- **SUM**: Sum of all child values
+- **COUNT**: Count of all child rows
+- **MAX**: Maximum child value (or NULL if no children)
+- **MIN**: Minimum child value (or NULL if no children)
+
+### LAST_VALUE Limitation
+
+**LAST_VALUE is NOT backfilled** when added to existing tables.
+
+Why? LAST_VALUE requires knowing which child row is the "latest", but GenLogic has no way to determine this without an ordering column (like a timestamp). The column will be created with NULL and will be populated only when new child rows are inserted or existing rows are updated.
+
+If you need to backfill LAST_VALUE, you must do it manually with a query that includes your ordering logic:
+
+```sql
+-- Manual backfill for LAST_VALUE (example with timestamp)
+UPDATE parent_table p
+SET last_status = (
+  SELECT status
+  FROM child_table c
+  WHERE c.parent_id = p.id
+  ORDER BY c.updated_at DESC
+  LIMIT 1
+);
+```
+
+### Performance Considerations
+
+Backfilling happens as a single UPDATE statement per aggregation column:
+- For small to medium tables (< 100K rows): Usually completes in seconds
+- For large tables (> 1M rows): May take minutes
+- The backfill runs during `genlogic` CLI execution before completion
+
+The backfill is safe and idempotent - if you run GenLogic again, it recognizes the column already exists and skips the backfill.
+
 ## When Aggregations Update
 
 Aggregations update automatically when:
@@ -297,6 +402,13 @@ FROM orders WHERE order_id = 1;
 ## Test Coverage
 
 This section lists tests that verify child-to-parent aggregation features work correctly.
+
+### Schema Features (Backfilling Tests)
+
+Tests that verify backfilling works when adding aggregation columns to existing tables:
+
+- [x] [Aggregation backfill](../../tests/05-schema-features/additive-aggregation-backfill) - Basic SUM and COUNT backfill
+- [x] [All aggregation types backfill](../../tests/05-schema-features/additive-aggregation-backfill-all-types) - SUM, COUNT, MAX, MIN backfilling
 
 ### Behavior (End-to-End Tests)
 

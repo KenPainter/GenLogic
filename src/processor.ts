@@ -149,6 +149,7 @@ export class GenLogicProcessor {
         ...ddlStatements.cleanupForeignKeys,
         ...ddlStatements.addForeignKeys,
         ...ddlStatements.addCheckConstraints,
+        ...ddlStatements.backfillAggregations,  // Backfill new aggregation columns before creating triggers
         ...ddlStatements.createIndexes,
         ...ddlStatements.addComments,
         ...triggerStatements,
@@ -248,6 +249,13 @@ export class GenLogicProcessor {
       console.log(`\\n🔄 Columns to modify: ${diff.columnsToModify.length}`);
       for (const column of diff.columnsToModify) {
         console.log(`   - ${column.tableName}.${column.columnName}: ${column.reason}`);
+      }
+    }
+
+    if (diff.aggregationsToBackfill && diff.aggregationsToBackfill.length > 0) {
+      console.log(`\\n🔢 Aggregations to backfill: ${diff.aggregationsToBackfill.length}`);
+      for (const backfill of diff.aggregationsToBackfill) {
+        console.log(`   - ${backfill.parentTable}.${backfill.aggregationColumn} (${backfill.aggregationType} from ${backfill.childTable}.${backfill.childColumn})`);
       }
     }
 

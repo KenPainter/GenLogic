@@ -5,7 +5,8 @@ import type {
   ColumnAddition,
   ColumnModification,
   ForeignKeyAddition,
-  CheckConstraintAddition
+  CheckConstraintAddition,
+  AggregationBackfill
 } from './diff-engine.js';
 import type { ProcessedSchema } from './schema-processor.js';
 import { parseAutomationString } from './automation-parser.js';
@@ -30,6 +31,7 @@ export class SQLGenerator {
       cleanupForeignKeys: [],
       addForeignKeys: [],
       addCheckConstraints: [],
+      backfillAggregations: [],
       createIndexes: [],
       createTriggers: [],
       addComments: []
@@ -84,6 +86,11 @@ export class SQLGenerator {
     // 4.5. Add CHECK constraints for numeric NaN/Infinity protection
     for (const check of diff.checkConstraintsToAdd) {
       statements.addCheckConstraints.push(this.generateAddCheckConstraintSQL(check));
+    }
+
+    // 4.75. Backfill new aggregation columns with correct values
+    for (const backfill of diff.aggregationsToBackfill) {
+      statements.backfillAggregations.push(this.generateBackfillAggregationSQL(backfill, processedSchema));
     }
 
     // 5. Create indexes (if any)
@@ -207,6 +214,69 @@ export class SQLGenerator {
     // For now, assuming single-column FKs or that composite FKs reference matching PK columns
     // TODO: Handle explicit column references in FK definition
     return `ALTER TABLE "${fk.tableName}" ADD CONSTRAINT "${fk.foreignKeyName}" FOREIGN KEY (${columnList}) REFERENCES "${referencedTable}" ON DELETE ${onDelete};`;
+  }
+
+  /**
+   * Generate UPDATE statement to backfill a new aggregation column with correct values
+   *
+   * Examples:
+   * - SUM: UPDATE parent SET sum_col = (SELECT COALESCE(SUM(child.col), 0) FROM child WHERE child.fk = parent.pk)
+   * - COUNT: UPDATE parent SET count_col = (SELECT COUNT(*) FROM child WHERE child.fk = parent.pk)
+   * - MAX: UPDATE parent SET max_col = (SELECT MAX(child.col) FROM child WHERE child.fk = parent.pk)
+   * - MIN: UPDATE parent SET min_col = (SELECT MIN(child.col) FROM child WHERE child.fk = parent.pk)
+   *
+   * Note: For simplicity, assumes single-column FKs referencing single-column PKs.
+   * This matches the most common use case. Composite FKs would require additional logic.
+   */
+  private generateBackfillAggregationSQL(backfill: AggregationBackfill, processedSchema: ProcessedSchema): string {
+    const { parentTable, aggregationColumn, aggregationType, childTable, childColumn, foreignKey } = backfill;
+
+    let aggregateExpr: string;
+
+    switch (aggregationType) {
+      case 'SUM':
+        // COALESCE ensures 0 instead of NULL when no child rows exist
+        aggregateExpr = `COALESCE(SUM("${childColumn}"), 0)`;
+        break;
+      case 'COUNT':
+        // COUNT(*) naturally returns 0 when no rows match
+        aggregateExpr = `COUNT(*)`;
+        break;
+      case 'MAX':
+        // MAX returns NULL when no child rows exist (correct default)
+        aggregateExpr = `MAX("${childColumn}")`;
+        break;
+      case 'MIN':
+        // MIN returns NULL when no child rows exist (correct default)
+        aggregateExpr = `MIN("${childColumn}")`;
+        break;
+    }
+
+    // Find parent table's primary key column(s)
+    const parent = processedSchema.tables[parentTable];
+    if (!parent) {
+      throw new Error(`Parent table "${parentTable}" not found in processed schema`);
+    }
+
+    const parentPKColumns: string[] = [];
+    for (const [colName, colDef] of Object.entries(parent.columns)) {
+      if (colDef.primary_key) {
+        parentPKColumns.push(colName);
+      }
+    }
+
+    if (parentPKColumns.length === 0) {
+      throw new Error(`No primary key found in parent table "${parentTable}"`);
+    }
+
+    // For simplicity, we assume single-column PK (most common case)
+    // Composite PKs would require matching multiple FK columns to multiple PK columns
+    const parentPK = parentPKColumns[0];
+
+    // Generate subquery that calculates the aggregation
+    const subquery = `(SELECT ${aggregateExpr} FROM "${childTable}" WHERE "${childTable}"."${foreignKey}" = "${parentTable}"."${parentPK}")`;
+
+    return `UPDATE "${parentTable}" SET "${aggregationColumn}" = ${subquery};`;
   }
 
   /**
@@ -382,6 +452,7 @@ export interface SQLStatements {
   cleanupForeignKeys: string[];
   addForeignKeys: string[];
   addCheckConstraints: string[];
+  backfillAggregations: string[];  // UPDATE statements to backfill new aggregation columns
   createIndexes: string[];
   createTriggers: string[];
   addComments: string[];

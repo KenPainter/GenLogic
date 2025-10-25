@@ -12,6 +12,13 @@ The author calls this "Augmented Normalization" - there is a normalized
 foundation for externally supplied values that is augmented with
 derived values.
 
+The use case is read-heavy databaseses, where the "pay me now" decision
+to update values on writes is cost effective because the major simplication
+of the development stack and process is not threatened by the differing
+needs of a write-heavy database.  The author's experience in database
+apps heavily leans to read-heavy line-of-business apps, and that is why
+he wrote this tool.
+
 This produces a few major simplifications for application development:
 - Declarative business logic as part of the schema
 - Business logic is validated and cannot be subverted
