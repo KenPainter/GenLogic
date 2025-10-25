@@ -1,4 +1,4 @@
-Previous: [CLI Usage](../10-installation-and-usage/20-cli-usage.md) | Next: [Tables and Columns](10-tables-and-columns.md)
+Previous: [Seed Data](../50-other-schema/20-seed-data.md) | Next: [Schema Validation](../70-integrity-features/10-schema-validation.md)
 
 # Introduction to GenLogic Schema Syntax
 
@@ -24,4 +24,4 @@ are natural to the structure and should readily make sense.
 
 ---
 
-Previous: [CLI Usage](../10-installation-and-usage/20-cli-usage.md) | Next: [Tables and Columns](10-tables-and-columns.md)
+Previous: [Seed Data](../50-other-schema/20-seed-data.md) | Next: [Schema Validation](../70-integrity-features/10-schema-validation.md)

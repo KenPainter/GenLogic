@@ -83,6 +83,9 @@ Before Release 1.0:
 - re-run risks analysis, like bad data in a spread
   creating an infinite loop.  Resolve and block
   all corrupt data paths.
+- Determine if the LAST_VALUE can be discerned if a
+  column is added to a database that already has
+  data in it.
 
 Anytime sorta-kinda maybe someday:
 - Support views

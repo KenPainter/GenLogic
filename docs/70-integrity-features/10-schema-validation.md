@@ -1,4 +1,4 @@
-Previous: [Introduction](00-introduction.md) | Next: [Numeric Integrity](20-numeric-integrity.md)
+Previous: [Introduction](../20-schema-syntax/00-introduction.md) | Next: [Numeric Integrity](20-numeric-integrity.md)
 
 # Schema Validation
 
@@ -180,4 +180,4 @@ Notation: [3] indicates validation performed by third-party JSON Schema validato
 
 ---
 
-Previous: [Introduction](00-introduction.md) | Next: [Numeric Integrity](20-numeric-integrity.md)
+Previous: [Introduction](../20-schema-syntax/00-introduction.md) | Next: [Numeric Integrity](20-numeric-integrity.md)

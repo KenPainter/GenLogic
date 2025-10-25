@@ -1,4 +1,4 @@
-Previous: [Calculation Integrity](30-calculation-integrity.md) | Next: [IDE Support](../90-application/10-ide-support.md)
+Previous: [Calculation Integrity](30-calculation-integrity.md) | Next: [Updating Databases Safely](50-updating-databases.md)
 
 # Additive Changes Only
 
@@ -417,4 +417,4 @@ Additive-only behavior is verified by these tests:
 
 ---
 
-Previous: [Calculation Integrity](30-calculation-integrity.md) | Next: [IDE Support](../90-application/10-ide-support.md)
+Previous: [Calculation Integrity](30-calculation-integrity.md) | Next: [Updating Databases Safely](50-updating-databases.md)

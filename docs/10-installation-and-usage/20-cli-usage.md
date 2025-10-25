@@ -1,4 +1,4 @@
-Previous: [Configure Postgres](10-configure-postgres.md) | Next: [Introduction](../70-integrity-features/00-introduction.md)
+Previous: [Configure Postgres](10-configure-postgres.md) | Next: [Introduction](../20-schema-syntax/00-introduction.md)
 
 # CLI Usage
 
@@ -85,4 +85,4 @@ These tests verify command-line argument parsing and option handling:
 
 ---
 
-Previous: [Configure Postgres](10-configure-postgres.md) | Next: [Introduction](../70-integrity-features/00-introduction.md)
+Previous: [Configure Postgres](10-configure-postgres.md) | Next: [Introduction](../20-schema-syntax/00-introduction.md)

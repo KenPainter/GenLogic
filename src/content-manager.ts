@@ -8,6 +8,59 @@ import type { ProcessedSchema, ProcessedTable } from './schema-processor.js';
  */
 export class ContentManager {
   /**
+   * Generate INSERT statements for seed-rows sections for specific tables
+   * Only inserts rows that don't already exist based on primary key
+   *
+   * This is used for layer-by-layer processing where we want to seed data
+   * for tables in a specific layer
+   */
+  generateContentInsertsForTables(
+    schema: GenLogicSchema,
+    processedSchema: ProcessedSchema,
+    tableNames: Set<string>
+  ): string[] {
+    const statements: string[] = [];
+
+    if (!schema.tables || !processedSchema.tables) {
+      return statements;
+    }
+
+    for (const [tableName, tableDef] of Object.entries(schema.tables)) {
+      // Only process tables in the given set
+      if (!tableNames.has(tableName)) {
+        continue;
+      }
+
+      if (!tableDef['seed-rows'] || tableDef['seed-rows'].length === 0) {
+        continue;
+      }
+
+      const processedTable = processedSchema.tables[tableName];
+      if (!processedTable) {
+        console.warn(`⚠️  Warning: Table ${tableName} not found in processed schema, skipping seed-rows insertion`);
+        continue;
+      }
+
+      // Find primary key columns
+      const pkColumns = this.findPrimaryKeyColumns(processedTable);
+      if (pkColumns.length === 0) {
+        console.warn(`⚠️  Warning: Table ${tableName} has no primary key, skipping seed-rows insertion`);
+        continue;
+      }
+
+      // Generate INSERT statements for each row
+      for (const row of tableDef['seed-rows']) {
+        const statement = this.generateInsertStatement(tableName, row, pkColumns, processedTable);
+        if (statement) {
+          statements.push(statement);
+        }
+      }
+    }
+
+    return statements;
+  }
+
+  /**
    * Generate INSERT statements for seed-rows sections
    * Only inserts rows that don't already exist based on primary key
    *

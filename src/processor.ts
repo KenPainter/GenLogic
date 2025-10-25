@@ -5,8 +5,8 @@ import { SchemaValidator } from './validation.js';
 import { DataFlowGraphValidator } from './graph.js';
 import { SchemaProcessor } from './schema-processor.js';
 import { DatabaseManager } from './database.js';
-import { DiffEngine } from './diff-engine.js';
-import { SQLGenerator } from './sql-generator.js';
+import { DiffEngine, type SchemaDiff } from './diff-engine.js';
+import { SQLGenerator, type SQLStatements } from './sql-generator.js';
 import { TriggerGenerator } from './trigger-generator.js';
 import { MatchingGenerator } from './matching-generator.js';
 import { ContentManager } from './content-manager.js';
@@ -129,44 +129,79 @@ export class GenLogicProcessor {
       const contentStatements = this.contentManager.generateContentInserts(schema, processedSchema);
       const permissionStatements = this.permissionsGenerator.generateAllPermissions(this.config.database, schema, processedSchema);
 
-      // ROBUST EXECUTION ORDER:
-      // 1. Drop ALL GenLogic triggers (clean slate)
-      // 2. Run all DDL (tables, columns)
-      // 3. Modify existing columns (safe expansions only)
-      // 4. Clean up orphaned FK values (set NULL where parent doesn't exist)
-      // 5. Add FK constraints (after cleanup to avoid violations)
-      // 6. Create indexes
-      // 7. Add comments (table and column descriptions)
-      // 8. Create ALL triggers (fresh from schema)
-      // 9. Create matching functions (pattern matching utilities)
-      // 10. Set permissions and ownership (INTEGRITY protection)
-      // 11. Insert content (with complete schema and active triggers)
-      const allStatements = [
-        ...dropAllTriggersSQL,
-        ...ddlStatements.createTables,
-        ...ddlStatements.addColumns,
-        ...ddlStatements.modifyColumns,
-        ...ddlStatements.cleanupForeignKeys,
-        ...ddlStatements.addForeignKeys,
-        ...ddlStatements.addCheckConstraints,
-        ...ddlStatements.backfillAggregations,  // Backfill new aggregation columns before creating triggers
-        ...ddlStatements.createIndexes,
-        ...ddlStatements.addComments,
+      // ROBUST LAYER-BY-LAYER EXECUTION ORDER:
+      // PHASE 1: Drop all triggers (global operation)
+      // PHASE 2: For each layer (0, 1, 2, ...):
+      //   1. Create tables in this layer
+      //   2. Add columns to tables in this layer
+      //   3. Modify columns in this layer
+      //   4. Seed data for this layer (parents seeded before children reference them)
+      //   5. Cleanup FK values for this layer (skip new columns)
+      //   6. Add FK constraints for this layer
+      //   7. Add CHECK constraints for this layer
+      //   8. Backfill aggregations where CHILD is in this layer (child data exists, update parents)
+      //   9. Create indexes for this layer
+      //  10. Add comments for this layer
+      // PHASE 3: Global operations after all layers:
+      //   - Create ALL triggers
+      //   - Create matching functions
+      //   - Set permissions
+
+      const allStatements: string[] = [
+        ...dropAllTriggersSQL
+      ];
+
+      // Convert tableLayers Map to array of layers
+      const layerArray = this.convertToLayerArray(tableLayers);
+
+      // Process each layer in topological order
+      for (let layerNum = 0; layerNum < layerArray.length; layerNum++) {
+        const tablesInLayer = layerArray[layerNum];
+        const tableSet = new Set(tablesInLayer);
+
+        if (tablesInLayer.length > 0) {
+          console.log(`   Processing layer ${layerNum}: ${tablesInLayer.join(', ')}`);
+
+          // Filter diff and content to this layer
+          const layerDiff = this.filterDiffForLayer(diff, tableSet);
+          const layerDDL = this.sqlGenerator.generateSQL(layerDiff, processedSchema);
+          const layerContent = this.contentManager.generateContentInsertsForTables(schema, processedSchema, tableSet);
+
+          // Assemble statements in dependency-safe order
+          allStatements.push(
+            ...layerDDL.createTables,
+            ...layerDDL.addColumns,
+            ...layerDDL.modifyColumns,
+            ...layerContent,                      // Seed data BEFORE FKs and aggregations
+            ...layerDDL.cleanupForeignKeys,
+            ...layerDDL.addForeignKeys,
+            ...layerDDL.addCheckConstraints,
+            ...layerDDL.backfillAggregations,     // Child data exists, backfill to parents
+            ...layerDDL.createIndexes,
+            ...layerDDL.addComments
+          );
+        }
+      }
+
+      // Global operations after all layers
+      allStatements.push(
         ...triggerStatements,
         ...matchingStatements,
-        ...permissionStatements,
-        ...contentStatements
-      ].filter(sql => sql.trim().length > 0 && !sql.startsWith('--'));
+        ...permissionStatements
+      );
+
+      // Filter out empty statements
+      const filteredStatements = allStatements.filter(sql => sql.trim().length > 0 && !sql.startsWith('--'));
 
       // PHASE 10: Execution or dry-run reporting
       if (this.config.dryRun) {
         console.log('📋 DRY RUN - Planned changes:');
-        this.reportPlannedChanges(diff, allStatements);
+        this.reportPlannedChanges(diff, filteredStatements);
       } else {
         console.log('⚡ Executing database changes...');
-        if (allStatements.length > 0) {
-          await this.database.executeInTransaction(allStatements);
-          console.log(`✅ Successfully executed ${allStatements.length} SQL statements`);
+        if (filteredStatements.length > 0) {
+          await this.database.executeInTransaction(filteredStatements);
+          console.log(`✅ Successfully executed ${filteredStatements.length} SQL statements`);
         } else {
           console.log('✅ No changes needed - schema is up to date');
         }
@@ -283,6 +318,58 @@ export class GenLogicProcessor {
         console.log(sqlStatements[i]);
       }
     }
+  }
+
+  /**
+   * Convert tableLayers Map to array of layers
+   * Each layer is an array of table names at that layer
+   *
+   * Example: Map { a: 0, b: 0, c: 1, d: 1, e: 2 } => [['a', 'b'], ['c', 'd'], ['e']]
+   */
+  private convertToLayerArray(tableLayers: Map<string, number>): string[][] {
+    // Find max layer number
+    const maxLayer = Math.max(...tableLayers.values());
+
+    // Initialize array with empty arrays for each layer
+    const layers: string[][] = [];
+    for (let i = 0; i <= maxLayer; i++) {
+      layers.push([]);
+    }
+
+    // Populate layers with table names
+    for (const [tableName, layerNum] of tableLayers.entries()) {
+      layers[layerNum].push(tableName);
+    }
+
+    return layers;
+  }
+
+  /**
+   * Filter a SchemaDiff to include only operations on tables in the given set
+   *
+   * Key insight: aggregationsToBackfill filters by CHILD table (not parent)
+   * because we backfill when the child's data is ready, updating parent tables
+   */
+  private filterDiffForLayer(diff: SchemaDiff, tableNames: Set<string>): SchemaDiff {
+    return {
+      tablesToCreate: diff.tablesToCreate.filter(t => tableNames.has(t.tableName)),
+
+      columnsToAdd: diff.columnsToAdd.filter(c => tableNames.has(c.tableName)),
+
+      columnsToModify: diff.columnsToModify.filter(c => tableNames.has(c.tableName)),
+
+      foreignKeysToAdd: diff.foreignKeysToAdd.filter(fk => tableNames.has(fk.tableName)),
+
+      checkConstraintsToAdd: diff.checkConstraintsToAdd.filter(c => tableNames.has(c.tableName)),
+
+      aggregationsToBackfill: diff.aggregationsToBackfill.filter(a =>
+        tableNames.has(a.childTable)  // Filter by CHILD table, not parent!
+      ),
+
+      indexesToCreate: diff.indexesToCreate.filter(i => tableNames.has(i.tableName)),
+
+      triggersToRecreate: diff.triggersToRecreate.filter(t => tableNames.has(t))
+    };
   }
 
   /**

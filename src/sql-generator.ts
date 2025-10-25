@@ -74,8 +74,17 @@ export class SQLGenerator {
     }
 
     // 3. Clean up orphaned FK values before adding FK constraints
+    // BUT: Skip cleanup for newly added columns (they can't have orphaned data yet!)
     for (const fk of diff.foreignKeysToAdd) {
-      statements.cleanupForeignKeys.push(this.generateCleanupForeignKeySQL(fk, processedSchema));
+      // Check if this FK's columns are newly added
+      const isNewColumn = diff.columnsToAdd.some(
+        col => col.tableName === fk.tableName && fk.columnNames.includes(col.columnName)
+      );
+
+      // Only cleanup existing FK columns that might have orphaned values
+      if (!isNewColumn) {
+        statements.cleanupForeignKeys.push(this.generateCleanupForeignKeySQL(fk, processedSchema));
+      }
     }
 
     // 4. Add foreign key constraints

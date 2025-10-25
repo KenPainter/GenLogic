@@ -1,4 +1,4 @@
-Previous: [Pattern Matching Tables](10-matching-tables.md) | Next: [Introduction](../70-integrity-features/00-introduction.md)
+Previous: [Pattern Matching Tables](10-matching-tables.md) | Next: [Introduction](../20-schema-syntax/00-introduction.md)
 
 # Seed Data
 
@@ -405,4 +405,4 @@ These tests verify seed data behavior with actual database insertion:
 
 ---
 
-Previous: [Pattern Matching Tables](10-matching-tables.md) | Next: [Introduction](../70-integrity-features/00-introduction.md)
+Previous: [Pattern Matching Tables](10-matching-tables.md) | Next: [Introduction](../20-schema-syntax/00-introduction.md)

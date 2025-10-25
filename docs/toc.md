@@ -8,7 +8,7 @@
 
 ## GenLogic Schema Syntax for standard SQL
 
-1. [Introduction](70-integrity-features/00-introduction.md)
+1. [Introduction](20-schema-syntax/00-introduction.md)
 1. [Tables and Columns](20-schema-syntax/10-tables-and-columns.md) 
 1. [Column Types](20-schema-syntax/11-column-types.md)
 1. [Reusable Columns](20-schema-syntax/12-reusable-columns.md)
@@ -36,11 +36,12 @@
 
 ## Data Integrity Features
 
-1. [Introduction](70-integrity-features/00-introduction.md)
+1. [Introduction](20-schema-syntax/00-introduction.md)
 1. [Schema Validation](70-integrity-features/10-schema-validation.md)
-4. [Numeric Integrity](70-integrity-features/20-numeric-integrity.md)
-2. [Calculation Integrity](70-integrity-features/30-calculation-integrity.md)
-3. [Additive Changes Only](70-integrity-features/40-additive-changes.md)
+2. [Numeric Integrity](70-integrity-features/20-numeric-integrity.md)
+3. [Calculation Integrity](70-integrity-features/30-calculation-integrity.md)
+4. [Additive Changes Only](70-integrity-features/40-additive-changes.md)
+5. [Updating Databases Safely](70-integrity-features/50-updating-databases.md)
 
 ## Application Development Features
 
