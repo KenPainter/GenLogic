@@ -99,8 +99,28 @@ export class DiffEngine {
 
               // Only backfill SUM, COUNT, MAX, MIN (not LAST_VALUE - we don't know which row is "last")
               if (['SUM', 'COUNT', 'MAX', 'MIN'].includes(parsed.type)) {
-                // Get the FK column name(s) from the mapping
-                const fkColumnName = parsed.foreign_key || desiredTable.fkColumnMapping[parsed.table]?.[0];
+                // Get the FK column name - need to look it up from fkColumnMapping
+                // The mapping is keyed by FK name, not by table name
+                // So we need to find which FK points to the child table
+                let fkColumnName: string | undefined;
+
+                if (parsed.foreign_key) {
+                  // FK explicitly specified in automation
+                  fkColumnName = desiredTable.fkColumnMapping[parsed.foreign_key]?.[0];
+                } else {
+                  // FK not specified - need to find it by searching for FK that points to child table
+                  // Look through all FKs in the child table to find one that points to parent
+                  const childTable = desiredSchema.tables[parsed.table];
+                  if (childTable) {
+                    for (const [fkName, fkDef] of Object.entries(childTable.foreignKeys)) {
+                      if (fkDef.table === tableName) {
+                        // Found FK from child to parent
+                        fkColumnName = childTable.fkColumnMapping[fkName]?.[0];
+                        break;
+                      }
+                    }
+                  }
+                }
 
                 if (fkColumnName) {
                   diff.aggregationsToBackfill.push({
@@ -109,7 +129,8 @@ export class DiffEngine {
                     aggregationType: parsed.type as 'SUM' | 'COUNT' | 'MAX' | 'MIN',
                     childTable: parsed.table,
                     childColumn: parsed.column,
-                    foreignKey: fkColumnName
+                    foreignKey: fkColumnName,
+                    whereClause: parsed.whereClause
                   });
                 }
               }
@@ -589,4 +610,5 @@ export interface AggregationBackfill {
   childTable: string;         // Table being aggregated
   childColumn: string;        // Column in child table
   foreignKey: string;         // FK column name(s) in child table
+  whereClause?: string;       // Optional filter condition for filtered aggregations
 }

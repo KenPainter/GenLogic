@@ -385,8 +385,8 @@
       "oneOf": [
         {
           "type": "string",
-          "pattern": "^(SUM|COUNT|MAX|MIN|LAST_VALUE|SNAPSHOT|SYNC|DOMINANT|QUEUEPOS)(\\([a-zA-Z_][a-zA-Z0-9_]{0,62}\\))?\\s+@[a-zA-Z_][a-zA-Z0-9_]{0,62}\\.[a-zA-Z_][a-zA-Z0-9_]{0,62}$",
-          "description": "Standard automation: 'TYPE @table.column' or 'TYPE(fk_name) @table.column' - Examples: 'SUM @transactions.amount', 'COUNT(customer_fk) @orders.id'"
+          "pattern": "^(SUM|COUNT|MAX|MIN|LAST_VALUE|SNAPSHOT|SYNC|DOMINANT|QUEUEPOS)(\\([a-zA-Z_][a-zA-Z0-9_]{0,62}\\))?\\s+@[a-zA-Z_][a-zA-Z0-9_]{0,62}\\.[a-zA-Z_][a-zA-Z0-9_]{0,62}(\\s+WHERE\\s+.+)?$",
+          "description": "Standard automation: 'TYPE @table.column' or 'TYPE(fk_name) @table.column WHERE condition' - Examples: 'SUM @transactions.amount', 'COUNT @ledger.id WHERE status IS NOT NULL'"
         },
         {
           "$ref": "#/definitions/ruleMatchAutomationDefinition"

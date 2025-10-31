@@ -86,6 +86,7 @@ interface TableAutomations {
       parentColumn: string;      // Column in parent to update
       aggregationType: string;   // SUM, COUNT, MAX, MIN, LAST_VALUE
       childColumn: string;       // Column in this table to aggregate
+      whereClause?: string;      // Optional filter condition
     }>;
   }>;
 }
@@ -346,7 +347,8 @@ export class TriggerGenerator {
           pushToParent.aggregations.push({
             parentColumn: targetColumn,
             aggregationType: automation.type,
-            childColumn: sourceColumn
+            childColumn: sourceColumn,
+            whereClause: automation.whereClause
           });
 
         } else if (['SNAPSHOT', 'SYNC'].includes(automation.type)) {
@@ -987,6 +989,33 @@ CREATE TRIGGER ${triggerName}
   }
 
   /**
+   * Qualify column references in WHERE clauses with row prefix (NEW/OLD)
+   * Converts: "account_id_offset IS NOT NULL" to "NEW.account_id_offset IS NOT NULL"
+   *
+   * This is a simple heuristic: replace any word that looks like a column name
+   * (starts with letter/underscore, followed by letters/numbers/underscores)
+   * with rowPrefix.column_name, unless it's a SQL keyword.
+   */
+  private qualifyWhereClause(whereClause: string, rowPrefix: string): string {
+    // SQL keywords that should NOT be qualified
+    const keywords = new Set([
+      'AND', 'OR', 'NOT', 'NULL', 'TRUE', 'FALSE', 'IS', 'IN', 'LIKE',
+      'BETWEEN', 'CASE', 'WHEN', 'THEN', 'ELSE', 'END', 'AS', 'CAST'
+    ]);
+
+    // Replace column references with qualified versions
+    // Match word boundaries to avoid partial replacements
+    return whereClause.replace(/\b([a-zA-Z_][a-zA-Z0-9_]*)\b/g, (match) => {
+      // Don't qualify SQL keywords or already qualified references
+      if (keywords.has(match.toUpperCase()) || match.includes('.')) {
+        return match;
+      }
+      // Qualify with row prefix
+      return `${rowPrefix}.${match}`;
+    });
+  }
+
+  /**
    * Generate PUSH to parents logic (aggregations)
    */
   private generatePushToParents(automations: TableAutomations, operation: 'INSERT' | 'UPDATE' | 'DELETE', processedSchema: ProcessedSchema): string | null {
@@ -1046,20 +1075,34 @@ CREATE TRIGGER ${triggerName}
     const fkCol = push.fkColumns[0]; // Assume single FK column
     const parentPK = this.getTablePrimaryKeys(push.parentTable, processedSchema)[0]; // Use first PK
 
+    let updateSQL: string;
     switch (agg.aggregationType) {
       case 'SUM':
-        return `    UPDATE ${push.parentTable} SET ${agg.parentColumn} = COALESCE(${agg.parentColumn}, 0) + COALESCE(${row}.${agg.childColumn}, 0) WHERE ${parentPK} = ${row}.${fkCol};`;
+        updateSQL = `UPDATE ${push.parentTable} SET ${agg.parentColumn} = COALESCE(${agg.parentColumn}, 0) + COALESCE(${row}.${agg.childColumn}, 0) WHERE ${parentPK} = ${row}.${fkCol};`;
+        break;
       case 'COUNT':
-        return `    UPDATE ${push.parentTable} SET ${agg.parentColumn} = COALESCE(${agg.parentColumn}, 0) + 1 WHERE ${parentPK} = ${row}.${fkCol};`;
+        updateSQL = `UPDATE ${push.parentTable} SET ${agg.parentColumn} = COALESCE(${agg.parentColumn}, 0) + 1 WHERE ${parentPK} = ${row}.${fkCol};`;
+        break;
       case 'MAX':
-        return `    UPDATE ${push.parentTable} SET ${agg.parentColumn} = COALESCE(GREATEST(${agg.parentColumn}, ${row}.${agg.childColumn}), ${row}.${agg.childColumn}, ${agg.parentColumn}) WHERE ${parentPK} = ${row}.${fkCol};`;
+        updateSQL = `UPDATE ${push.parentTable} SET ${agg.parentColumn} = COALESCE(GREATEST(${agg.parentColumn}, ${row}.${agg.childColumn}), ${row}.${agg.childColumn}, ${agg.parentColumn}) WHERE ${parentPK} = ${row}.${fkCol};`;
+        break;
       case 'MIN':
-        return `    UPDATE ${push.parentTable} SET ${agg.parentColumn} = COALESCE(LEAST(${agg.parentColumn}, ${row}.${agg.childColumn}), ${row}.${agg.childColumn}, ${agg.parentColumn}) WHERE ${parentPK} = ${row}.${fkCol};`;
+        updateSQL = `UPDATE ${push.parentTable} SET ${agg.parentColumn} = COALESCE(LEAST(${agg.parentColumn}, ${row}.${agg.childColumn}), ${row}.${agg.childColumn}, ${agg.parentColumn}) WHERE ${parentPK} = ${row}.${fkCol};`;
+        break;
       case 'LAST_VALUE':
-        return `    UPDATE ${push.parentTable} SET ${agg.parentColumn} = ${row}.${agg.childColumn} WHERE ${parentPK} = ${row}.${fkCol};`;
+        updateSQL = `UPDATE ${push.parentTable} SET ${agg.parentColumn} = ${row}.${agg.childColumn} WHERE ${parentPK} = ${row}.${fkCol};`;
+        break;
       default:
         return `    -- Unsupported aggregation type: ${agg.aggregationType}`;
     }
+
+    // Wrap in IF condition for filtered aggregations
+    if (agg.whereClause) {
+      const qualifiedWhere = this.qualifyWhereClause(agg.whereClause, row);
+      return `    IF (${qualifiedWhere}) THEN\n      ${updateSQL}\n    END IF;`;
+    }
+
+    return `    ${updateSQL}`;
   }
 
   /**
@@ -1073,7 +1116,45 @@ CREATE TRIGGER ${triggerName}
 
     switch (agg.aggregationType) {
       case 'SUM':
-        // Handle both FK changes and value changes
+        if (agg.whereClause) {
+          // Filtered SUM: handle filter transitions
+          const oldWhereClause = this.qualifyWhereClause(agg.whereClause, 'OLD');
+          const newWhereClause = this.qualifyWhereClause(agg.whereClause, 'NEW');
+          return `  -- Handle filtered SUM with WHERE clause
+  DECLARE
+    v_old_matches BOOLEAN := (${oldWhereClause});
+    v_new_matches BOOLEAN := (${newWhereClause});
+  BEGIN
+    IF OLD.${fkCol} IS DISTINCT FROM NEW.${fkCol} THEN
+      -- FK changed: remove from old parent (if matched), add to new parent (if matches)
+      IF OLD.${fkCol} IS NOT NULL AND v_old_matches THEN
+        UPDATE ${push.parentTable} SET ${agg.parentColumn} = COALESCE(${agg.parentColumn}, 0) - COALESCE(OLD.${agg.childColumn}, 0) WHERE ${parentPK} = OLD.${fkCol};
+      END IF;
+      IF NEW.${fkCol} IS NOT NULL AND v_new_matches THEN
+        UPDATE ${push.parentTable} SET ${agg.parentColumn} = COALESCE(${agg.parentColumn}, 0) + COALESCE(NEW.${agg.childColumn}, 0) WHERE ${parentPK} = NEW.${fkCol};
+      END IF;
+    ELSE
+      -- FK stayed the same: handle filter transition or value change
+      IF NOT v_old_matches AND v_new_matches THEN
+        -- Started matching: add value
+        IF NEW.${fkCol} IS NOT NULL THEN
+          UPDATE ${push.parentTable} SET ${agg.parentColumn} = COALESCE(${agg.parentColumn}, 0) + COALESCE(NEW.${agg.childColumn}, 0) WHERE ${parentPK} = NEW.${fkCol};
+        END IF;
+      ELSIF v_old_matches AND NOT v_new_matches THEN
+        -- Stopped matching: subtract value
+        IF NEW.${fkCol} IS NOT NULL THEN
+          UPDATE ${push.parentTable} SET ${agg.parentColumn} = COALESCE(${agg.parentColumn}, 0) - COALESCE(OLD.${agg.childColumn}, 0) WHERE ${parentPK} = NEW.${fkCol};
+        END IF;
+      ELSIF v_old_matches AND v_new_matches AND OLD.${agg.childColumn} IS DISTINCT FROM NEW.${agg.childColumn} THEN
+        -- Still matching but value changed: adjust by difference
+        IF NEW.${fkCol} IS NOT NULL THEN
+          UPDATE ${push.parentTable} SET ${agg.parentColumn} = COALESCE(${agg.parentColumn}, 0) - COALESCE(OLD.${agg.childColumn}, 0) + COALESCE(NEW.${agg.childColumn}, 0) WHERE ${parentPK} = NEW.${fkCol};
+        END IF;
+      END IF;
+    END IF;
+  END;`;
+        }
+        // Unfiltered SUM
         return `  -- Handle FK changes and value changes for SUM
   IF OLD.${fkCol} IS DISTINCT FROM NEW.${fkCol} THEN
     -- FK changed: subtract from old parent, add to new parent
@@ -1090,7 +1171,40 @@ CREATE TRIGGER ${triggerName}
     END IF;
   END IF;`;
       case 'COUNT':
-        // Handle FK changes for COUNT
+        if (agg.whereClause) {
+          // Filtered COUNT: handle filter transitions
+          const oldWhereClause = this.qualifyWhereClause(agg.whereClause, 'OLD');
+          const newWhereClause = this.qualifyWhereClause(agg.whereClause, 'NEW');
+          return `  -- Handle filtered COUNT with WHERE clause
+  DECLARE
+    v_old_matches BOOLEAN := (${oldWhereClause});
+    v_new_matches BOOLEAN := (${newWhereClause});
+  BEGIN
+    IF OLD.${fkCol} IS DISTINCT FROM NEW.${fkCol} THEN
+      -- FK changed: decrement old parent (if matched), increment new parent (if matches)
+      IF OLD.${fkCol} IS NOT NULL AND v_old_matches THEN
+        UPDATE ${push.parentTable} SET ${agg.parentColumn} = GREATEST(COALESCE(${agg.parentColumn}, 0) - 1, 0) WHERE ${parentPK} = OLD.${fkCol};
+      END IF;
+      IF NEW.${fkCol} IS NOT NULL AND v_new_matches THEN
+        UPDATE ${push.parentTable} SET ${agg.parentColumn} = COALESCE(${agg.parentColumn}, 0) + 1 WHERE ${parentPK} = NEW.${fkCol};
+      END IF;
+    ELSE
+      -- FK stayed the same: handle filter transition
+      IF NOT v_old_matches AND v_new_matches THEN
+        -- Started matching: increment
+        IF NEW.${fkCol} IS NOT NULL THEN
+          UPDATE ${push.parentTable} SET ${agg.parentColumn} = COALESCE(${agg.parentColumn}, 0) + 1 WHERE ${parentPK} = NEW.${fkCol};
+        END IF;
+      ELSIF v_old_matches AND NOT v_new_matches THEN
+        -- Stopped matching: decrement
+        IF NEW.${fkCol} IS NOT NULL THEN
+          UPDATE ${push.parentTable} SET ${agg.parentColumn} = GREATEST(COALESCE(${agg.parentColumn}, 0) - 1, 0) WHERE ${parentPK} = NEW.${fkCol};
+        END IF;
+      END IF;
+    END IF;
+  END;`;
+        }
+        // Unfiltered COUNT
         return `  -- Handle FK changes for COUNT
   IF OLD.${fkCol} IS DISTINCT FROM NEW.${fkCol} THEN
     -- FK changed: decrement old parent, increment new parent
@@ -1126,11 +1240,14 @@ CREATE TRIGGER ${triggerName}
     const fkCol = push.fkColumns[0];
     const parentPK = this.getTablePrimaryKeys(push.parentTable, processedSchema)[0];
 
+    let updateSQL: string;
     switch (agg.aggregationType) {
       case 'SUM':
-        return `  UPDATE ${push.parentTable} SET ${agg.parentColumn} = COALESCE(${agg.parentColumn}, 0) - COALESCE(${row}.${agg.childColumn}, 0) WHERE ${parentPK} = ${row}.${fkCol};`;
+        updateSQL = `UPDATE ${push.parentTable} SET ${agg.parentColumn} = COALESCE(${agg.parentColumn}, 0) - COALESCE(${row}.${agg.childColumn}, 0) WHERE ${parentPK} = ${row}.${fkCol};`;
+        break;
       case 'COUNT':
-        return `  UPDATE ${push.parentTable} SET ${agg.parentColumn} = GREATEST(COALESCE(${agg.parentColumn}, 0) - 1, 0) WHERE ${parentPK} = ${row}.${fkCol};`;
+        updateSQL = `UPDATE ${push.parentTable} SET ${agg.parentColumn} = GREATEST(COALESCE(${agg.parentColumn}, 0) - 1, 0) WHERE ${parentPK} = ${row}.${fkCol};`;
+        break;
       case 'MAX':
         return `  -- MAX: recalculate (full scan fallback)`;
       case 'MIN':
@@ -1140,6 +1257,14 @@ CREATE TRIGGER ${triggerName}
       default:
         return `  -- Unsupported aggregation type: ${agg.aggregationType}`;
     }
+
+    // Wrap in IF condition for filtered aggregations
+    if (agg.whereClause) {
+      const qualifiedWhere = this.qualifyWhereClause(agg.whereClause, row);
+      return `  IF (${qualifiedWhere}) THEN\n    ${updateSQL}\n  END IF;`;
+    }
+
+    return `  ${updateSQL}`;
   }
 
 

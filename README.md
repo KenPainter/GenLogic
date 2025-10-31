@@ -77,6 +77,9 @@ to do so.
 ## Potential TO-DO List
 
 Before Release 1.0:
+- MAJOR: Reduce child->parent updates to a single update,
+  right now it is update-per-column, very in-elegant
+  and bad for performance.
 - Replace add-navigation.mjs with a general reconciler
   that looks for widows and orphans in both docs and
   tests/

@@ -151,6 +151,31 @@ export class SQLGenerator {
   }
 
   /**
+   * Qualify column references in WHERE clauses with table prefix for backfill queries
+   * Converts: "account_id_offset IS NOT NULL" to "ledger"."account_id_offset" IS NOT NULL
+   *
+   * Similar to trigger-generator's qualifyWhereClause, but for SQL subqueries instead of trigger context
+   */
+  private qualifyWhereClauseForBackfill(whereClause: string, tableName: string): string {
+    // SQL keywords that should NOT be qualified
+    const keywords = new Set([
+      'AND', 'OR', 'NOT', 'NULL', 'TRUE', 'FALSE', 'IS', 'IN', 'LIKE',
+      'BETWEEN', 'CASE', 'WHEN', 'THEN', 'ELSE', 'END', 'AS', 'CAST'
+    ]);
+
+    // Replace column references with qualified versions
+    // Match word boundaries to avoid partial replacements
+    return whereClause.replace(/\b([a-zA-Z_][a-zA-Z0-9_]*)\b/g, (match) => {
+      // Don't qualify SQL keywords or already qualified references
+      if (keywords.has(match.toUpperCase()) || match.includes('.')) {
+        return match;
+      }
+      // Qualify with table name using quoted identifiers
+      return `"${tableName}"."${match}"`;
+    });
+  }
+
+  /**
    * Generate ALTER TABLE ADD CONSTRAINT for numeric NaN/Infinity protection
    * INTEGRITY: Blocks NaN and Infinity values from existing numeric columns
    */
@@ -238,7 +263,7 @@ export class SQLGenerator {
    * This matches the most common use case. Composite FKs would require additional logic.
    */
   private generateBackfillAggregationSQL(backfill: AggregationBackfill, processedSchema: ProcessedSchema): string {
-    const { parentTable, aggregationColumn, aggregationType, childTable, childColumn, foreignKey } = backfill;
+    const { parentTable, aggregationColumn, aggregationType, childTable, childColumn, foreignKey, whereClause } = backfill;
 
     let aggregateExpr: string;
 
@@ -282,8 +307,16 @@ export class SQLGenerator {
     // Composite PKs would require matching multiple FK columns to multiple PK columns
     const parentPK = parentPKColumns[0];
 
+    // Build WHERE conditions for the subquery
+    let whereConditions = `"${childTable}"."${foreignKey}" = "${parentTable}"."${parentPK}"`;
+    if (whereClause) {
+      // Qualify column names in WHERE clause with child table name
+      const qualifiedWhere = this.qualifyWhereClauseForBackfill(whereClause, childTable);
+      whereConditions += ` AND (${qualifiedWhere})`;
+    }
+
     // Generate subquery that calculates the aggregation
-    const subquery = `(SELECT ${aggregateExpr} FROM "${childTable}" WHERE "${childTable}"."${foreignKey}" = "${parentTable}"."${parentPK}")`;
+    const subquery = `(SELECT ${aggregateExpr} FROM "${childTable}" WHERE ${whereConditions})`;
 
     return `UPDATE "${parentTable}" SET "${aggregationColumn}" = ${subquery};`;
   }

@@ -21,6 +21,7 @@
 1. [Moving Values from Parent to Child](30-column-automation/10-parent-to-child.md)
 1. [Calculating Values Within a Row](30-column-automation/20-calculate-within-row.md)
 1. [Moving Values from Child to Parent](30-column-automation/30-child-to-parent.md)
+1. [Filtering Aggregations with WHERE](30-column-automation/31-aggregation-with-where.md)
 
 ## Row and Automation Syntax
 

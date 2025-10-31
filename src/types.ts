@@ -95,6 +95,7 @@ export interface ParsedStandardAutomation {
   table: string;      // VALIDATION REQUIRED: Must exist in 'tables' section
   foreign_key?: string; // VALIDATION REQUIRED: Must exist if specified, inferred if omitted
   column: string;
+  whereClause?: string; // Optional filter condition for aggregations (e.g., "status = 'active'")
 }
 
 export interface RuleMatchAutomationDefinition {

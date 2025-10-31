@@ -14,16 +14,16 @@ import type { AutomationDefinition, ParsedStandardAutomation, RuleMatchAutomatio
  * Returns ParsedStandardAutomation with type, table, column, and optional foreign_key
  */
 export function parseAutomationString(automation: string): ParsedStandardAutomation {
-  // Pattern: TYPE(optional_fk) @table.column
-  const pattern = /^(SUM|COUNT|MAX|MIN|LAST_VALUE|SNAPSHOT|SYNC|DOMINANT|QUEUEPOS)(?:\(([a-zA-Z_][a-zA-Z0-9_]*)\))?\s+@([a-zA-Z_][a-zA-Z0-9_]*)\.([a-zA-Z_][a-zA-Z0-9_]*)$/;
+  // Pattern: TYPE(optional_fk) @table.column WHERE optional_condition
+  const pattern = /^(SUM|COUNT|MAX|MIN|LAST_VALUE|SNAPSHOT|SYNC|DOMINANT|QUEUEPOS)(?:\(([a-zA-Z_][a-zA-Z0-9_]*)\))?\s+@([a-zA-Z_][a-zA-Z0-9_]*)\.([a-zA-Z_][a-zA-Z0-9_]*)(?:\s+WHERE\s+(.+))?$/;
 
   const match = automation.match(pattern);
 
   if (!match) {
-    throw new Error(`Invalid automation format: "${automation}". Expected format: "TYPE @table.column" or "TYPE(fk_name) @table.column"`);
+    throw new Error(`Invalid automation format: "${automation}". Expected format: "TYPE @table.column" or "TYPE(fk_name) @table.column WHERE condition"`);
   }
 
-  const [, type, foreign_key, table, column] = match;
+  const [, type, foreign_key, table, column, whereClause] = match;
 
   const parsed: ParsedStandardAutomation = {
     type: type as ParsedStandardAutomation['type'],
@@ -33,6 +33,10 @@ export function parseAutomationString(automation: string): ParsedStandardAutomat
 
   if (foreign_key) {
     parsed.foreign_key = foreign_key;
+  }
+
+  if (whereClause) {
+    parsed.whereClause = whereClause.trim();
   }
 
   return parsed;
