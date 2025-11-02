@@ -126,7 +126,11 @@ export class GenLogicProcessor {
       const ddlStatements = this.sqlGenerator.generateSQL(diff, processedSchema);
       const triggerStatements = this.triggerGenerator.generateTriggers(schema, processedSchema);
       const matchingStatements = this.matchingGenerator.generateMatchingSQL(schema, processedSchema);
-      const contentStatements = this.contentManager.generateContentInserts(schema, processedSchema);
+
+      // Extract set of new tables for sequence initialization
+      const newTables = new Set(diff.tablesToCreate.map(t => t.tableName));
+
+      const contentStatements = this.contentManager.generateContentInserts(schema, processedSchema, newTables);
       const permissionStatements = this.permissionsGenerator.generateAllPermissions(this.config.database, schema, processedSchema);
 
       // ROBUST LAYER-BY-LAYER EXECUTION ORDER:
@@ -165,7 +169,7 @@ export class GenLogicProcessor {
           // Filter diff and content to this layer
           const layerDiff = this.filterDiffForLayer(diff, tableSet);
           const layerDDL = this.sqlGenerator.generateSQL(layerDiff, processedSchema);
-          const layerContent = this.contentManager.generateContentInsertsForTables(schema, processedSchema, tableSet);
+          const layerContent = this.contentManager.generateContentInsertsForTables(schema, processedSchema, tableSet, newTables);
 
           // Assemble statements in dependency-safe order
           allStatements.push(

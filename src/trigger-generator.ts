@@ -118,6 +118,14 @@ export class TriggerGenerator {
       triggerSQL.push(...triggers);
     }
 
+    // Generate protection triggers for tables with genlogic_protected column
+    for (const [tableName, table] of Object.entries(processedSchema.tables || {})) {
+      if (table.columns.genlogic_protected) {
+        const protectionTriggers = this.generateProtectionTriggers(tableName);
+        triggerSQL.push(...protectionTriggers);
+      }
+    }
+
     return triggerSQL;
   }
 
@@ -1500,6 +1508,86 @@ ${filterEnd}`;
     // For now, assume the tracking column IS the PK reference
     // In a more robust implementation, we'd look this up in the processed schema
     return trackingColumn;
+  }
+
+  /**
+   * Generate protection triggers for tables with genlogic_protected column
+   *
+   * Creates BEFORE UPDATE and BEFORE DELETE triggers that prevent non-owner users
+   * from modifying or deleting protected rows.
+   *
+   * Also prevents non-owner users from setting genlogic_protected to TRUE or
+   * changing it from TRUE to FALSE.
+   */
+  private generateProtectionTriggers(tableName: string): string[] {
+    const triggers: string[] = [];
+
+    // Function to check protection and raise error
+    const functionName = `${tableName}_protect_system_rows`;
+    const functionSQL = `
+CREATE OR REPLACE FUNCTION ${functionName}()
+RETURNS TRIGGER AS $$
+DECLARE
+  db_owner TEXT;
+BEGIN
+  -- Get the database owner
+  SELECT pg_catalog.pg_get_userbyid(d.datdba) INTO db_owner
+  FROM pg_catalog.pg_database d
+  WHERE d.datname = current_database();
+
+  -- Check if current user is the database owner
+  IF CURRENT_USER = db_owner THEN
+    -- Owner can do anything
+    RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;
+  END IF;
+
+  -- For DELETE: prevent deletion of protected rows
+  IF TG_OP = 'DELETE' THEN
+    IF OLD.genlogic_protected = TRUE THEN
+      RAISE EXCEPTION 'Cannot delete protected system row in table ${tableName}';
+    END IF;
+    RETURN OLD;
+  END IF;
+
+  -- For UPDATE: prevent modification of protected rows
+  IF TG_OP = 'UPDATE' THEN
+    IF OLD.genlogic_protected = TRUE THEN
+      RAISE EXCEPTION 'Cannot modify protected system row in table ${tableName}';
+    END IF;
+
+    -- Also prevent non-owner from setting genlogic_protected to TRUE
+    -- or changing it from FALSE to TRUE
+    IF NEW.genlogic_protected = TRUE AND (OLD.genlogic_protected IS NULL OR OLD.genlogic_protected = FALSE) THEN
+      RAISE EXCEPTION 'Cannot set genlogic_protected to TRUE - only database owner can protect rows';
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+`;
+
+    triggers.push(functionSQL);
+
+    // CREATE TRIGGER for UPDATE
+    const updateTriggerSQL = `
+CREATE TRIGGER ${tableName}_protect_update
+BEFORE UPDATE ON "${tableName}"
+FOR EACH ROW
+EXECUTE FUNCTION ${functionName}();
+`;
+    triggers.push(updateTriggerSQL);
+
+    // CREATE TRIGGER for DELETE
+    const deleteTriggerSQL = `
+CREATE TRIGGER ${tableName}_protect_delete
+BEFORE DELETE ON "${tableName}"
+FOR EACH ROW
+EXECUTE FUNCTION ${functionName}();
+`;
+    triggers.push(deleteTriggerSQL);
+
+    return triggers;
   }
 
 }

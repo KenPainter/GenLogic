@@ -323,7 +323,9 @@ export class DatabaseManager {
         t.event_object_table as table_name
       FROM information_schema.triggers t
       WHERE t.event_object_schema = 'public'
-        AND t.trigger_name LIKE '%_genlogic'
+        AND (t.trigger_name LIKE '%_genlogic'
+             OR t.trigger_name LIKE '%_protect_update'
+             OR t.trigger_name LIKE '%_protect_delete')
       ORDER BY t.event_object_table, t.trigger_name
     `);
 

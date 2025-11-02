@@ -17,7 +17,8 @@ export class ContentManager {
   generateContentInsertsForTables(
     schema: GenLogicSchema,
     processedSchema: ProcessedSchema,
-    tableNames: Set<string>
+    tableNames: Set<string>,
+    newTables?: Set<string>
   ): string[] {
     const statements: string[] = [];
 
@@ -55,6 +56,14 @@ export class ContentManager {
           statements.push(statement);
         }
       }
+
+      // Reset SERIAL sequences to 100 to leave room for future system rows
+      // ONLY do this for newly created tables to avoid resetting existing data
+      const serialColumn = this.findSerialPrimaryKey(processedTable);
+      if (serialColumn && newTables && newTables.has(tableName)) {
+        const sequenceName = `${tableName}_${serialColumn}_seq`;
+        statements.push(`SELECT setval('${sequenceName}', 100, false);`);
+      }
     }
 
     return statements;
@@ -67,7 +76,7 @@ export class ContentManager {
    * NOTE: Seed row inserts run AFTER all schema changes are complete,
    * so we can safely assume all columns exist
    */
-  generateContentInserts(schema: GenLogicSchema, processedSchema: ProcessedSchema): string[] {
+  generateContentInserts(schema: GenLogicSchema, processedSchema: ProcessedSchema, newTables?: Set<string>): string[] {
     const statements: string[] = [];
 
     if (!schema.tables || !processedSchema.tables) {
@@ -99,6 +108,14 @@ export class ContentManager {
           statements.push(statement);
         }
       }
+
+      // Reset SERIAL sequences to 100 to leave room for future system rows
+      // ONLY do this for newly created tables to avoid resetting existing data
+      const serialColumn = this.findSerialPrimaryKey(processedTable);
+      if (serialColumn && newTables && newTables.has(tableName)) {
+        const sequenceName = `${tableName}_${serialColumn}_seq`;
+        statements.push(`SELECT setval('${sequenceName}', 100, false);`);
+      }
     }
 
     return statements;
@@ -120,6 +137,19 @@ export class ContentManager {
   }
 
   /**
+   * Find SERIAL primary key column (for sequence reset)
+   * Returns the column name if found, null otherwise
+   */
+  private findSerialPrimaryKey(table: ProcessedTable): string | null {
+    for (const [columnName, columnDef] of Object.entries(table.columns)) {
+      if (columnDef.primary_key && columnDef.sequence) {
+        return columnName;
+      }
+    }
+    return null;
+  }
+
+  /**
    * Generate a single INSERT statement with ON CONFLICT DO NOTHING
    * This ensures idempotent inserts - only adds rows that don't exist
    *
@@ -136,13 +166,22 @@ export class ContentManager {
     pkColumns: string[],
     processedTable: ProcessedTable
   ): string | null {
-    const columns = Object.keys(row);
+    // Separate data columns from metadata (genlogic_protected)
+    const { genlogic_protected, ...dataColumns } = row;
+
+    // If genlogic_protected is true, add it to the insert
+    const finalRow = { ...dataColumns };
+    if (genlogic_protected === true) {
+      finalRow.genlogic_protected = true;
+    }
+
+    const columns = Object.keys(finalRow);
     if (columns.length === 0) {
       return null;
     }
 
     const columnList = columns.join(', ');
-    const valuePlaceholders = columns.map(col => this.formatValue(row[col])).join(', ');
+    const valuePlaceholders = columns.map(col => this.formatValue(finalRow[col])).join(', ');
 
     // Determine conflict target for ON CONFLICT clause
     let conflictClause = '';
