@@ -6,6 +6,20 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
+    "constants": {
+      "type": "object",
+      "description": "Named constants that can be referenced throughout the schema using ${CONSTANT_NAME} syntax. Useful for magic values, default IDs, and configuration.",
+      "patternProperties": {
+        "^[A-Z][A-Z0-9_]*$": {
+          "oneOf": [
+            {"type": "string"},
+            {"type": "number"},
+            {"type": "boolean"}
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
     "columns": {
       "type": "object",
       "description": "Reusable column definitions that can be inherited and overridden in table definitions. Reusable columns can also inherit from other reusable columns using $ref.",
@@ -196,6 +210,10 @@
           "type": "string",
           "description": "Human-readable description of this table's purpose and usage (emits SQL COMMENT ON)"
         },
+        "singleton": {
+          "type": "boolean",
+          "description": "If true, enforces that this table can only contain exactly one row. Adds CHECK constraint on primary key to restrict it to a single value (typically 0)."
+        },
         "columns": {
           "type": "object",
           "description": "Column definitions - can inherit from reusable columns or define inline",
@@ -206,20 +224,37 @@
           },
           "additionalProperties": false
         },
+        "primary_key": {
+          "type": "array",
+          "description": "Composite primary key - array of column names that form the primary key. Use this for multi-column PKs. Single-column PKs should use 'primary key' in the column definition.",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z_][a-zA-Z0-9_]{0,62}$"
+          },
+          "minItems": 1
+        },
         "foreign_keys": {
           "type": "object",
-          "description": "GENLOGIC CORE: Named data pipelines that create columns AND automation pathways",
+          "description": "GENLOGIC CORE: Foreign keys to parent tables. Key = parent table name, Value = FK definition(s)",
           "patternProperties": {
             "^[a-zA-Z_][a-zA-Z0-9_]{0,62}$": {
               "oneOf": [
                 {
-                  "type": "string",
-                  "pattern": "^[a-zA-Z_][a-zA-Z0-9_]{0,62}$",
-                  "description": "Simple string shorthand: FK name = table name (e.g., 'category_id: categories')"
+                  "type": "null",
+                  "description": "Pattern 1: Inferred column name - column will be inferred from parent table name or PK"
                 },
                 {
-                  "$ref": "#/definitions/foreignKeyDefinition",
-                  "description": "Object syntax for complex cases (composite keys, multiple FKs to same table, special behavior)"
+                  "type": "string",
+                  "description": "Pattern 2: Single FK definition string - 'column_name [not null] [delete cascade] [auto create parent]'"
+                },
+                {
+                  "type": "array",
+                  "description": "Pattern 3: Multiple FKs to same parent table - array of FK definition strings",
+                  "items": {
+                    "type": "string",
+                    "description": "FK definition: 'column_name [not null] [delete cascade] [auto create parent]'"
+                  },
+                  "minItems": 1
                 }
               ]
             }
@@ -250,6 +285,14 @@
               "pattern": "^[a-zA-Z_][a-zA-Z0-9_]{0,62}$"
             },
             "minItems": 1
+          }
+        },
+        "constraints": {
+          "type": "array",
+          "description": "Table-level CHECK constraints - array of SQL expressions. Use @column_name to reference columns.",
+          "items": {
+            "type": "string",
+            "description": "SQL CHECK constraint expression (e.g., 'NOT (@batch_type_id = 1 AND @batch_count > 1)')"
           }
         },
         "seed-rows": {

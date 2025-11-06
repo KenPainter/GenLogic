@@ -12,6 +12,7 @@ import { MatchingGenerator } from './matching-generator.js';
 import { ContentManager } from './content-manager.js';
 import { ResolvedSchemaGenerator } from './resolved-schema-generator.js';
 import { PermissionsGenerator } from './permissions-generator.js';
+import { SchemaFlattener } from './schema-flattener.js';
 
 /**
  * GenLogic Core Processor
@@ -32,6 +33,7 @@ export class GenLogicProcessor {
   private contentManager: ContentManager;
   private resolvedSchemaGenerator: ResolvedSchemaGenerator;
   private permissionsGenerator: PermissionsGenerator;
+  private schemaFlattener: SchemaFlattener;
 
   constructor(config: DatabaseConfig) {
     this.config = config;
@@ -46,41 +48,54 @@ export class GenLogicProcessor {
     this.contentManager = new ContentManager();
     this.resolvedSchemaGenerator = new ResolvedSchemaGenerator();
     this.permissionsGenerator = new PermissionsGenerator();
+    this.schemaFlattener = new SchemaFlattener();
   }
 
   /**
    * Main processing pipeline
    */
   async process(schemaPath: string): Promise<void> {
-    console.log('🚀 GenLogic - Augmented Normalization Processor');
-    console.log(`📁 Schema: ${schemaPath}`);
-    console.log(`🗄️  Database: ${this.config.user}@localhost/${this.config.database}`);
-    console.log(`🔄 Mode: ${this.config.dryRun ? 'DRY RUN' : 'EXECUTE'}`);
+    console.log('GenLogic - Augmented Normalization Processor');
+    console.log(`Schema: ${schemaPath}`);
+    console.log(`Database: ${this.config.user}@localhost/${this.config.database}`);
+    console.log(`Mode: ${this.config.dryRun ? 'DRY RUN' : 'EXECUTE'}`);
     console.log('');
 
     try {
       // PHASE 2: Load and parse YAML (fail fast on bad files)
-      console.log('📄 Loading YAML schema...');
-      const schema = this.loadYamlSchema(schemaPath);
+      console.log('Loading YAML schema...');
+      let schema = this.loadYamlSchema(schemaPath);
+
+      // PHASE 2.5: Substitute constants throughout schema
+      if (schema.constants) {
+        schema = this.substituteConstants(schema);
+      }
 
       // PHASE 3: Syntax validation using JSON Schema (fail fast on bad schemas)
-      console.log('✅ Validating schema syntax...');
+      console.log('Validating schema syntax...');
       const syntaxResult = this.validator.validateSyntax(schema);
       if (!syntaxResult.isValid) {
         throw new Error(`Schema syntax validation failed:\n${syntaxResult.errors.join('\n')}`);
       }
 
+      // PHASE 3.5: Flatten schema into raw lists (experimental - not yet used)
+      console.log('Flattening schema structure...');
+      const yamlFlattenedLists = this.schemaFlattener.flatten(schema);
+      this.writeFlatSchema(schemaPath, yamlFlattenedLists);
+
+      throw new Error('Processing must stop until we refactor downstream code to support new FK syntax');
+
       // PHASE 4: Database connection (only after schema is valid)
-      console.log('🔌 Connecting to database...');
+      console.log('Connecting to database...');
       await this.database.connect();
-      console.log('✅ Database connection established');
+      console.log('Database connection established');
 
       // PHASE 5: Build reusable columns store
-      console.log('📦 Building reusable columns...');
+      console.log('Building reusable columns...');
       const reusableColumns = this.schemaProcessor.buildReusableColumnsStore(schema);
 
       // PHASE 6: Build FK graph and assign layers (FAIL FAST on cycles)
-      console.log('🌐 Building dependency graph...');
+      console.log('Building dependency graph...');
       const fkGraph = this.graphValidator.buildForeignKeyGraph(schema);
       const cycleResult = this.graphValidator.detectCycles(fkGraph);
       if (!cycleResult.isValid) {
@@ -90,7 +105,7 @@ export class GenLogicProcessor {
       console.log(`   Tables organized into ${Math.max(...tableLayers.values()) + 1} layers`);
 
       // PHASE 7: Process schema layer-by-layer with integrated validation
-      console.log('🔄 Processing schema by layers...');
+      console.log('Processing schema by layers...');
       const processedSchema = this.schemaProcessor.processSchemaByLayers(
         schema,
         tableLayers,
@@ -98,31 +113,31 @@ export class GenLogicProcessor {
       );
 
       // PHASE 7.4: Validate automation foreign key inference
-      console.log('🔍 Validating automation definitions...');
+      console.log('Validating automation definitions...');
       const automationResult = this.validator.validateAutomationInference(schema);
       if (!automationResult.isValid) {
         throw new Error(`Automation validation failed:\n${automationResult.errors.join('\n')}`);
       }
 
       // PHASE 7.6: Validate content sections
-      console.log('📦 Validating content sections...');
+      console.log('Validating content sections...');
       const contentResult = this.contentManager.validateContent(schema, processedSchema);
       if (!contentResult.isValid) {
         throw new Error(`Content validation failed:\n${contentResult.errors.join('\n')}`);
       }
 
       // PHASE 8: Database introspection and diffing
-      console.log('🔍 Analyzing current database state...');
+      console.log('Analyzing current database state...');
 
       // PHASE 8.5: Drop ALL GenLogic triggers first for clean slate
-      console.log('🧹 Dropping all existing GenLogic triggers...');
+      console.log('Dropping all existing GenLogic triggers...');
       const dropAllTriggersSQL = await this.database.generateDropAllGenLogicTriggersSQL();
 
       const currentSchema = await this.database.analyzeCurrentSchema();
       const diff = this.diffEngine.generateDiff(processedSchema, currentSchema, schema);
 
       // PHASE 9: SQL generation
-      console.log('📝 Generating SQL statements...');
+      console.log('Generating SQL statements...');
       const ddlStatements = this.sqlGenerator.generateSQL(diff, processedSchema);
       const triggerStatements = this.triggerGenerator.generateTriggers(schema, processedSchema);
       const matchingStatements = this.matchingGenerator.generateMatchingSQL(schema, processedSchema);
@@ -197,12 +212,77 @@ export class GenLogicProcessor {
       // Filter out empty statements
       const filteredStatements = allStatements.filter(sql => sql.trim().length > 0 && !sql.startsWith('--'));
 
+      // Count statement types for logging
+      const statementCounts = {
+        createTable: filteredStatements.filter(s => s.startsWith('CREATE TABLE')).length,
+        addColumn: filteredStatements.filter(s => s.startsWith('ALTER TABLE') && s.includes('ADD COLUMN')).length,
+        modifyColumn: filteredStatements.filter(s => s.startsWith('ALTER TABLE') && s.includes('ALTER COLUMN')).length,
+        addForeignKey: filteredStatements.filter(s => s.startsWith('ALTER TABLE') && s.includes('ADD CONSTRAINT') && s.includes('FOREIGN KEY')).length,
+        addPrimaryKey: filteredStatements.filter(s => s.startsWith('ALTER TABLE') && s.includes('ADD CONSTRAINT') && s.includes('PRIMARY KEY')).length,
+        addCheckConstraint: filteredStatements.filter(s => s.startsWith('ALTER TABLE') && s.includes('ADD CONSTRAINT') && s.includes('CHECK')).length,
+        createIndex: filteredStatements.filter(s => s.startsWith('CREATE INDEX') || s.startsWith('CREATE UNIQUE INDEX')).length,
+        insert: filteredStatements.filter(s => s.startsWith('INSERT INTO')).length,
+        update: filteredStatements.filter(s => s.startsWith('UPDATE')).length,
+        dropTrigger: filteredStatements.filter(s => s.startsWith('DROP TRIGGER')).length,
+        dropFunction: filteredStatements.filter(s => s.startsWith('DROP FUNCTION')).length,
+        createTrigger: filteredStatements.filter(s => s.startsWith('CREATE TRIGGER')).length,
+        triggerFunctions: filteredStatements.filter(s => s.includes('CREATE OR REPLACE FUNCTION') || s.includes('CREATE FUNCTION')).length,
+        comment: filteredStatements.filter(s => s.startsWith('COMMENT ON')).length,
+        grant: filteredStatements.filter(s => s.startsWith('GRANT')).length,
+        revoke: filteredStatements.filter(s => s.startsWith('REVOKE')).length
+      };
+
+      // Calculate other and log samples if there are any
+      const counted = Object.values(statementCounts).reduce((a, b) => a + b, 0);
+      const otherCount = filteredStatements.length - counted;
+
+      if (otherCount > 0) {
+        const otherStatements = filteredStatements.filter(s => {
+          return !s.startsWith('CREATE TABLE') &&
+                 !s.startsWith('CREATE INDEX') &&
+                 !s.startsWith('CREATE UNIQUE INDEX') &&
+                 !s.startsWith('CREATE TRIGGER') &&
+                 !s.includes('CREATE OR REPLACE FUNCTION') &&
+                 !s.includes('CREATE FUNCTION') &&
+                 !s.startsWith('DROP TRIGGER') &&
+                 !s.startsWith('DROP FUNCTION') &&
+                 !s.startsWith('INSERT INTO') &&
+                 !s.startsWith('UPDATE') &&
+                 !s.startsWith('COMMENT ON') &&
+                 !s.startsWith('GRANT') &&
+                 !s.startsWith('REVOKE') &&
+                 !(s.startsWith('ALTER TABLE') && (s.includes('ADD COLUMN') || s.includes('ALTER COLUMN') || s.includes('ADD CONSTRAINT')));
+        });
+        console.log(`\n⚠️  WARNING: ${otherCount} uncategorized statements! Samples:`);
+        otherStatements.slice(0, 5).forEach(s => {
+          console.log(`      "${s.substring(0, 80)}..."`);
+        });
+      }
+
       // PHASE 10: Execution or dry-run reporting
       if (this.config.dryRun) {
         console.log('📋 DRY RUN - Planned changes:');
         this.reportPlannedChanges(diff, filteredStatements);
       } else {
         console.log('⚡ Executing database changes...');
+        console.log(`   📊 Statement breakdown:`);
+        if (statementCounts.createTable > 0) console.log(`      • ${statementCounts.createTable} CREATE TABLE`);
+        if (statementCounts.addColumn > 0) console.log(`      • ${statementCounts.addColumn} ADD COLUMN`);
+        if (statementCounts.modifyColumn > 0) console.log(`      • ${statementCounts.modifyColumn} MODIFY COLUMN`);
+        if (statementCounts.addForeignKey > 0) console.log(`      • ${statementCounts.addForeignKey} ADD FOREIGN KEY`);
+        if (statementCounts.addPrimaryKey > 0) console.log(`      • ${statementCounts.addPrimaryKey} ADD PRIMARY KEY`);
+        if (statementCounts.addCheckConstraint > 0) console.log(`      • ${statementCounts.addCheckConstraint} ADD CHECK CONSTRAINT`);
+        if (statementCounts.createIndex > 0) console.log(`      • ${statementCounts.createIndex} CREATE INDEX`);
+        if (statementCounts.insert > 0) console.log(`      • ${statementCounts.insert} INSERT`);
+        if (statementCounts.update > 0) console.log(`      • ${statementCounts.update} UPDATE (backfill)`);
+        if (statementCounts.dropTrigger > 0) console.log(`      • ${statementCounts.dropTrigger} DROP TRIGGER`);
+        if (statementCounts.dropFunction > 0) console.log(`      • ${statementCounts.dropFunction} DROP FUNCTION`);
+        if (statementCounts.triggerFunctions > 0) console.log(`      • ${statementCounts.triggerFunctions} TRIGGER FUNCTIONS`);
+        if (statementCounts.createTrigger > 0) console.log(`      • ${statementCounts.createTrigger} CREATE TRIGGER`);
+        if (statementCounts.comment > 0) console.log(`      • ${statementCounts.comment} COMMENT`);
+        if (statementCounts.grant > 0) console.log(`      • ${statementCounts.grant} GRANT`);
+        if (statementCounts.revoke > 0) console.log(`      • ${statementCounts.revoke} REVOKE`);
+
         if (filteredStatements.length > 0) {
           await this.database.executeInTransaction(filteredStatements);
           console.log(`✅ Successfully executed ${filteredStatements.length} SQL statements`);
@@ -250,6 +330,78 @@ export class GenLogicProcessor {
       }
       throw new Error('Failed to load YAML schema: Unknown error');
     }
+  }
+
+  /**
+   * Substitute constants throughout the schema
+   * Replaces ${CONSTANT_NAME} with the constant value
+   */
+  private substituteConstants(schema: GenLogicSchema): GenLogicSchema {
+    if (!schema.constants) return schema;
+
+    // Convert constants to string for replacement
+    const constantMap = new Map<string, string>();
+    for (const [name, value] of Object.entries(schema.constants)) {
+      constantMap.set(name, String(value));
+    }
+
+    // Deep clone and substitute
+    const substituted = JSON.parse(JSON.stringify(schema));
+
+    // Recursive function to substitute in all string values
+    const substitute = (obj: any): void => {
+      if (typeof obj === 'string') {
+        return obj;
+      }
+
+      if (Array.isArray(obj)) {
+        for (let i = 0; i < obj.length; i++) {
+          if (typeof obj[i] === 'string') {
+            obj[i] = this.replaceConstants(obj[i], constantMap);
+          } else if (typeof obj[i] === 'object' && obj[i] !== null) {
+            substitute(obj[i]);
+          }
+        }
+      } else if (typeof obj === 'object' && obj !== null) {
+        for (const key of Object.keys(obj)) {
+          if (typeof obj[key] === 'string') {
+            obj[key] = this.replaceConstants(obj[key], constantMap);
+          } else if (typeof obj[key] === 'object' && obj[key] !== null) {
+            substitute(obj[key]);
+          }
+        }
+      }
+    };
+
+    substitute(substituted);
+    return substituted;
+  }
+
+  /**
+   * Replace ${CONSTANT_NAME} references in a string
+   */
+  private replaceConstants(text: string, constants: Map<string, string>): string {
+    return text.replace(/\$\{([A-Z][A-Z0-9_]*)\}/g, (match, constName) => {
+      const value = constants.get(constName);
+      if (value === undefined) {
+        throw new Error(`Undefined constant: ${constName}`);
+      }
+      return value;
+    });
+  }
+
+  /**
+   * Write flattened schema to JSON file
+   */
+  private writeFlatSchema(schemaPath: string, normalizedSchema: any): void {
+    // Generate output path: replace .yaml/.yml with .flat.json
+    const flatSchemaPath = schemaPath.replace(/\.(yaml|yml)$/i, '.flat.json');
+
+    // Write formatted JSON
+    const json = JSON.stringify(normalizedSchema, null, 2);
+    writeFileSync(flatSchemaPath, json, 'utf-8');
+
+    console.log(`   Flat schema written to: ${flatSchemaPath}`);
   }
 
   /**
@@ -361,6 +513,8 @@ export class GenLogicProcessor {
       columnsToAdd: diff.columnsToAdd.filter(c => tableNames.has(c.tableName)),
 
       columnsToModify: diff.columnsToModify.filter(c => tableNames.has(c.tableName)),
+
+      primaryKeysToAdd: diff.primaryKeysToAdd.filter(pk => tableNames.has(pk.tableName)),
 
       foreignKeysToAdd: diff.foreignKeysToAdd.filter(fk => tableNames.has(fk.tableName)),
 

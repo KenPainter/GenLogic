@@ -4,6 +4,7 @@ import type {
   TableCreation,
   ColumnAddition,
   ColumnModification,
+  PrimaryKeyAddition,
   ForeignKeyAddition,
   CheckConstraintAddition,
   AggregationBackfill
@@ -73,6 +74,11 @@ export class SQLGenerator {
       statements.modifyColumns.push(this.generateModifyColumnSQL(column));
     }
 
+    // 2.75. Add missing composite primary keys
+    for (const pk of diff.primaryKeysToAdd) {
+      statements.addColumns.push(this.generateAddPrimaryKeySQL(pk));
+    }
+
     // 3. Clean up orphaned FK values before adding FK constraints
     // BUT: Skip cleanup for newly added columns (they can't have orphaned data yet!)
     for (const fk of diff.foreignKeysToAdd) {
@@ -123,13 +129,38 @@ export class SQLGenerator {
       columnDefs.push(this.generateColumnDefinition(column.name, column.definition));
     }
 
-    // Add primary key constraint if any columns are marked as primary key
-    const primaryKeyColumns = table.columns
-      .filter(col => col.definition.primary_key)
-      .map(col => `"${col.name}"`);
+    // Add primary key constraint - prefer explicit composite PK, fallback to column-level PKs
+    let primaryKeyColumns: string[] = [];
+
+    if (table.primaryKey && table.primaryKey.length > 0) {
+      // Use explicit composite primary key
+      primaryKeyColumns = table.primaryKey.map(col => `"${col}"`);
+    } else {
+      // Fallback: collect columns marked as primary key in their definitions
+      primaryKeyColumns = table.columns
+        .filter(col => col.definition.primary_key)
+        .map(col => `"${col.name}"`);
+    }
 
     if (primaryKeyColumns.length > 0) {
       columnDefs.push(`PRIMARY KEY (${primaryKeyColumns.join(', ')})`);
+    }
+
+    // Add singleton CHECK constraint if this is a singleton table
+    if (table.singleton) {
+      // Get the first primary key column (or first column if no PK)
+      const firstPKColumn = primaryKeyColumns.length > 0
+        ? primaryKeyColumns[0].replace(/"/g, '') // Remove quotes
+        : table.columns[0].name;
+      columnDefs.push(`CHECK ("${firstPKColumn}" = 0)`);
+    }
+
+    // Add table-level CHECK constraints
+    if (table.constraints && table.constraints.length > 0) {
+      for (const constraint of table.constraints) {
+        const sqlConstraint = this.convertConstraintToSQL(constraint);
+        columnDefs.push(`CHECK (${sqlConstraint})`);
+      }
     }
 
     return `CREATE TABLE "${table.tableName}" (\n  ${columnDefs.join(',\n  ')}\n);`;
@@ -141,6 +172,15 @@ export class SQLGenerator {
   private generateAddColumnSQL(column: ColumnAddition): string {
     const columnDef = this.generateColumnDefinition(column.columnName, column.definition);
     return `ALTER TABLE "${column.tableName}" ADD COLUMN ${columnDef};`;
+  }
+
+  /**
+   * Generate ALTER TABLE ADD PRIMARY KEY statement for composite primary keys
+   */
+  private generateAddPrimaryKeySQL(pk: PrimaryKeyAddition): string {
+    const columnList = pk.columns.map(col => `"${col}"`).join(', ');
+    const constraintName = `${pk.tableName}_pkey`;
+    return `ALTER TABLE "${pk.tableName}" ADD CONSTRAINT "${constraintName}" PRIMARY KEY (${columnList});`;
   }
 
   /**
@@ -468,6 +508,15 @@ export class SQLGenerator {
     }
 
     return pgType.toUpperCase();
+  }
+
+  /**
+   * Convert constraint expression from GenLogic syntax to SQL
+   * Replaces @column_name with "column_name"
+   */
+  private convertConstraintToSQL(constraint: string): string {
+    // Replace @column_name with "column_name"
+    return constraint.replace(/@([a-zA-Z_][a-zA-Z0-9_]*)/g, '"$1"');
   }
 
   /**

@@ -26,6 +26,7 @@ export class DiffEngine {
       tablesToCreate: [],
       columnsToAdd: [],
       columnsToModify: [],
+      primaryKeysToAdd: [],
       indexesToCreate: [],
       foreignKeysToAdd: [],
       checkConstraintsToAdd: [],
@@ -39,12 +40,21 @@ export class DiffEngine {
 
       if (!currentTable) {
         // Table doesn't exist - create it with all columns
-        diff.tablesToCreate.push({
+        const tableCreation: TableCreation = {
           tableName,
           comment: desiredTable.comment,
+          singleton: desiredTable.singleton,
           columns: this.getAllTableColumns(desiredTable),
-          foreignKeys: desiredTable.foreignKeys
-        });
+          foreignKeys: desiredTable.foreignKeys,
+          constraints: desiredTable.constraints
+        };
+
+        // Add composite primary key if specified
+        if (desiredTable.primaryKey && desiredTable.primaryKey.length > 0) {
+          tableCreation.primaryKey = desiredTable.primaryKey;
+        }
+
+        diff.tablesToCreate.push(tableCreation);
 
         // Create indexes for foreign key columns
         for (const [fkName] of Object.entries(desiredTable.foreignKeys)) {
@@ -100,13 +110,16 @@ export class DiffEngine {
               // Only backfill SUM, COUNT, MAX, MIN (not LAST_VALUE - we don't know which row is "last")
               if (['SUM', 'COUNT', 'MAX', 'MIN'].includes(parsed.type)) {
                 // Get the FK column name - need to look it up from fkColumnMapping
-                // The mapping is keyed by FK name, not by table name
-                // So we need to find which FK points to the child table
+                // The FK column lives in the CHILD table, not the parent
                 let fkColumnName: string | undefined;
 
                 if (parsed.foreign_key) {
-                  // FK explicitly specified in automation
-                  fkColumnName = desiredTable.fkColumnMapping[parsed.foreign_key]?.[0];
+                  // FK explicitly specified in automation (e.g., COUNT(account_id_debit))
+                  // Look up the FK column name in the CHILD table's fkColumnMapping
+                  const childTable = desiredSchema.tables[parsed.table];
+                  if (childTable) {
+                    fkColumnName = childTable.fkColumnMapping[parsed.foreign_key]?.[0];
+                  }
                 } else {
                   // FK not specified - need to find it by searching for FK that points to child table
                   // Look through all FKs in the child table to find one that points to parent
@@ -138,6 +151,18 @@ export class DiffEngine {
               // If automation parsing fails, skip backfill detection
               // The error will be caught during trigger generation
             }
+          }
+        }
+
+        // Check for missing composite primary key
+        if (desiredTable.primaryKey && desiredTable.primaryKey.length > 0) {
+          // Check if table currently has no primary key
+          const hasPrimaryKey = currentTable.columns.some(col => col.isPrimaryKey);
+          if (!hasPrimaryKey) {
+            diff.primaryKeysToAdd.push({
+              tableName,
+              columns: desiredTable.primaryKey
+            });
           }
         }
 
@@ -553,6 +578,7 @@ export interface SchemaDiff {
   tablesToCreate: TableCreation[];
   columnsToAdd: ColumnAddition[];
   columnsToModify: ColumnModification[];
+  primaryKeysToAdd: PrimaryKeyAddition[];  // Composite primary keys to add to existing tables
   indexesToCreate: IndexCreation[];
   foreignKeysToAdd: ForeignKeyAddition[];
   checkConstraintsToAdd: CheckConstraintAddition[];
@@ -563,14 +589,22 @@ export interface SchemaDiff {
 export interface TableCreation {
   tableName: string;
   comment?: string;
+  singleton?: boolean;  // If true, table can only contain one row
   columns: Array<{name: string, definition: ColumnDefinition}>;
   foreignKeys: Record<string, any>;
+  primaryKey?: string[];  // Composite primary key column names
+  constraints?: string[];  // Table-level CHECK constraint expressions
 }
 
 export interface ColumnAddition {
   tableName: string;
   columnName: string;
   definition: ColumnDefinition;
+}
+
+export interface PrimaryKeyAddition {
+  tableName: string;
+  columns: string[];  // Column names that form the composite primary key
 }
 
 export interface ColumnModification {

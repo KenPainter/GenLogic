@@ -700,6 +700,42 @@ export class SchemaProcessor {
     // Step 6: Validate indexes and constraints (columns must exist)
     this.validateTableIndexesAndConstraints(tableName, table, columns);
 
+    // Step 6.5: Validate table-level CHECK constraints
+    if (table.constraints && table.constraints.length > 0) {
+      for (const constraint of table.constraints) {
+        this.validateConstraintExpression(tableName, constraint, columns);
+      }
+    }
+
+    // Step 7: If this is a singleton table, add DEFAULT 0 to the first PK column
+    if (table.singleton) {
+      // Find the first primary key column
+      let firstPKColumn: string | undefined;
+
+      // Check composite PK first
+      if (table.primary_key && table.primary_key.length > 0) {
+        firstPKColumn = table.primary_key[0];
+      } else {
+        // Check for column-level primary key
+        for (const [colName, colDef] of columns) {
+          if (colDef.primary_key) {
+            firstPKColumn = colName;
+            break;
+          }
+        }
+      }
+
+      if (firstPKColumn) {
+        const pkColumn = columns.get(firstPKColumn);
+        if (pkColumn) {
+          // Add DEFAULT 0 if not already present
+          if (!pkColumn.default) {
+            pkColumn.default = '0';
+          }
+        }
+      }
+    }
+
     // Convert Map to Record for return type
     const columnsRecord: Record<string, ColumnDefinition> = {};
     for (const [name, def] of columns) {
@@ -708,11 +744,14 @@ export class SchemaProcessor {
 
     return {
       comment: table.comment,
+      singleton: table.singleton,  // Pass through singleton flag
       columns: columnsRecord,
+      primaryKey: table.primary_key,  // Pass through composite PK definition
       foreignKeys: normalizedForeignKeys,
       generatedColumns: {},
       fkColumnMapping,
-      fkExtensions
+      fkExtensions,
+      constraints: table.constraints  // Pass through CHECK constraints
     };
   }
 
@@ -912,6 +951,29 @@ export class SchemaProcessor {
   }
 
   /**
+   * Validate CHECK constraint expression
+   * Checks that all @column_name references exist in the table
+   */
+  private validateConstraintExpression(
+    tableName: string,
+    constraint: string,
+    columns: Map<string, ColumnDefinition>
+  ): void {
+    // Extract all @column_name references from the constraint
+    const columnRefs = constraint.match(/@[a-zA-Z_][a-zA-Z0-9_]*/g) || [];
+
+    for (const ref of columnRefs) {
+      const columnName = ref.substring(1); // Remove @ prefix
+      if (!columns.has(columnName)) {
+        throw new Error(
+          `Table '${tableName}', constraint '${constraint}': ` +
+          `referenced column '${columnName}' does not exist`
+        );
+      }
+    }
+  }
+
+  /**
    * Validate that a name is not a PostgreSQL reserved word
    */
   private validateNotReservedWord(name: string, type: 'table' | 'column'): void {
@@ -946,9 +1008,12 @@ export interface ProcessedSchema {
 
 export interface ProcessedTable {
   comment?: string;
+  singleton?: boolean;  // If true, table can only contain one row
   columns: Record<string, ColumnDefinition>;
+  primaryKey?: string[];  // Composite primary key column names
   foreignKeys: Record<string, ForeignKeyDefinition>;
   generatedColumns: Record<string, ColumnDefinition>; // FK columns generated automatically
   fkColumnMapping: Record<string, string[]>; // Maps FK name to generated column names
   fkExtensions?: Record<string, { automation?: any, generated?: string }>; // Extensions for FK columns
+  constraints?: string[];  // Table-level CHECK constraint expressions
 }

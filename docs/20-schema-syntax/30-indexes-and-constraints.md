@@ -57,6 +57,58 @@ tables:
 Unique constraints allow multiple NULL values. In PostgreSQL, NULLs are not considered equal,
 so a unique constraint on a nullable column permits multiple rows with NULL.
 
+## CHECK Constraints
+
+Define custom business rules using the `constraints` section. Use `@column_name` syntax to reference columns:
+
+```yaml
+tables:
+  batch_types:
+    columns:
+      batch_type_id: serial primary key
+      batch_type_code: varchar(20)
+      batch_count:
+        definition: integer
+        automation: COUNT @batches.batch_id
+
+    constraints:
+      - NOT (@batch_type_id = 1 AND @batch_count > 1)
+```
+
+This generates:
+
+```sql
+CREATE TABLE "batch_types" (
+  "batch_type_id" serial,
+  "batch_type_code" varchar(20),
+  "batch_count" integer,
+  PRIMARY KEY ("batch_type_id"),
+  CHECK (NOT ("batch_type_id" = 1 AND "batch_count" > 1))
+);
+```
+
+### Complex Constraint Examples
+
+**Range validation:**
+```yaml
+constraints:
+  - @start_date <= @end_date
+  - @quantity > 0
+```
+
+**Conditional requirements:**
+```yaml
+constraints:
+  - @status != 'shipped' OR @tracking_number IS NOT NULL
+```
+
+**Multi-column validation:**
+```yaml
+constraints:
+  - @discount_amount <= @total_amount
+  - NOT (@is_active = true AND @deleted_at IS NOT NULL)
+```
+
 ## Example
 
 ```yaml

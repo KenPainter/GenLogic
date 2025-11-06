@@ -999,6 +999,7 @@ CREATE TRIGGER ${triggerName}
   /**
    * Qualify column references in WHERE clauses with row prefix (NEW/OLD)
    * Converts: "account_id_offset IS NOT NULL" to "NEW.account_id_offset IS NOT NULL"
+   * Preserves: "ledger.account_id_offset = 1" (already table-qualified, strip table prefix)
    *
    * This is a simple heuristic: replace any word that looks like a column name
    * (starts with letter/underscore, followed by letters/numbers/underscores)
@@ -1011,16 +1012,21 @@ CREATE TRIGGER ${triggerName}
       'BETWEEN', 'CASE', 'WHEN', 'THEN', 'ELSE', 'END', 'AS', 'CAST'
     ]);
 
-    // Replace column references with qualified versions
-    // Match word boundaries to avoid partial replacements
-    return whereClause.replace(/\b([a-zA-Z_][a-zA-Z0-9_]*)\b/g, (match) => {
-      // Don't qualify SQL keywords or already qualified references
-      if (keywords.has(match.toUpperCase()) || match.includes('.')) {
+    // First, strip table qualifiers (e.g., "ledger.column" -> "column")
+    // This handles cases where WHERE clause includes table name
+    let result = whereClause.replace(/\b[a-zA-Z_][a-zA-Z0-9_]*\.([a-zA-Z_][a-zA-Z0-9_]*)\b/g, '$1');
+
+    // Then qualify remaining unqualified column references
+    result = result.replace(/\b([a-zA-Z_][a-zA-Z0-9_]*)\b/g, (match) => {
+      // Don't qualify SQL keywords
+      if (keywords.has(match.toUpperCase())) {
         return match;
       }
       // Qualify with row prefix
       return `${rowPrefix}.${match}`;
     });
+
+    return result;
   }
 
   /**

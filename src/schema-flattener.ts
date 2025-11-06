@@ -1,0 +1,260 @@
+// Schema Flattener - Transforms hierarchical YAML into flat lists
+//
+// Converts GenLogicSchema (nested tables/columns/FKs) into YamlFlattenedLists (flat arrays)
+// NO processing, cross-referencing, or validation - just structural transformation
+
+import type { GenLogicSchema, TableDefinition } from './types.js';
+import type {
+  YamlFlattenedLists,
+  FlattenedTable,
+  FlattenedForeignKey,
+  FlattenedAutomation,
+  FlattenedIndex,
+  FlattenedUniqueConstraint,
+  FlattenedCheckConstraint,
+  FlattenedSeedRow
+} from './yaml-flattened-lists.js';
+
+export class SchemaFlattener {
+
+  /**
+   * Flatten a GenLogicSchema into YamlFlattenedLists
+   */
+  flatten(schema: GenLogicSchema): YamlFlattenedLists {
+    const yamlFlattenedLists: YamlFlattenedLists = {
+      reusableColumns: [],
+      tables: [],
+      columns: [],
+      foreignKeys: [],
+      automations: [],
+      indexes: [],
+      uniqueConstraints: [],
+      checkConstraints: [],
+      seedRows: []
+    };
+
+    // Extract reusable columns - flatten the structure
+    if (schema.columns) {
+      for (const [name, colDef] of Object.entries(schema.columns)) {
+        if (typeof colDef === 'string') {
+          // Simple string definition
+          yamlFlattenedLists.reusableColumns.push({ name, definition: colDef });
+        } else if (colDef && typeof colDef === 'object') {
+          // Object with properties - spread them all at top level
+          yamlFlattenedLists.reusableColumns.push({ name, ...colDef });
+        }
+      }
+    }
+
+    if (!schema.tables) {
+      return yamlFlattenedLists;
+    }
+
+    // Iterate through all tables once, extracting everything
+    for (const [tableName, table] of Object.entries(schema.tables)) {
+      // Extract table metadata
+      yamlFlattenedLists.tables.push(this.extractTable(tableName, table));
+
+      // Extract foreign keys
+      if (table.foreign_keys) {
+        for (const [parentTable, fkDef] of Object.entries(table.foreign_keys)) {
+          const extractedFKs = this.extractForeignKeys(tableName, parentTable, fkDef);
+          yamlFlattenedLists.foreignKeys.push(...extractedFKs);
+        }
+      }
+
+      // Extract columns and automations
+      if (table.columns) {
+        for (const [columnName, colDef] of Object.entries(table.columns)) {
+          // Extract column definition (flattened)
+          if (typeof colDef === 'string') {
+            // Simple string definition
+            yamlFlattenedLists.columns.push({
+              tableName,
+              columnName,
+              definition: colDef
+            });
+          } else if (colDef && typeof colDef === 'object' && !Array.isArray(colDef)) {
+            // Object with properties - spread them all at top level
+            yamlFlattenedLists.columns.push({
+              tableName,
+              columnName,
+              ...colDef
+            });
+
+            // Extract automation if present
+            if ('automation' in colDef && colDef.automation) {
+              yamlFlattenedLists.automations.push({
+                tableName,
+                columnName,
+                automation: colDef.automation
+              });
+            }
+          }
+        }
+      }
+
+      // Extract indexes
+      if (table.indexes) {
+        for (const indexColumns of table.indexes) {
+          yamlFlattenedLists.indexes.push({
+            tableName,
+            columns: indexColumns
+          });
+        }
+      }
+
+      // Extract unique constraints
+      if (table.unique_constraints) {
+        for (const constraintColumns of table.unique_constraints) {
+          yamlFlattenedLists.uniqueConstraints.push({
+            tableName,
+            columns: constraintColumns
+          });
+        }
+      }
+
+      // Extract CHECK constraints
+      if (table.constraints) {
+        for (const expression of table.constraints) {
+          yamlFlattenedLists.checkConstraints.push({
+            tableName,
+            expression
+          });
+        }
+      }
+
+      // Extract seed rows
+      if (table['seed-rows']) {
+        for (const row of table['seed-rows']) {
+          yamlFlattenedLists.seedRows.push({
+            tableName,
+            data: row
+          });
+        }
+      }
+    }
+
+    return yamlFlattenedLists;
+  }
+
+  /**
+   * Extract table metadata
+   */
+  private extractTable(tableName: string, table: TableDefinition): FlattenedTable {
+    return {
+      name: tableName,
+      comment: table.comment,
+      singleton: table.singleton,
+      primaryKey: table.primary_key
+    };
+  }
+
+  /**
+   * Extract foreign keys using new syntax
+   *
+   * Handles three patterns:
+   * 1. null/undefined → inferred column name
+   * 2. string → "column_name [modifiers]"
+   * 3. array → ["column1 [modifiers]", "column2", ...]
+   */
+  private extractForeignKeys(
+    childTable: string,
+    parentTable: string,
+    fkDef: any
+  ): FlattenedForeignKey[] {
+    // Pattern 1: null or undefined → inferred
+    if (fkDef === null || fkDef === undefined) {
+      return [{
+        childTable,
+        parentTable,
+        childColumn: null,  // Will be inferred later
+        notNull: false,
+        delete: 'restrict',
+        autoCreateParent: false
+      }];
+    }
+
+    // Pattern 3: Array of FK definitions
+    if (Array.isArray(fkDef)) {
+      return fkDef.map(defString => this.parseFKDefinition(childTable, parentTable, defString));
+    }
+
+    // Pattern 2: Single string definition
+    if (typeof fkDef === 'string') {
+      return [this.parseFKDefinition(childTable, parentTable, fkDef)];
+    }
+
+    throw new Error(`Invalid FK definition for ${childTable}.${parentTable}: ${JSON.stringify(fkDef)}`);
+  }
+
+  /**
+   * Parse a single FK definition string: "[column_name] [not null] [delete cascade] [auto create parent]"
+   *
+   * Valid forms:
+   * - "" (empty after removing modifiers) → inferred column name
+   * - "column_name" (single word) → explicit column name
+   * - Multiple unrecognized words → ERROR
+   */
+  private parseFKDefinition(
+    childTable: string,
+    parentTable: string,
+    defString: string
+  ): FlattenedForeignKey {
+    let remaining = defString.trim();
+
+    // Parse modifiers by removing them from the string
+    let notNull = false;
+    let deleteAction: 'restrict' | 'cascade' = 'restrict';
+    let autoCreateParent = false;
+
+    // Remove "not null" (case insensitive)
+    if (/\bnot\s+null\b/i.test(remaining)) {
+      notNull = true;
+      remaining = remaining.replace(/\bnot\s+null\b/gi, '').trim();
+    }
+
+    // Remove "delete cascade"
+    if (/\bdelete\s+cascade\b/i.test(remaining)) {
+      deleteAction = 'cascade';
+      remaining = remaining.replace(/\bdelete\s+cascade\b/gi, '').trim();
+    }
+
+    // Remove "auto create parent"
+    if (/\bauto\s+create\s+parent\b/i.test(remaining)) {
+      autoCreateParent = true;
+      remaining = remaining.replace(/\bauto\s+create\s+parent\b/gi, '').trim();
+    }
+
+    // After removing all modifiers, what's left should be:
+    // A) empty → inferred column name
+    // B) single word → explicit column name
+    // C) multiple words → ERROR
+
+    let childColumn: string | null;
+
+    if (remaining === '') {
+      // Case A: No column name, will be inferred
+      childColumn = null;
+    } else if (!/\s/.test(remaining)) {
+      // Case B: Single word with no spaces
+      childColumn = remaining;
+    } else {
+      // Case C: Multiple words remain - invalid
+      throw new Error(
+        `Invalid FK definition in ${childTable} → ${parentTable}: "${defString}"\n` +
+        `After removing modifiers, unrecognized content remains: "${remaining}"\n` +
+        `Expected: [column_name] [not null] [delete cascade] [auto create parent]`
+      );
+    }
+
+    return {
+      childTable,
+      parentTable,
+      childColumn,
+      notNull,
+      delete: deleteAction,
+      autoCreateParent
+    };
+  }
+}

@@ -123,10 +123,16 @@ export class ContentManager {
 
   /**
    * Find primary key columns in a processed table
+   * Checks both composite primary_key array and individual column definitions
    */
   private findPrimaryKeyColumns(table: ProcessedTable): string[] {
-    const pkColumns: string[] = [];
+    // First check for composite primary key
+    if (table.primaryKey && table.primaryKey.length > 0) {
+      return table.primaryKey;
+    }
 
+    // Fallback to individual column definitions
+    const pkColumns: string[] = [];
     for (const [columnName, columnDef] of Object.entries(table.columns)) {
       if (columnDef.primary_key) {
         pkColumns.push(columnName);

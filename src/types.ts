@@ -9,6 +9,7 @@ export interface DatabaseConfig {
 
 // YAML Schema Types - matches our JSON Schema structure
 export interface GenLogicSchema {
+  constants?: Record<string, string | number | boolean>;
   columns?: Record<string, ColumnDefinition>;
   tables?: Record<string, TableDefinition>;
   matching_tables?: Record<string, MatchingTableDefinition>;
@@ -43,10 +44,13 @@ export interface ColumnDefinition {
 
 export interface TableDefinition {
   comment?: string;
+  singleton?: boolean;  // If true, table can only contain one row
   columns?: Record<string, TableColumnDefinition>;
+  primary_key?: string[];  // Composite primary key - array of column names
   foreign_keys?: Record<string, ForeignKeyDefinition | string>;  // String = simple shorthand
   unique_constraints?: string[][];  // Array of column name arrays: [['col1', 'col2'], ['col3', 'col4']]
   indexes?: string[][];  // Array of column name arrays: [['col1'], ['col2', 'col3']]
+  constraints?: string[];  // Array of CHECK constraint expressions using @column_name syntax
   'seed-rows'?: Record<string, any>[];
 }
 
