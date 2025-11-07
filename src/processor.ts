@@ -142,19 +142,20 @@ export class GenLogicProcessor {
       await this.database.connect();
       console.log('Database connection established');
 
+
+      // PHASE 10.1
+      console.log('Identifying previous GenLogic triggers...');
+      const existingTriggers = await this.database.getAllGenLogicTriggers();
+
+      // PHASE 10.2
+      console.log('Identifying current database elements...');
+      const currentSchema = await this.database.analyzeCurrentSchema();
+
+      // Phase 11: Generate diff between processedSchema and currentSchema
+      console.log('Generating schema diff...');
+      const diff = this.diffEngine.generateDiff(processedSchema, currentSchema);
       // YOLO MARKER
       throw new Error('Processing must stop until we refactor downstream code to support new FK syntax');
-
-
-      // PHASE 10: Database introspection and diffing
-      console.log('Analyzing current database state...');
-
-      // PHASE 8.5: Drop ALL GenLogic triggers first for clean slate
-      console.log('Dropping all existing GenLogic triggers...');
-      const dropAllTriggersSQL = await this.database.generateDropAllGenLogicTriggersSQL();
-
-      const currentSchema = await this.database.analyzeCurrentSchema();
-      const diff = this.diffEngine.generateDiff(processedSchema, currentSchema, schema);
 
       // PHASE 9: SQL generation
       console.log('Generating SQL statements...');
@@ -185,6 +186,11 @@ export class GenLogicProcessor {
       //   - Create ALL triggers
       //   - Create matching functions
       //   - Set permissions
+
+      // Generate DROP TRIGGER statements from identified triggers
+      const dropAllTriggersSQL = existingTriggers.map(({ triggerName, tableName }) =>
+        `DROP TRIGGER IF EXISTS ${triggerName} ON "${tableName}";`
+      );
 
       const allStatements: string[] = [
         ...dropAllTriggersSQL

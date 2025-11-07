@@ -34,6 +34,14 @@ export class SchemaFlattener {
       seedRows: []
     };
 
+    // Build set of reusable column names for $ref detection
+    const reusableColumnNames = new Set<string>();
+    if (schema.columns) {
+      for (const name of Object.keys(schema.columns)) {
+        reusableColumnNames.add(name);
+      }
+    }
+
     // Extract reusable columns - flatten and parse SQL definitions
     if (schema.columns) {
       for (const [name, colDef] of Object.entries(schema.columns)) {
@@ -105,19 +113,29 @@ export class SchemaFlattener {
               $ref: columnName
             });
           } else if (typeof colDef === 'string') {
-            // Simple string definition - parse it
-            try {
-              const parsed = parseSQLType(colDef);
+            // Check if this string is a reusable column name (shorthand for $ref)
+            if (reusableColumnNames.has(colDef)) {
+              // "amount: amount" means "$ref: amount"
               yamlFlattenedLists.columns.push({
                 tableName,
                 columnName,
-                ...parsed
+                $ref: colDef
               });
-            } catch (error) {
-              throw new Error(
-                `Invalid SQL definition for column '${tableName}.${columnName}': "${colDef}"\n` +
-                `Error: ${error instanceof Error ? error.message : String(error)}`
-              );
+            } else {
+              // Otherwise, it's a SQL type definition - parse it
+              try {
+                const parsed = parseSQLType(colDef);
+                yamlFlattenedLists.columns.push({
+                  tableName,
+                  columnName,
+                  ...parsed
+                });
+              } catch (error) {
+                throw new Error(
+                  `Invalid SQL definition for column '${tableName}.${columnName}': "${colDef}"\n` +
+                  `Error: ${error instanceof Error ? error.message : String(error)}`
+                );
+              }
             }
           } else if (colDef && typeof colDef === 'object' && !Array.isArray(colDef)) {
             // Object with properties

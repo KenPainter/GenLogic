@@ -69,9 +69,9 @@ export class DiffEngine {
           });
         }
 
-        // Create unique constraints from originalSchema
-        if (originalSchema?.tables?.[tableName]?.unique_constraints) {
-          for (const columns of originalSchema.tables[tableName].unique_constraints!) {
+        // Create unique constraints from processedSchema
+        if (desiredTable.uniqueConstraints) {
+          for (const columns of desiredTable.uniqueConstraints) {
             diff.indexesToCreate.push({
               tableName,
               indexName: `unique_${tableName}_${columns.join('_')}`,
@@ -81,9 +81,9 @@ export class DiffEngine {
           }
         }
 
-        // Create indexes from originalSchema
-        if (originalSchema?.tables?.[tableName]?.indexes) {
-          for (const columns of originalSchema.tables[tableName].indexes!) {
+        // Create indexes from processedSchema
+        if (desiredTable.indexes) {
+          for (const columns of desiredTable.indexes) {
             diff.indexesToCreate.push({
               tableName,
               indexName: `idx_${tableName}_${columns.join('_')}`,
@@ -197,9 +197,9 @@ export class DiffEngine {
           }
         }
 
-        // Check for new unique constraints from originalSchema
-        if (originalSchema?.tables?.[tableName]?.unique_constraints) {
-          for (const columns of originalSchema.tables[tableName].unique_constraints!) {
+        // Check for new unique constraints from processedSchema
+        if (desiredTable.uniqueConstraints) {
+          for (const columns of desiredTable.uniqueConstraints) {
             const indexName = `unique_${tableName}_${columns.join('_')}`;
             const indexExists = currentTable.indexes.some(idx => idx.name === indexName);
 
@@ -214,9 +214,9 @@ export class DiffEngine {
           }
         }
 
-        // Check for new indexes from originalSchema
-        if (originalSchema?.tables?.[tableName]?.indexes) {
-          for (const columns of originalSchema.tables[tableName].indexes!) {
+        // Check for new indexes from processedSchema
+        if (desiredTable.indexes) {
+          for (const columns of desiredTable.indexes) {
             const indexName = `idx_${tableName}_${columns.join('_')}`;
             const indexExists = currentTable.indexes.some(idx => idx.name === indexName);
 
