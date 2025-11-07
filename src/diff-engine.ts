@@ -670,13 +670,14 @@ export class DiffEngine {
 
   /**
    * Normalize CHECK constraint expression for comparison
-   * Removes extra whitespace and normalizes formatting
+   * Removes extra whitespace, parentheses, and normalizes formatting
    * NOTE: @ sigils are already stripped when stored in processedSchema
    */
   private normalizeCheckExpression(expr: string): string {
     return expr
       .trim()
       .replace(/\s+/g, ' ')  // Collapse multiple spaces to single space
+      .replace(/[()]/g, '')  // Remove all parentheses for structural comparison
       .toLowerCase();
   }
 

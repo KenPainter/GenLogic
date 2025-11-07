@@ -290,15 +290,18 @@ export class DatabaseManager {
    */
   private async getCheckConstraints(tableName: string): Promise<DatabaseCheckConstraint[]> {
     const result = await this.pool.query(`
-      SELECT
+      SELECT DISTINCT ON (con.conname)
         con.conname as constraint_name,
         pg_get_constraintdef(con.oid) as constraint_definition,
-        att.attname as column_name
+        CASE
+          WHEN array_length(con.conkey, 1) = 1 THEN att.attname
+          ELSE ''
+        END as column_name
       FROM pg_constraint con
       JOIN pg_class rel ON rel.oid = con.conrelid
       JOIN pg_namespace nsp ON nsp.oid = rel.relnamespace
       LEFT JOIN pg_attribute att ON att.attrelid = con.conrelid
-        AND att.attnum = ANY(con.conkey)
+        AND att.attnum = con.conkey[1]
       WHERE con.contype = 'c'
         AND rel.relname = $1
         AND nsp.nspname = 'public'
