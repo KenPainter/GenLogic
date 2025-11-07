@@ -155,14 +155,36 @@ export class DiffEngine {
         }
 
         // Check for missing composite primary key
+        // Compare by STRUCTURE (column list), not just presence
         if (desiredTable.primaryKey && desiredTable.primaryKey.length > 0) {
-          // Check if table currently has no primary key
-          const hasPrimaryKey = currentTable.columns.some(col => col.isPrimaryKey);
-          if (!hasPrimaryKey) {
-            diff.primaryKeysToAdd.push({
-              tableName,
-              columns: desiredTable.primaryKey
-            });
+          // Get current primary key columns
+          const currentPKColumns = currentTable.columns
+            .filter(col => col.isPrimaryKey)
+            .map(col => col.name)
+            .sort();
+
+          // Compare desired vs current PK columns
+          const desiredPKColumns = [...desiredTable.primaryKey].sort();
+
+          const pkMatches = currentPKColumns.length === desiredPKColumns.length &&
+            currentPKColumns.every((col, idx) => col === desiredPKColumns[idx]);
+
+          if (!pkMatches) {
+            if (currentPKColumns.length > 0) {
+              // Table has a different PK - this is an error
+              throw new Error(
+                `Cannot change primary key for table '${tableName}': ` +
+                `database has PK on [${currentPKColumns.join(', ')}], ` +
+                `schema specifies PK on [${desiredTable.primaryKey.join(', ')}]. ` +
+                `Primary key changes are not supported. Use manual ALTER TABLE if needed.`
+              );
+            } else {
+              // Table has no PK - add it
+              diff.primaryKeysToAdd.push({
+                tableName,
+                columns: desiredTable.primaryKey
+              });
+            }
           }
         }
 
@@ -184,10 +206,13 @@ export class DiffEngine {
           });
 
           // Create index for the new FK column(s) if it doesn't already exist
-          const indexName = `idx_${tableName}_${fk.columnNames.join('_')}`;
-          const indexExists = currentTable.indexes.some(idx => idx.name === indexName);
+          // Compare by STRUCTURE (column list), not by generated name
+          const indexExists = currentTable.indexes.some(idx =>
+            this.columnsMatch(idx.columns, fk.columnNames)
+          );
 
           if (!indexExists) {
+            const indexName = `idx_${tableName}_${fk.columnNames.join('_')}`;
             diff.indexesToCreate.push({
               tableName,
               indexName,
@@ -198,12 +223,15 @@ export class DiffEngine {
         }
 
         // Check for new unique constraints from processedSchema
+        // Compare by STRUCTURE (column list + uniqueness), not by generated name
         if (desiredTable.uniqueConstraints) {
           for (const columns of desiredTable.uniqueConstraints) {
-            const indexName = `unique_${tableName}_${columns.join('_')}`;
-            const indexExists = currentTable.indexes.some(idx => idx.name === indexName);
+            const indexExists = currentTable.indexes.some(idx =>
+              idx.isUnique && this.columnsMatch(idx.columns, columns)
+            );
 
             if (!indexExists) {
+              const indexName = `unique_${tableName}_${columns.join('_')}`;
               diff.indexesToCreate.push({
                 tableName,
                 indexName,
@@ -215,12 +243,15 @@ export class DiffEngine {
         }
 
         // Check for new indexes from processedSchema
+        // Compare by STRUCTURE (column list, must be non-unique), not by generated name
         if (desiredTable.indexes) {
           for (const columns of desiredTable.indexes) {
-            const indexName = `idx_${tableName}_${columns.join('_')}`;
-            const indexExists = currentTable.indexes.some(idx => idx.name === indexName);
+            const indexExists = currentTable.indexes.some(idx =>
+              !idx.isUnique && this.columnsMatch(idx.columns, columns)
+            );
 
             if (!indexExists) {
+              const indexName = `idx_${tableName}_${columns.join('_')}`;
               diff.indexesToCreate.push({
                 tableName,
                 indexName,
@@ -249,6 +280,37 @@ export class DiffEngine {
                 columnName: dbColumn.name,
                 constraintName,
                 columnType: dbColumn.type
+              });
+            }
+          }
+        }
+
+        // Check for table-level CHECK constraints from processedSchema
+        // Compare by STRUCTURE (constraint expression), not by generated name
+        if (desiredTable.constraints) {
+          for (const expression of desiredTable.constraints) {
+            // Normalize both desired and existing expressions for comparison
+            const normalizedDesired = this.normalizeCheckExpression(expression);
+
+            // Check if a constraint with this expression already exists
+            const constraintExists = currentTable.checkConstraints.some(cc => {
+              // Extract the expression from "CHECK (expression)" format
+              const match = cc.definition.match(/^CHECK\s*\((.*)\)\s*$/i);
+              const existingExpr = match ? match[1].trim() : cc.definition.trim();
+              const normalizedExisting = this.normalizeCheckExpression(existingExpr);
+              return normalizedExisting === normalizedDesired;
+            });
+
+            if (!constraintExists) {
+              // Generate a constraint name based on table name and hash of expression
+              const hash = this.hashExpression(normalizedDesired);
+              const constraintName = `${tableName}_check_${hash}`;
+
+              diff.checkConstraintsToAdd.push({
+                tableName,
+                columnName: '',  // Table-level constraint, no specific column
+                constraintName,
+                expression
               });
             }
           }
@@ -532,20 +594,36 @@ export class DiffEngine {
 
   /**
    * Find foreign keys that exist in desired schema but not in current database
+   * Compare by STRUCTURE (columns + referenced table), not by generated name
    */
   private findNewForeignKeys(
     desiredTable: ProcessedTable,
     currentTable: DatabaseTable
   ): Array<{name: string, fkName: string, definition: any, columnNames: string[]}> {
     const newForeignKeys: Array<{name: string, fkName: string, definition: any, columnNames: string[]}> = [];
-    const currentFKNames = new Set(currentTable.foreignKeys.map(fk => fk.name));
+
+    // Build structure signature for existing FKs: "col1,col2->parent_table"
+    const existingFKStructures = new Set(
+      currentTable.foreignKeys.map(fk => {
+        // DatabaseForeignKey.column is singular (current DB state)
+        return `${fk.column}->${fk.referencedTable}`;
+      })
+    );
 
     for (const [fkName, definition] of Object.entries(desiredTable.foreignKeys)) {
-      // Generate a consistent FK constraint name
-      const constraintName = `fk_${currentTable.name}_${fkName}`;
-      if (!currentFKNames.has(constraintName)) {
-        // Get the column names for this FK from the mapping
-        const columnNames = desiredTable.fkColumnMapping[fkName] || [fkName];
+      // Get the column names for this FK from the mapping
+      const columnNames = desiredTable.fkColumnMapping[fkName] || [fkName];
+      const referencedTable = definition.table;
+
+      // Build structure signature for this desired FK
+      // For single-column FKs, just use the column name (not "col,")
+      const fkStructure = columnNames.length === 1
+        ? `${columnNames[0]}->${referencedTable}`
+        : `${columnNames.join(',')}->${referencedTable}`;
+
+      if (!existingFKStructures.has(fkStructure)) {
+        // Generate a consistent FK constraint name
+        const constraintName = `fk_${currentTable.name}_${fkName}`;
         newForeignKeys.push({
           name: constraintName,
           fkName,
@@ -570,6 +648,51 @@ export class DiffEngine {
     const baseType = dbType.toLowerCase().split('(')[0].trim();
     const floatingPointTypes = ['numeric', 'decimal', 'real', 'double precision', 'float'];
     return floatingPointTypes.includes(baseType);
+  }
+
+  /**
+   * Compare two column lists for structural equality
+   * Handles both array and string column specifications
+   */
+  private columnsMatch(existingColumns: string[] | string, desiredColumns: string[]): boolean {
+    // Normalize to arrays
+    const existing = Array.isArray(existingColumns) ? existingColumns : [existingColumns];
+    const desired = desiredColumns;
+
+    // Must have same length
+    if (existing.length !== desired.length) {
+      return false;
+    }
+
+    // Must have same columns in same order
+    return existing.every((col, idx) => col === desired[idx]);
+  }
+
+  /**
+   * Normalize CHECK constraint expression for comparison
+   * Removes extra whitespace and normalizes formatting
+   * NOTE: @ sigils are already stripped when stored in processedSchema
+   */
+  private normalizeCheckExpression(expr: string): string {
+    return expr
+      .trim()
+      .replace(/\s+/g, ' ')  // Collapse multiple spaces to single space
+      .toLowerCase();
+  }
+
+  /**
+   * Generate a short hash of an expression for constraint naming
+   * Uses simple hash to create readable constraint names
+   */
+  private hashExpression(expr: string): string {
+    let hash = 0;
+    for (let i = 0; i < expr.length; i++) {
+      const char = expr.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    // Return absolute value as hex, truncated to 8 chars
+    return Math.abs(hash).toString(16).substring(0, 8);
   }
 }
 
@@ -632,9 +755,10 @@ export interface ForeignKeyAddition {
 
 export interface CheckConstraintAddition {
   tableName: string;
-  columnName: string;
+  columnName: string;  // Empty string for table-level constraints
   constraintName: string;
-  columnType: string;
+  columnType?: string;  // Only for column-level numeric constraints
+  expression?: string;  // Only for table-level constraints
 }
 
 export interface AggregationBackfill {

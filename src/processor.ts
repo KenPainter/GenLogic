@@ -125,12 +125,13 @@ export class GenLogicProcessor {
       // PHASE 8.1: Validate formulas and detect cycles
       console.log('Validating formula columns and checking for cycles...');
       this.schemaProcessor.validateFormulasAndCycles(processedSchema);
-      // Write processed schema to disk for inspection
-      this.writeProcessedSchema(schemaPath, processedSchema);
 
       // PHASE 8.2: Validate automation definitions
       console.log('Validating automation definitions...');
       this.schemaProcessor.validateAutomations(processedSchema);
+
+      // Write processed schema to disk for inspection
+      this.writeProcessedSchema(schemaPath, processedSchema);
 
 
       // PHASE 9: Database connection
@@ -151,9 +152,16 @@ export class GenLogicProcessor {
       console.log('Identifying current database elements...');
       const currentSchema = await this.database.analyzeCurrentSchema();
 
+      // Dump current schema for examination
+      this.writeCurrentSchema(schemaPath, currentSchema);
+
       // Phase 11: Generate diff between processedSchema and currentSchema
       console.log('Generating schema diff...');
       const diff = this.diffEngine.generateDiff(processedSchema, currentSchema);
+
+      // Dump diff for examination
+      this.writeDiffToFile(diff, schemaPath);
+
       // YOLO MARKER
       throw new Error('Processing must stop until we refactor downstream code to support new FK syntax');
 
@@ -439,6 +447,28 @@ export class GenLogicProcessor {
     writeFileSync(processedSchemaPath, json, 'utf-8');
 
     console.log(`   Processed schema written to: ${processedSchemaPath}`);
+  }
+
+  private writeDiffToFile(diff: any, schemaPath: string): void {
+    // Generate output path: replace .yaml/.yml with .diff.json
+    const diffPath = schemaPath.replace(/\.(yaml|yml)$/i, '.diff.json');
+
+    // Write formatted JSON
+    const json = JSON.stringify(diff, null, 2);
+    writeFileSync(diffPath, json, 'utf-8');
+
+    console.log(`   Diff written to: ${diffPath}`);
+  }
+
+  private writeCurrentSchema(schemaPath: string, currentSchema: any): void {
+    // Generate output path: replace .yaml/.yml with .current.json
+    const currentPath = schemaPath.replace(/\.(yaml|yml)$/i, '.current.json');
+
+    // Write formatted JSON
+    const json = JSON.stringify(currentSchema, null, 2);
+    writeFileSync(currentPath, json, 'utf-8');
+
+    console.log(`   Current schema written to: ${currentPath}`);
   }
 
   /**

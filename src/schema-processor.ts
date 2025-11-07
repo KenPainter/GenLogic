@@ -594,11 +594,14 @@ export class SchemaProcessor {
         }
       }
 
+      // Strip @ sigils before storing in processedSchema
+      const expressionWithoutSigils = checkConstraint.expression.replace(/@([a-zA-Z_][a-zA-Z0-9_]*)/g, '$1');
+
       // Add CHECK constraint to table
       if (!table.constraints) {
         table.constraints = [];
       }
-      table.constraints.push(checkConstraint.expression);
+      table.constraints.push(expressionWithoutSigils);
     }
   }
 
@@ -640,6 +643,9 @@ export class SchemaProcessor {
           // SYNC/SNAPSHOT: this table (child) syncs from parent table
           this.validateSyncAutomation(tableName, columnName, automation, table, processedSchema);
         }
+
+        // After validation, store the parsed automation object (with stripped @ sigils) back into column
+        column.automation = automation;
       }
     }
   }
@@ -712,8 +718,10 @@ export class SchemaProcessor {
     }
 
     // Validate WHERE clause column references
-    if (automation.where) {
-      this.validateWhereClauseColumns(parentTableName, columnName, automation.where, childTable, childTableName);
+    if (automation.whereClause) {
+      this.validateWhereClauseColumns(parentTableName, columnName, automation.whereClause, childTable, childTableName);
+      // After validation, strip @ sigils for processedSchema (ready to use)
+      automation.whereClause = automation.whereClause.replace(/@([a-zA-Z_][a-zA-Z0-9_]*)/g, '$1');
     }
   }
 
@@ -874,6 +882,9 @@ export class SchemaProcessor {
             refEdges.add(columnName);
           }
         }
+
+        // After validation, strip @ sigils for processedSchema (ready to use)
+        column.formula = column.formula.replace(/@([a-zA-Z_][a-zA-Z0-9_]*)/g, '$1');
       }
 
       // Detect cycles using topological sort (Kahn's algorithm)
