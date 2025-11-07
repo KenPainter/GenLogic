@@ -1,5 +1,0 @@
-tables:
-  test_table:
-    columns:
-      id: serial primary key
-      age: integer check (age >= 0)

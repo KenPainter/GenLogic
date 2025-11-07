@@ -1,0 +1,17 @@
+# Multiple foreign keys to same parent table
+tables:
+  accounts:
+    columns:
+      account_id: serial primary key
+      name: varchar(100)
+
+  ledger:
+    foreign-keys:
+      accounts:
+        - account_id_debit
+        - account_id_credit
+    columns:
+      ledger_id: serial primary key
+      account_id_debit: integer
+      account_id_credit: integer
+      amount: numeric(12,2)

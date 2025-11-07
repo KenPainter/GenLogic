@@ -1,0 +1,14 @@
+# Simple foreign key - child references parent
+tables:
+  accounts:
+    columns:
+      account_id: serial primary key
+      name: varchar(100)
+
+  transactions:
+    foreign-keys:
+      accounts: account_id
+    columns:
+      id: serial primary key
+      account_id: integer
+      amount: numeric(10,2)

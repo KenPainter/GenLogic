@@ -1,1 +1,0 @@
-[{"id":1,"code":"ACTIVE","description":"Active status"},{"id":2,"code":"INACTIVE","description":"Inactive status"},{"id":3,"code":"PENDING","description":"Pending approval"}]

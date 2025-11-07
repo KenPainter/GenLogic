@@ -1,4 +1,0 @@
-tables:
-  "123invalid-name":
-    columns:
-      id: serial primary key

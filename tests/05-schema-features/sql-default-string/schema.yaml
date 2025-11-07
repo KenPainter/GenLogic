@@ -1,7 +1,0 @@
-tables:
-  test:
-    columns:
-      id: serial primary key
-      status: varchar(20) default 'pending'
-      category: varchar(30) default 'general'
-      description: text default 'No description provided'

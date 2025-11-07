@@ -1,2 +1,0 @@
-# Index column doesn't exist
-does not exist

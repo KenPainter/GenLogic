@@ -1,0 +1,10 @@
+# Error: Missing required property in matching-table
+tables:
+  base:
+    columns:
+      id: integer primary key
+
+matching-tables:
+  base.child:
+    # Missing required: result-column-name
+    comment: This should fail

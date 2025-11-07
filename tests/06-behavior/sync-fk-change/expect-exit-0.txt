@@ -1,1 +1,0 @@
-# Test SYNC re-copies value when FK changes to new parent

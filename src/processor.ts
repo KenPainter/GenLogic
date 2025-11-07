@@ -1,4 +1,5 @@
-import { readFileSync, writeFileSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { dirname, basename, extname, join } from 'path';
 import { parse, stringify } from 'yaml';
 import type { DatabaseConfig, GenLogicSchema } from './types.js';
 import { SchemaValidator } from './validation.js';
@@ -62,28 +63,39 @@ export class GenLogicProcessor {
     console.log('');
 
     try {
-      // PHASE 2: Load and parse YAML (fail fast on bad files)
+      // PHASE 10.1: Load and parse YAML (fail fast on bad files)
       console.log('Loading YAML schema...');
       let schema = this.loadYamlSchema(schemaPath);
 
-      // PHASE 2.5: Substitute constants throughout schema
+      // PHASE 10.2: Substitute constants throughout schema
       if (schema.constants) {
         schema = this.substituteConstants(schema);
       }
 
-      // PHASE 3: Syntax validation using JSON Schema (fail fast on bad schemas)
+      // PHASE 10.3: Syntax validation using JSON Schema (fail fast on bad schemas)
       console.log('Validating schema syntax...');
       const syntaxResult = this.validator.validateSyntax(schema);
       if (!syntaxResult.isValid) {
         throw new Error(`Schema syntax validation failed:\n${syntaxResult.errors.join('\n')}`);
       }
 
-      // PHASE 4: Flatten schema into raw lists (experimental - not yet used)
+      if (this.config.stopAfter === 'yaml-validate') {
+        console.log('\nStopped after: yaml-validate');
+        return;
+      }
+
+      // PHASE 20: Flatten schema into raw lists 
       console.log('Flattening schema structure...');
       const yamlFlattenedLists = this.schemaFlattener.flatten(schema);
       this.writeFlatSchema(schemaPath, yamlFlattenedLists);
+      this.dumpInternal('flattened', yamlFlattenedLists);
 
-      // PHASE 5: Assign table layers from flattened lists (FAIL FAST on cycles)
+      if (this.config.stopAfter === 'flattened') {
+        console.log('\nStopped after: flattened');
+        return;
+      }
+
+      // PHASE 30: Assign table layers from flattened lists (FAIL FAST on cycles)
       console.log('Building dependency graph and assigning layers...');
       const tableLayers = this.graphValidator.assignTableLayers(yamlFlattenedLists);
       console.log(`   Tables organized into ${Math.max(...tableLayers.values()) + 1} layers`);
@@ -132,7 +144,12 @@ export class GenLogicProcessor {
 
       // Write processed schema to disk for inspection
       this.writeProcessedSchema(schemaPath, processedSchema);
+      this.dumpInternal('processed', processedSchema);
 
+      if (this.config.stopAfter === 'processed') {
+        console.log('\n✅ Stopped after: processed');
+        return;
+      }
 
       // PHASE 9: Database connection
       //
@@ -158,6 +175,10 @@ export class GenLogicProcessor {
       // Dump diff for examination
       this.writeDiffToFile(diff, schemaPath);
 
+      if (this.config.stopAfter === 'diffed') {
+        console.log('\n✅ Stopped after: diffed');
+        return;
+      }
 
       // PHASE 12: SQL generation
       console.log('Generating SQL statements...');
@@ -170,10 +191,6 @@ export class GenLogicProcessor {
 
       const contentStatements = this.contentManager.generateContentInserts(schema, processedSchema, newTables);
       const permissionStatements = this.permissionsGenerator.generateAllPermissions(this.config.database, schema, processedSchema);
-
-      // YOLO MARKER
-      throw new Error('Processing must stop until we refactor downstream code to support new FK syntax');
-
 
       // ROBUST LAYER-BY-LAYER EXECUTION ORDER:
       // PHASE 1: Drop all triggers (global operation - drop ALL triggers on tables we own)
@@ -254,86 +271,18 @@ export class GenLogicProcessor {
       // Filter out empty statements
       const filteredStatements = allStatements.filter(sql => sql.trim().length > 0 && !sql.startsWith('--'));
 
-      // Count statement types for logging
-      const statementCounts = {
-        createTable: filteredStatements.filter(s => s.startsWith('CREATE TABLE')).length,
-        addColumn: filteredStatements.filter(s => s.startsWith('ALTER TABLE') && s.includes('ADD COLUMN')).length,
-        modifyColumn: filteredStatements.filter(s => s.startsWith('ALTER TABLE') && s.includes('ALTER COLUMN')).length,
-        addForeignKey: filteredStatements.filter(s => s.startsWith('ALTER TABLE') && s.includes('ADD CONSTRAINT') && s.includes('FOREIGN KEY')).length,
-        dropForeignKey: filteredStatements.filter(s => s.startsWith('ALTER TABLE') && s.includes('DROP CONSTRAINT')).length,
-        addPrimaryKey: filteredStatements.filter(s => s.startsWith('ALTER TABLE') && s.includes('ADD CONSTRAINT') && s.includes('PRIMARY KEY')).length,
-        addCheckConstraint: filteredStatements.filter(s => s.startsWith('ALTER TABLE') && s.includes('ADD CONSTRAINT') && s.includes('CHECK')).length,
-        createIndex: filteredStatements.filter(s => s.startsWith('CREATE INDEX') || s.startsWith('CREATE UNIQUE INDEX')).length,
-        insert: filteredStatements.filter(s => s.startsWith('INSERT INTO')).length,
-        update: filteredStatements.filter(s => s.startsWith('UPDATE')).length,
-        dropTrigger: filteredStatements.filter(s => s.startsWith('DROP TRIGGER')).length,
-        dropFunction: filteredStatements.filter(s => s.startsWith('DROP FUNCTION')).length,
-        createTrigger: filteredStatements.filter(s => s.startsWith('CREATE TRIGGER')).length,
-        triggerFunctions: filteredStatements.filter(s => s.includes('CREATE OR REPLACE FUNCTION') || s.includes('CREATE FUNCTION')).length,
-        comment: filteredStatements.filter(s => s.startsWith('COMMENT ON')).length,
-        grant: filteredStatements.filter(s => s.startsWith('GRANT')).length,
-        revoke: filteredStatements.filter(s => s.startsWith('REVOKE')).length
-      };
+      // YOLO MARKER: Dump SQL statements to JSON file for inspection
+      const debugDir = dirname(schemaPath);
+      const baseFileName = basename(schemaPath, extname(schemaPath));
+      const sqlDumpPath = join(debugDir, `${baseFileName}-sql.json`);
 
-      // Calculate other and log samples if there are any
-      const counted = Object.values(statementCounts).reduce((a, b) => a + b, 0);
-      const otherCount = filteredStatements.length - counted;
+      writeFileSync(sqlDumpPath, JSON.stringify({
+        statementCount: filteredStatements.length,
+        statements: filteredStatements
+      }, null, 2));
 
-      if (otherCount > 0) {
-        const otherStatements = filteredStatements.filter(s => {
-          return !s.startsWith('CREATE TABLE') &&
-                 !s.startsWith('CREATE INDEX') &&
-                 !s.startsWith('CREATE UNIQUE INDEX') &&
-                 !s.startsWith('CREATE TRIGGER') &&
-                 !s.includes('CREATE OR REPLACE FUNCTION') &&
-                 !s.includes('CREATE FUNCTION') &&
-                 !s.startsWith('DROP TRIGGER') &&
-                 !s.startsWith('DROP FUNCTION') &&
-                 !s.startsWith('INSERT INTO') &&
-                 !s.startsWith('UPDATE') &&
-                 !s.startsWith('COMMENT ON') &&
-                 !s.startsWith('GRANT') &&
-                 !s.startsWith('REVOKE') &&
-                 !(s.startsWith('ALTER TABLE') && (s.includes('ADD COLUMN') || s.includes('ALTER COLUMN') || s.includes('ADD CONSTRAINT')));
-        });
-        console.log(`\n⚠️  WARNING: ${otherCount} uncategorized statements! Samples:`);
-        otherStatements.slice(0, 5).forEach(s => {
-          console.log(`      "${s.substring(0, 80)}..."`);
-        });
-      }
-
-      // PHASE 10: Execution or dry-run reporting
-      if (this.config.dryRun) {
-        console.log('📋 DRY RUN - Planned changes:');
-        this.reportPlannedChanges(diff, filteredStatements);
-      } else {
-        console.log('⚡ Executing database changes...');
-        console.log(`   📊 Statement breakdown:`);
-        if (statementCounts.createTable > 0) console.log(`      • ${statementCounts.createTable} CREATE TABLE`);
-        if (statementCounts.addColumn > 0) console.log(`      • ${statementCounts.addColumn} ADD COLUMN`);
-        if (statementCounts.modifyColumn > 0) console.log(`      • ${statementCounts.modifyColumn} MODIFY COLUMN`);
-        if (statementCounts.dropForeignKey > 0) console.log(`      • ${statementCounts.dropForeignKey} DROP FOREIGN KEY`);
-        if (statementCounts.addForeignKey > 0) console.log(`      • ${statementCounts.addForeignKey} ADD FOREIGN KEY`);
-        if (statementCounts.addPrimaryKey > 0) console.log(`      • ${statementCounts.addPrimaryKey} ADD PRIMARY KEY`);
-        if (statementCounts.addCheckConstraint > 0) console.log(`      • ${statementCounts.addCheckConstraint} ADD CHECK CONSTRAINT`);
-        if (statementCounts.createIndex > 0) console.log(`      • ${statementCounts.createIndex} CREATE INDEX`);
-        if (statementCounts.insert > 0) console.log(`      • ${statementCounts.insert} INSERT`);
-        if (statementCounts.update > 0) console.log(`      • ${statementCounts.update} UPDATE (backfill)`);
-        if (statementCounts.dropTrigger > 0) console.log(`      • ${statementCounts.dropTrigger} DROP TRIGGER`);
-        if (statementCounts.dropFunction > 0) console.log(`      • ${statementCounts.dropFunction} DROP FUNCTION`);
-        if (statementCounts.triggerFunctions > 0) console.log(`      • ${statementCounts.triggerFunctions} TRIGGER FUNCTIONS`);
-        if (statementCounts.createTrigger > 0) console.log(`      • ${statementCounts.createTrigger} CREATE TRIGGER`);
-        if (statementCounts.comment > 0) console.log(`      • ${statementCounts.comment} COMMENT`);
-        if (statementCounts.grant > 0) console.log(`      • ${statementCounts.grant} GRANT`);
-        if (statementCounts.revoke > 0) console.log(`      • ${statementCounts.revoke} REVOKE`);
-
-        if (filteredStatements.length > 0) {
-          await this.database.executeInTransaction(filteredStatements);
-          console.log(`✅ Successfully executed ${filteredStatements.length} SQL statements`);
-        } else {
-          console.log('✅ No changes needed - schema is up to date');
-        }
-      }
+      console.log(`📄 SQL statements dumped to: ${sqlDumpPath}`);
+      throw new Error('YOLO MARKER: SQL generation complete, stopping before execution');
 
       // PHASE 11: Generate resolved schema documentation
       console.log('📝 Generating resolved schema documentation...');
@@ -438,47 +387,71 @@ export class GenLogicProcessor {
    * Write flattened schema to JSON file
    */
   private writeFlatSchema(schemaPath: string, normalizedSchema: any): void {
-    // Generate output path: replace .yaml/.yml with .flat.json
-    const flatSchemaPath = schemaPath.replace(/\.(yaml|yml)$/i, '.flat.json');
+    const outputPath = this.getOutputPath(schemaPath, '.flat.json');
 
     // Write formatted JSON
     const json = JSON.stringify(normalizedSchema, null, 2);
-    writeFileSync(flatSchemaPath, json, 'utf-8');
+    writeFileSync(outputPath, json, 'utf-8');
 
-    console.log(`   Flat schema written to: ${flatSchemaPath}`);
+    console.log(`   Flat schema written to: ${outputPath}`);
   }
 
   private writeProcessedSchema(schemaPath: string, processedSchema: any): void {
-    // Generate output path: replace .yaml/.yml with .processed.json
-    const processedSchemaPath = schemaPath.replace(/\.(yaml|yml)$/i, '.processed.json');
+    const outputPath = this.getOutputPath(schemaPath, '.processed.json');
 
     // Write formatted JSON
     const json = JSON.stringify(processedSchema, null, 2);
-    writeFileSync(processedSchemaPath, json, 'utf-8');
+    writeFileSync(outputPath, json, 'utf-8');
 
-    console.log(`   Processed schema written to: ${processedSchemaPath}`);
+    console.log(`   Processed schema written to: ${outputPath}`);
+  }
+
+  private getOutputPath(schemaPath: string, suffix: string): string {
+    const baseFileName = basename(schemaPath, extname(schemaPath));
+
+    if (this.config.dumpDir) {
+      // Use specified dump directory
+      if (!existsSync(this.config.dumpDir)) {
+        mkdirSync(this.config.dumpDir, { recursive: true });
+      }
+      return join(this.config.dumpDir, `${baseFileName}${suffix}`);
+    } else {
+      // Use schema file's directory (default behavior)
+      return schemaPath.replace(/\.(yaml|yml)$/i, suffix);
+    }
+  }
+
+  private dumpInternal(name: string, data: any): void {
+    if (!this.config.dumpInternalDir) return;
+
+    // Create dump directory if it doesn't exist
+    if (!existsSync(this.config.dumpInternalDir)) {
+      mkdirSync(this.config.dumpInternalDir, { recursive: true });
+    }
+
+    const dumpPath = join(this.config.dumpInternalDir, `${name}.json`);
+    const json = JSON.stringify(data, null, 2);
+    writeFileSync(dumpPath, json, 'utf-8');
   }
 
   private writeDiffToFile(diff: any, schemaPath: string): void {
-    // Generate output path: replace .yaml/.yml with .diff.json
-    const diffPath = schemaPath.replace(/\.(yaml|yml)$/i, '.diff.json');
+    const outputPath = this.getOutputPath(schemaPath, '.diff.json');
 
     // Write formatted JSON
     const json = JSON.stringify(diff, null, 2);
-    writeFileSync(diffPath, json, 'utf-8');
+    writeFileSync(outputPath, json, 'utf-8');
 
-    console.log(`   Diff written to: ${diffPath}`);
+    console.log(`   Diff written to: ${outputPath}`);
   }
 
   private writeCurrentSchema(schemaPath: string, currentSchema: any): void {
-    // Generate output path: replace .yaml/.yml with .current.json
-    const currentPath = schemaPath.replace(/\.(yaml|yml)$/i, '.current.json');
+    const outputPath = this.getOutputPath(schemaPath, '.current.json');
 
     // Write formatted JSON
     const json = JSON.stringify(currentSchema, null, 2);
-    writeFileSync(currentPath, json, 'utf-8');
+    writeFileSync(outputPath, json, 'utf-8');
 
-    console.log(`   Current schema written to: ${currentPath}`);
+    console.log(`   Current schema written to: ${outputPath}`);
   }
 
   /**

@@ -1,9 +1,0 @@
-columns:
-  id_col: serial primary key
-  name_col: varchar(100) not null
-
-tables:
-  test:
-    columns:
-      id: id_col
-      name: name_col

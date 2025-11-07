@@ -1,1 +1,0 @@
-[{"column_name":"price","data_type":"numeric","numeric_precision":12,"numeric_scale":4},{"column_name":"quantity","data_type":"numeric","numeric_precision":10,"numeric_scale":2}]

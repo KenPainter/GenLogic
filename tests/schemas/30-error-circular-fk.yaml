@@ -1,0 +1,15 @@
+# Error: Circular foreign key dependency
+tables:
+  a:
+    foreign-keys:
+      b: b_id
+    columns:
+      id: integer primary key
+      b_id: integer
+
+  b:
+    foreign-keys:
+      a: a_id
+    columns:
+      id: integer primary key
+      a_id: integer

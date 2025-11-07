@@ -1,0 +1,7 @@
+# Error: Invalid top-level key (additionalProperties: false)
+tables:
+  users:
+    columns:
+      id: integer primary key
+
+invalid_key: something

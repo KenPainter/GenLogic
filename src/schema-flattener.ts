@@ -96,8 +96,8 @@ export class SchemaFlattener {
 
       // Extract foreign keys
       if (table["foreign-keys"]) {
-        for (const [parentTable, fkDef] of Object.entries(table["foreign-keys"])) {
-          const extractedFKs = this.extractForeignKeys(tableName, parentTable, fkDef);
+        for (const [fkName, fkDef] of Object.entries(table["foreign-keys"])) {
+          const extractedFKs = this.extractForeignKeys(tableName, fkName, fkDef);
           yamlFlattenedLists.foreignKeys.push(...extractedFKs);
         }
       }
@@ -241,14 +241,15 @@ export class SchemaFlattener {
    */
   private extractForeignKeys(
     childTable: string,
-    parentTable: string,
+    fkName: string,
     fkDef: any
   ): FlattenedForeignKey[] {
     // Pattern 1: null or undefined → inferred
     if (fkDef === null || fkDef === undefined) {
       return [{
         childTable,
-        parentTable,
+        fkName,
+        parentTable: fkName,  // FK name IS the parent table name in simple case
         childColumn: null,  // Will be inferred later
         notNull: false,
         delete: 'restrict',
@@ -258,15 +259,15 @@ export class SchemaFlattener {
 
     // Pattern 3: Array of FK definitions
     if (Array.isArray(fkDef)) {
-      return fkDef.map(defString => this.parseFKDefinition(childTable, parentTable, defString));
+      return fkDef.map(defString => this.parseFKDefinition(childTable, fkName, defString));
     }
 
     // Pattern 2: Single string definition
     if (typeof fkDef === 'string') {
-      return [this.parseFKDefinition(childTable, parentTable, fkDef)];
+      return [this.parseFKDefinition(childTable, fkName, fkDef)];
     }
 
-    throw new Error(`Invalid FK definition for ${childTable}.${parentTable}: ${JSON.stringify(fkDef)}`);
+    throw new Error(`Invalid FK definition for ${childTable}.${fkName}: ${JSON.stringify(fkDef)}`);
   }
 
   /**
@@ -279,7 +280,7 @@ export class SchemaFlattener {
    */
   private parseFKDefinition(
     childTable: string,
-    parentTable: string,
+    fkName: string,
     defString: string
   ): FlattenedForeignKey {
     let remaining = defString.trim();
@@ -323,7 +324,7 @@ export class SchemaFlattener {
     } else {
       // Case C: Multiple words remain - invalid
       throw new Error(
-        `Invalid FK definition in ${childTable} → ${parentTable}: "${defString}"\n` +
+        `Invalid FK definition in ${childTable} → ${fkName}: "${defString}"\n` +
         `After removing modifiers, unrecognized content remains: "${remaining}"\n` +
         `Expected: [column_name] [not null] [delete cascade] [auto create parent]`
       );
@@ -331,7 +332,8 @@ export class SchemaFlattener {
 
     return {
       childTable,
-      parentTable,
+      fkName,
+      parentTable: fkName,  // FK name IS the parent table name by convention
       childColumn,
       notNull,
       delete: deleteAction,

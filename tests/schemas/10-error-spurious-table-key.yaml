@@ -1,0 +1,6 @@
+# Error: Invalid key in table definition
+tables:
+  users:
+    columns:
+      id: integer primary key
+    invalid_table_key: something

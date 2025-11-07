@@ -1,0 +1,13 @@
+# Error: FK with invalid modifiers (multiple unrecognized words after removing valid modifiers)
+tables:
+  accounts:
+    columns:
+      account_id: serial primary key
+
+  transactions:
+    foreign-keys:
+      # THIS IS THE FAIL LINE "foo bar" is spurious
+      accounts: account_id foo bar delete cascade
+    columns:
+      id: serial primary key
+      account_id: integer

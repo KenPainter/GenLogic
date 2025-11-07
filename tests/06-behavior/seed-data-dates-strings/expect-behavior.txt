@@ -1,3 +1,0 @@
-Product Launch|Launching our new product line|2024-06-15|2024-06-15 10:30:00+00
-O'Brien's Meeting|Meeting with O'Brien at Joe's Coffee & Cafe|2024-07-01|2024-07-01 14:00:00+00
-Quote test: "Success"|Testing quotes: 'single' and "double"|2024-08-01|2024-08-01 09:00:00+00

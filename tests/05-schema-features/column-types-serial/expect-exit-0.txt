@@ -1,1 +1,0 @@
-# Test serial types: SERIAL, BIGSERIAL, SMALLSERIAL

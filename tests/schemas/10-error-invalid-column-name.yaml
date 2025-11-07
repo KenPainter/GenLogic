@@ -1,0 +1,5 @@
+# Error: Column name exceeds 63 character PostgreSQL limit
+tables:
+  users:
+    columns:
+      this_is_an_extremely_long_column_name_that_exceeds_the_postgresql_limit_of_sixtythree_characters: integer primary key

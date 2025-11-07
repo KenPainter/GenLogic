@@ -1,1 +1,0 @@
-[{"id":1,"name":"Sensor A","last_reading":"21.8"}]

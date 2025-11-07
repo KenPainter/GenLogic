@@ -1,1 +1,0 @@
-# Empty database creates all tables and columns

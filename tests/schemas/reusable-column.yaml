@@ -1,0 +1,14 @@
+# Test reusable column definition
+columns:
+  amount:
+    definition: numeric(12,2) default 0
+    format: currency
+
+tables:
+  transactions:
+    columns:
+      id: serial primary key
+      debit:
+        $ref: amount
+      credit:
+        $ref: amount

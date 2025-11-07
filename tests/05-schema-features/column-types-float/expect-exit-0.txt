@@ -1,1 +1,0 @@
-# Test floating point types: REAL, DOUBLE PRECISION

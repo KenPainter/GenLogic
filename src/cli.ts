@@ -19,6 +19,9 @@ program
   .option('-d, --database <database>', 'PostgreSQL database name')
   .option('-s, --schema <path>', 'Path to YAML schema file')
   .option('--dry-run', 'Show planned changes without executing them', false)
+  .option('--dump-internal <dir>', 'Dump internal state to directory for testing')
+  .option('--dump-dir <dir>', 'Directory for all output files (.flat.json, .processed.json, etc)')
+  .option('--stop-after <phase>', 'Stop after specified phase: yaml-validate, flattened, processed, diffed')
   .action(async (options) => {
     try {
       // Validate required options
@@ -45,10 +48,21 @@ program
         process.exit(1);
       }
 
+      // Validate --stop-after option if provided
+      const validStopAfter = ['yaml-validate', 'flattened', 'processed', 'diffed'];
+      if (options.stopAfter && !validStopAfter.includes(options.stopAfter)) {
+        console.error(`Error: Invalid --stop-after value: ${options.stopAfter}`);
+        console.error(`Valid values: ${validStopAfter.join(', ')}`);
+        process.exit(1);
+      }
+
       const processor = new GenLogicProcessor({
         database: options.database,
         user: user,
-        dryRun: options.dryRun
+        dryRun: options.dryRun,
+        dumpInternalDir: options.dumpInternal,
+        dumpDir: options.dumpDir,
+        stopAfter: options.stopAfter
       });
 
       await processor.process(options.schema);

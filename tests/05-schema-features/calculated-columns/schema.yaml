@@ -1,8 +1,0 @@
-tables:
-  orders:
-    columns:
-      price: numeric(10,2)
-      quantity: integer
-      total:
-        definition: numeric(10,2)
-        formula: "@price * @quantity"

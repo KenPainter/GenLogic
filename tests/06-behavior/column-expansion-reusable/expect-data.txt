@@ -1,1 +1,0 @@
-[{"name":"Widget Pro","notes":"Premium quality widget","code":"WGT001"},{"name":"Gadget Max","notes":"Advanced gadget system","code":"GAD001"}]

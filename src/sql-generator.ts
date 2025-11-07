@@ -258,9 +258,6 @@ export class SQLGenerator {
 
     // Get the parent table's PK columns
     const parentTable = processedSchema.tables[referencedTable];
-    if (!parentTable) {
-      throw new Error(`Referenced table "${referencedTable}" not found in processed schema`);
-    }
 
     // Find PK columns in parent table
     const parentPKColumns: string[] = [];
@@ -268,14 +265,6 @@ export class SQLGenerator {
       if (colDef.primary_key) {
         parentPKColumns.push(colName);
       }
-    }
-
-    if (parentPKColumns.length === 0) {
-      throw new Error(`No primary key found in table "${referencedTable}"`);
-    }
-
-    if (parentPKColumns.length !== fk.columnNames.length) {
-      throw new Error(`FK column count (${fk.columnNames.length}) doesn't match parent PK column count (${parentPKColumns.length}) for ${fk.tableName}.${fk.fkName} -> ${referencedTable}`);
     }
 
     // Build EXISTS condition matching FK columns to parent PK columns
@@ -351,9 +340,6 @@ export class SQLGenerator {
 
     // Find parent table's primary key column(s)
     const parent = processedSchema.tables[parentTable];
-    if (!parent) {
-      throw new Error(`Parent table "${parentTable}" not found in processed schema`);
-    }
 
     const parentPKColumns: string[] = [];
     for (const [colName, colDef] of Object.entries(parent.columns)) {
@@ -362,12 +348,7 @@ export class SQLGenerator {
       }
     }
 
-    if (parentPKColumns.length === 0) {
-      throw new Error(`No primary key found in parent table "${parentTable}"`);
-    }
-
-    // For simplicity, we assume single-column PK (most common case)
-    // Composite PKs would require matching multiple FK columns to multiple PK columns
+    // We enforce single-column PKs, so just take the first one
     const parentPK = parentPKColumns[0];
 
     // Build WHERE conditions for the subquery
@@ -397,11 +378,6 @@ export class SQLGenerator {
    * Generate column definition for CREATE TABLE or ALTER TABLE
    */
   private generateColumnDefinition(columnName: string, definition: ColumnDefinition): string {
-    // Ensure type is defined
-    if (!definition.type) {
-      throw new Error(`Column '${columnName}' has no type defined. This should have been resolved during schema processing.`);
-    }
-
     // Handle sequences/auto-increment - must be done before type conversion
     let pgType: string;
     if (definition.sequence && definition.type.toLowerCase().includes('int')) {

@@ -428,7 +428,7 @@ export class SchemaProcessor {
     // Iterate through all tables as children
     for (const [childTableName, childTable] of Object.entries(processedSchema.tables)) {
       // Look at this table's outbound FKs
-      for (const [fkName, fk] of Object.entries(childTable.foreignKeys)) {
+      for (const [_columnName, fk] of Object.entries(childTable.foreignKeys)) {
         const parentTableName = fk.table;
 
         // Add to parent's inbound FK list
@@ -438,8 +438,8 @@ export class SchemaProcessor {
 
         inboundFKs.get(parentTableName)!.push({
           childTable: childTableName,
-          fkName: fkName,
-          childColumn: fk.column
+          fkName: fk.name!,  // Use FK name from definition, not column name
+          childColumn: fk.column!
         });
       }
 
@@ -828,11 +828,13 @@ export class SchemaProcessor {
       };
 
       // Convert foreignKeys to the old foreign-keys structure
-      // Since FKs are now keyed by child column name, this works for multiple FKs to same parent
-      for (const [fkName, fk] of Object.entries(table.foreignKeys)) {
-        minimalSchema.tables[tableName]["foreign-keys"][fkName] = {
-          table: fk.table
-        };
+      // ProcessedSchema keys FKs by column name, but automation parser needs FK name
+      for (const [_columnName, fk] of Object.entries(table.foreignKeys)) {
+        if (fk.name) {
+          minimalSchema.tables[tableName]["foreign-keys"][fk.name] = {
+            table: fk.table
+          };
+        }
       }
     }
 
@@ -1196,6 +1198,7 @@ export class SchemaProcessor {
       // Build complete FK definition with all info needed for DDL generation
       // KEY BY CHILD COLUMN NAME to support multiple FKs to same parent table
       normalizedForeignKeys[fkColumnName] = {
+        name: flatFK.fkName,            // FK name from YAML (for automation parser)
         table: parentTableName,
         column: fkColumnName,           // Child column (the FK column we generated)
         references: parentPKColumnName, // Parent PK column

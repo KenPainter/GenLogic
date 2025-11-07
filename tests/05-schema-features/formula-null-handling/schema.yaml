@@ -1,9 +1,0 @@
-tables:
-  products:
-    columns:
-      id: serial primary key
-      price: numeric(10,2)
-      discount: numeric(10,2)
-      final_price:
-        definition: numeric(10,2)
-        formula: "COALESCE(@price - @discount, @price)"

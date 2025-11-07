@@ -1,0 +1,10 @@
+# Formula column - computed from other columns
+tables:
+  accounts:
+    columns:
+      account_id: serial primary key
+      debits: numeric(12,2) default 0
+      credits: numeric(12,2) default 0
+      balance:
+        definition: numeric(12,2)
+        formula: "@debits - @credits"

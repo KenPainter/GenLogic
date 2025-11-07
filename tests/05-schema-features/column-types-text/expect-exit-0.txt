@@ -1,1 +1,0 @@
-# Test text types: VARCHAR(n), CHAR(n), TEXT

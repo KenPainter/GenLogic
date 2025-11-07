@@ -1,9 +1,0 @@
-tables:
-  items:
-    columns:
-      id: integer primary key
-      price: numeric(10,2)
-      discount: numeric(10,2)
-      final_price:
-        definition: numeric(10,2)
-        formula: "COALESCE(@price, 0) - COALESCE(@discount, 0)"

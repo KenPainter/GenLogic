@@ -73,6 +73,7 @@ export interface FlattenedColumn {
  */
 export interface FlattenedForeignKey {
   childTable: string;       // Child table (table that HAS the FK)
+  fkName: string;           // FK name from YAML (used by automation parser)
   parentTable: string;      // Parent table (referenced table)
   childColumn: string | null;  // Child column name (null = inferred from parent table/PK)
   notNull: boolean;         // NOT NULL constraint

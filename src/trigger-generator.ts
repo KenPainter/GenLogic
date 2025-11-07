@@ -318,12 +318,7 @@ export class TriggerGenerator {
         const automationDef = columnDef.automation as AutomationDefinition;
 
         // Parse and resolve the automation
-        let resolved;
-        try {
-          resolved = resolveAutomation(automationDef, targetTable, schema);
-        } catch (err: any) {
-          throw new Error(`Table '${targetTable}', column '${targetColumn}': ${err.message}`);
-        }
+        const resolved = resolveAutomation(automationDef, targetTable, schema);
 
         // Skip RULE_MATCH automations (handled separately)
         if ('mode' in resolved) continue;

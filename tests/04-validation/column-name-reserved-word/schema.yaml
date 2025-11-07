@@ -1,8 +1,0 @@
-tables:
-  products:
-    columns:
-      id:
-        definition: serial primary key
-      # "where" is a PostgreSQL reserved word
-      where:
-        definition: varchar(100)

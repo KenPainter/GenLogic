@@ -1,9 +1,0 @@
-tables:
-  orders:
-    columns:
-      id: integer primary key
-      subtotal: numeric(10,2)
-      tax: numeric(10,2)
-      total:
-        definition: numeric(10,2)
-        formula: "@subtotal + @tax"

@@ -1,1 +1,0 @@
-ERROR:  new row for relation "test_numeric" violates check constraint

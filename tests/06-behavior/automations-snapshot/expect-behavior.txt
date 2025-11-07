@@ -1,1 +1,0 @@
-[{"id":1,"current_price":"75.00","price_at_purchase":"50.00"}]

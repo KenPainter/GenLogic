@@ -1,2 +1,0 @@
-active@example.com|t|t|555-1234|Active user
-inactive@example.com|f|f|[NULL]|[NULL]

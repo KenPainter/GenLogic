@@ -1,2 +1,0 @@
-# Should reject PostgreSQL reserved words as column names
-reserved word

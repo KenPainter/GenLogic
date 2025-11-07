@@ -1,1 +1,0 @@
-[{"tablename":"order_lines","indexname":"idx_order_lines_order_id_order_year","indexdef":"CREATE INDEX idx_order_lines_order_id_order_year ON public.order_lines USING btree (order_id, order_year)"}]

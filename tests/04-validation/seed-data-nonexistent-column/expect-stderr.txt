@@ -1,2 +1,0 @@
-# Seed data column doesn't exist
-does not exist

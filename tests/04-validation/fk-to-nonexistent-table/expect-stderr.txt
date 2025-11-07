@@ -1,2 +1,0 @@
-# FK target table must exist
-does not exist

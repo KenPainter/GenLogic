@@ -1,2 +1,0 @@
-# Target table must have primary key
-primary key

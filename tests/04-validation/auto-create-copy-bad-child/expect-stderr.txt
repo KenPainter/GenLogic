@@ -1,2 +1,0 @@
-# copy_columns child column doesn't exist
-does not exist

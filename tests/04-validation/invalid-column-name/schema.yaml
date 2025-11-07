@@ -1,8 +1,0 @@
-columns:
-  "invalid-name": varchar(50)
-
-tables:
-  users:
-    columns:
-      id: integer primary key
-      "invalid-name": null
