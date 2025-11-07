@@ -100,6 +100,11 @@ export class GenLogicProcessor {
         tableLayers
       );
 
+      // PHASE 6.1: Build reverse FK index (inboundForeignKeys)
+      console.log('Building inbound foreign key index...');
+      this.schemaProcessor.addInboundForeignKeysToProcessedSchema(processedSchema);
+      
+
       // PHASE 7.1: Add indexes to processedSchema with validation
       console.log('Adding indexes to processed schema...');
       this.schemaProcessor.addIndexesToProcessedSchema(yamlFlattenedLists, processedSchema);
@@ -116,20 +121,16 @@ export class GenLogicProcessor {
       console.log('Validating formula columns and checking for cycles...');
       this.schemaProcessor.validateFormulasAndCycles(processedSchema);
 
+      // PHASE 8.2: Validate automation definitions
+      console.log('Validating automation definitions...');
+      this.schemaProcessor.validateAutomations(processedSchema);
+
       // YOLO MARKER
       throw new Error('Processing must stop until we refactor downstream code to support new FK syntax');
 
 
-      // PHASE 8.2: Validate automation foreign key inference
-      console.log('Validating automation definitions...');
-      const automationResult = this.validator.validateAutomationInference(schema);
-      if (!automationResult.isValid) {
-        throw new Error(`Automation validation failed:\n${automationResult.errors.join('\n')}`);
-      }
 
-
-
-      // PHASE 7.6: Validate content sections
+      // PHASE 9: Validate content sections
       console.log('Validating content sections...');
       const contentResult = this.contentManager.validateContent(schema, processedSchema);
       if (!contentResult.isValid) {

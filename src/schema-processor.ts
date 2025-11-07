@@ -413,6 +413,73 @@ export class SchemaProcessor {
   }
 
   /**
+   * Build reverse FK index: add inboundForeignKeys to each parent table
+   * This allows parent tables to know which child tables have FKs pointing to them
+   * Essential for automation validation where parent tables aggregate from children
+   */
+  addInboundForeignKeysToProcessedSchema(processedSchema: ProcessedSchema): void {
+    // First pass: collect all FK relationships
+    const inboundFKs = new Map<string, Array<{
+      childTable: string;
+      fkName: string;
+      childColumn: string;
+    }>>();
+
+    // Iterate through all tables as children
+    for (const [childTableName, childTable] of Object.entries(processedSchema.tables)) {
+      // Look at this table's outbound FKs
+      for (const [fkName, fk] of Object.entries(childTable.foreignKeys)) {
+        const parentTableName = fk.table;
+
+        // Add to parent's inbound FK list
+        if (!inboundFKs.has(parentTableName)) {
+          inboundFKs.set(parentTableName, []);
+        }
+
+        inboundFKs.get(parentTableName)!.push({
+          childTable: childTableName,
+          fkName: fkName,
+          childColumn: fk.column
+        });
+      }
+
+      // Also check FK extensions (formula columns that act as FKs)
+      if (childTable.fkExtensions) {
+        for (const [extensionName, extension] of Object.entries(childTable.fkExtensions)) {
+          // FK extensions reference the same parent table as their base FK
+          // We need to determine which parent table this extension points to
+          // Extensions are named after the FK column, so we look for a matching FK
+
+          // Find the FK that this extension belongs to by checking foreignKeys
+          for (const [fkName, fk] of Object.entries(childTable.foreignKeys)) {
+            // Check if this extension column name matches or relates to this FK
+            // Extensions like "account_id_debit" relate to FK "accounts"
+            const parentTableName = fk.table;
+
+            if (!inboundFKs.has(parentTableName)) {
+              inboundFKs.set(parentTableName, []);
+            }
+
+            inboundFKs.get(parentTableName)!.push({
+              childTable: childTableName,
+              fkName: extensionName,
+              childColumn: extensionName
+            });
+          }
+        }
+      }
+    }
+
+    // Second pass: add inboundForeignKeys to each parent table
+    for (const [parentTableName, inboundList] of inboundFKs) {
+      const parentTable = processedSchema.tables[parentTableName];
+      if (parentTable) {
+        parentTable.inboundForeignKeys = inboundList;
+      }
+    }
+  }
+
+  /**
    * Add indexes from flattened lists to processedSchema with validation
    */
   addIndexesToProcessedSchema(
@@ -498,6 +565,234 @@ export class SchemaProcessor {
       }
       table.constraints.push(checkConstraint.expression);
     }
+  }
+
+  /**
+   * Validate automation definitions using processedSchema
+   * Uses inboundForeignKeys for FK validation and direct lookups for column validation
+   */
+  validateAutomations(processedSchema: ProcessedSchema): void {
+    for (const [tableName, table] of Object.entries(processedSchema.tables)) {
+      for (const [columnName, column] of Object.entries(table.columns)) {
+        if (!column.automation) continue;
+
+        // Parse automation string
+        let automation;
+        if (typeof column.automation === 'string') {
+          try {
+            automation = resolveAutomation(column.automation, tableName, this.buildMinimalSchemaForAutomation(processedSchema));
+          } catch (err: any) {
+            throw new Error(
+              `Table '${tableName}', column '${columnName}': failed to parse automation: ${err.message}`
+            );
+          }
+        } else {
+          automation = column.automation;
+        }
+
+        // Skip RULE_MATCH automations - they don't use FK references
+        if ('mode' in automation) {
+          continue;
+        }
+
+        // Determine if this is aggregation or SYNC/SNAPSHOT
+        const isAggregation = ['SUM', 'COUNT', 'MAX', 'MIN', 'LAST_VALUE'].includes(automation.type);
+
+        if (isAggregation) {
+          // Aggregation: this table (parent) aggregates from child table
+          this.validateAggregationAutomation(tableName, columnName, automation, table, processedSchema);
+        } else {
+          // SYNC/SNAPSHOT: this table (child) syncs from parent table
+          this.validateSyncAutomation(tableName, columnName, automation, table, processedSchema);
+        }
+      }
+    }
+  }
+
+  /**
+   * Validate aggregation automation (SUM, COUNT, MAX, MIN, LAST_VALUE)
+   * Parent table aggregates from child table
+   */
+  private validateAggregationAutomation(
+    parentTableName: string,
+    columnName: string,
+    automation: any,
+    parentTable: ProcessedTable,
+    processedSchema: ProcessedSchema
+  ): void {
+    const childTableName = automation.table;
+    const sourceColumn = automation.column;
+    const explicitFKName = automation.foreign_key;
+
+    // Validate child table exists
+    const childTable = processedSchema.tables[childTableName];
+    if (!childTable) {
+      throw new Error(
+        `Table '${parentTableName}', column '${columnName}': automation references non-existent table '${childTableName}'`
+      );
+    }
+
+    // Validate FK exists using inboundForeignKeys
+    if (!parentTable.inboundForeignKeys || parentTable.inboundForeignKeys.length === 0) {
+      throw new Error(
+        `Table '${parentTableName}', column '${columnName}': no child tables have foreign keys to this table. Cannot aggregate from '${childTableName}'.`
+      );
+    }
+
+    // Find matching inbound FKs from the child table
+    const matchingFKs = parentTable.inboundForeignKeys.filter(fk => fk.childTable === childTableName);
+
+    if (matchingFKs.length === 0) {
+      throw new Error(
+        `Table '${parentTableName}', column '${columnName}': child table '${childTableName}' has no foreign key to this table`
+      );
+    }
+
+    // If FK name specified, verify it exists
+    if (explicitFKName) {
+      const namedFK = matchingFKs.find(fk => fk.fkName === explicitFKName);
+      if (!namedFK) {
+        const availableFKs = matchingFKs.map(fk => fk.fkName).join(', ');
+        throw new Error(
+          `Table '${parentTableName}', column '${columnName}': child table '${childTableName}' has no foreign key named '${explicitFKName}'. Available FKs: ${availableFKs}`
+        );
+      }
+    } else {
+      // No FK name specified - must be exactly one FK
+      if (matchingFKs.length > 1) {
+        const availableFKs = matchingFKs.map(fk => fk.fkName).join(', ');
+        throw new Error(
+          `Table '${parentTableName}', column '${columnName}': child table '${childTableName}' has multiple foreign keys to this table: [${availableFKs}]. Please specify which FK to use with syntax: TYPE(fk_name) @table.column`
+        );
+      }
+    }
+
+    // Validate source column exists in child table (if specified - COUNT might not have one)
+    if (sourceColumn && sourceColumn !== '*') {
+      if (!childTable.columns[sourceColumn]) {
+        throw new Error(
+          `Table '${parentTableName}', column '${columnName}': automation references non-existent column '${sourceColumn}' in child table '${childTableName}'`
+        );
+      }
+    }
+
+    // Validate WHERE clause column references
+    if (automation.where) {
+      this.validateWhereClauseColumns(parentTableName, columnName, automation.where, childTable, childTableName);
+    }
+  }
+
+  /**
+   * Validate SYNC/SNAPSHOT automation
+   * Child table syncs from parent table
+   */
+  private validateSyncAutomation(
+    childTableName: string,
+    columnName: string,
+    automation: any,
+    childTable: ProcessedTable,
+    processedSchema: ProcessedSchema
+  ): void {
+    const parentTableName = automation.table;
+    const sourceColumn = automation.column;
+    const explicitFKName = automation.foreign_key;
+
+    // Validate parent table exists
+    const parentTable = processedSchema.tables[parentTableName];
+    if (!parentTable) {
+      throw new Error(
+        `Table '${childTableName}', column '${columnName}': automation references non-existent table '${parentTableName}'`
+      );
+    }
+
+    // Validate FK exists using child's foreignKeys
+    if (!childTable.foreignKeys || Object.keys(childTable.foreignKeys).length === 0) {
+      throw new Error(
+        `Table '${childTableName}', column '${columnName}': table has no foreign keys. Cannot sync from '${parentTableName}'.`
+      );
+    }
+
+    // Find matching FKs to the parent table
+    const matchingFKs = Object.entries(childTable.foreignKeys)
+      .filter(([_, fk]) => fk.table === parentTableName)
+      .map(([fkName, _]) => fkName);
+
+    if (matchingFKs.length === 0) {
+      throw new Error(
+        `Table '${childTableName}', column '${columnName}': table has no foreign key to '${parentTableName}'`
+      );
+    }
+
+    // If FK name specified, verify it exists
+    if (explicitFKName) {
+      if (!matchingFKs.includes(explicitFKName)) {
+        const availableFKs = matchingFKs.join(', ');
+        throw new Error(
+          `Table '${childTableName}', column '${columnName}': table has no foreign key named '${explicitFKName}' to '${parentTableName}'. Available FKs: ${availableFKs}`
+        );
+      }
+    } else {
+      // No FK name specified - must be exactly one FK
+      if (matchingFKs.length > 1) {
+        const availableFKs = matchingFKs.join(', ');
+        throw new Error(
+          `Table '${childTableName}', column '${columnName}': table has multiple foreign keys to '${parentTableName}': [${availableFKs}]. Please specify which FK to use with syntax: TYPE(fk_name) @table.column`
+        );
+      }
+    }
+
+    // Validate source column exists in parent table
+    if (!parentTable.columns[sourceColumn]) {
+      throw new Error(
+        `Table '${childTableName}', column '${columnName}': automation references non-existent column '${sourceColumn}' in parent table '${parentTableName}'`
+      );
+    }
+  }
+
+  /**
+   * Validate WHERE clause column references exist in the specified table
+   */
+  private validateWhereClauseColumns(
+    parentTableName: string,
+    columnName: string,
+    whereClause: string,
+    childTable: ProcessedTable,
+    childTableName: string
+  ): void {
+    // Extract all @column_name references from WHERE clause
+    const columnRefs = whereClause.match(/@[a-zA-Z_][a-zA-Z0-9_]*/g) || [];
+
+    for (const ref of columnRefs) {
+      const refColumnName = ref.substring(1); // Remove @ prefix
+      if (!childTable.columns[refColumnName]) {
+        throw new Error(
+          `Table '${parentTableName}', column '${columnName}': WHERE clause references non-existent column '${refColumnName}' in child table '${childTableName}'. WHERE: ${whereClause}`
+        );
+      }
+    }
+  }
+
+  /**
+   * Build minimal schema for automation parser's resolveAutomation function
+   * It only needs tables with foreign_keys structure
+   */
+  private buildMinimalSchemaForAutomation(processedSchema: ProcessedSchema): any {
+    const minimalSchema: any = { tables: {} };
+
+    for (const [tableName, table] of Object.entries(processedSchema.tables)) {
+      minimalSchema.tables[tableName] = {
+        foreign_keys: {}
+      };
+
+      // Convert foreignKeys to the old foreign_keys structure
+      for (const [fkName, fk] of Object.entries(table.foreignKeys)) {
+        minimalSchema.tables[tableName].foreign_keys[fkName] = {
+          table: fk.table
+        };
+      }
+    }
+
+    return minimalSchema;
   }
 
   /**
@@ -1137,6 +1432,11 @@ export interface ProcessedTable {
   generatedColumns: Record<string, ColumnDefinition>; // FK columns generated automatically
   fkColumnMapping: Record<string, string[]>; // Maps FK name to generated column names
   fkExtensions?: Record<string, { automation?: any, generated?: string }>; // Extensions for FK columns
+  inboundForeignKeys?: Array<{  // Reverse FK index: which child tables point to this table
+    childTable: string;         // Name of child table with FK to this table
+    fkName: string;            // Name of the FK (for SUM(fkName) syntax)
+    childColumn: string;       // Column name in child table
+  }>;
   indexes?: string[][];  // Indexes: array of column lists
   uniqueConstraints?: string[][];  // Unique constraints: array of column lists
   constraints?: string[];  // Table-level CHECK constraint expressions
