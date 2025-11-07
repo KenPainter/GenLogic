@@ -6,42 +6,22 @@ import type {
   ForeignKeyDefinition,
   MatchingTableDefinition
 } from './types.js';
+import type {
+  YamlFlattenedLists,
+  FlattenedTable,
+  FlattenedColumn,
+  FlattenedForeignKey,
+  FlattenedReusableColumn
+} from './yaml-flattened-lists.js';
 import { parseSQLType } from './sql-type-parser.js';
 import { resolveAutomation } from './automation-parser.js';
 
 /**
  * ARCHITECTURAL PRINCIPLE: Validation Through Construction
  *
- * GenLogic validates by BUILDING the schema in topological order, not by
- * running separate validation passes. This is INTENTIONAL and CRITICAL.
+ * GenLogic validates by BUILDING and VALIDATING together
+ * The main logic and comments are in processor.ts
  *
- * HOW IT WORKS:
- * 1. Build FK graph and compute layers (fail fast on cycles)
- * 2. Process tables in layer order (0, 1, 2, ...)
- * 3. When building table at layer N, all layers 0..N-1 are complete
- * 4. Parent columns ALWAYS exist before child references them
- * 5. Validation is: "does this reference exist in already-built schema?"
- *
- * WHY NOT SEPARATE VALIDATION:
- * - Separate validation duplicates the "what exists?" logic
- * - Separate validation can't use topology (needs to check everything)
- * - Adding features requires validation in TWO places (error-prone)
- * - Natural compiler approach: build dependency graph → process in order
- *
- * DO NOT ADD:
- * ❌ validateCrossReferences() before processing
- * ❌ validateGeneratedColumns() after processing
- * ❌ validateAutomations() as separate phase
- * ❌ Any "does X exist?" validation as separate method
- *
- * INSTEAD:
- * ✅ Validate during processSchemaByLayers()
- * ✅ Check references as columns are built
- * ✅ Use processedTables map to know what's available
- * ✅ Throw immediately when reference not found
- *
- * This matches 20 years of manual SQL generation experience:
- * build parents first, then children can safely reference them.
  *
  * ============================================================================
  *
@@ -260,8 +240,29 @@ export class SchemaProcessor {
   /**
    * Propagate type, label, and format from source columns to SYNC/SNAPSHOT automation columns
    * This runs after all tables are processed so we can look up source columns
+   * Now works from flat FK list instead of GenLogicSchema
    */
-  private propagateTypeAndMetadata(processedSchema: ProcessedSchema, schema: GenLogicSchema): void {
+  private propagateTypeAndMetadata(
+    processedSchema: ProcessedSchema,
+    fksByTable: Map<string, FlattenedForeignKey[]>
+  ): void {
+    // Build minimal schema for resolveAutomation's inferForeignKey
+    // inferForeignKey only needs schema.tables[].foreign_keys
+    const minimalSchema: GenLogicSchema = {
+      tables: {}
+    };
+
+    for (const [tableName, fks] of fksByTable) {
+      minimalSchema.tables![tableName] = {
+        foreign_keys: {}
+      };
+
+      for (const fk of fks) {
+        // Use parent table name as FK name (for inference)
+        minimalSchema.tables![tableName].foreign_keys![fk.parentTable] = { table: fk.parentTable };
+      }
+    }
+
     for (const [tableName, processedTable] of Object.entries(processedSchema.tables)) {
       for (const [columnName, columnDef] of Object.entries(processedTable.columns)) {
         if (!columnDef.automation) continue;
@@ -269,7 +270,7 @@ export class SchemaProcessor {
         // Try to resolve the automation
         let resolved;
         try {
-          resolved = resolveAutomation(columnDef.automation, tableName, schema);
+          resolved = resolveAutomation(columnDef.automation, tableName, minimalSchema);
         } catch {
           // If we can't resolve it, skip (validation will catch it later)
           continue;
@@ -315,26 +316,6 @@ export class SchemaProcessor {
   // ============================================================================
 
   /**
-   * Build reusable columns store
-   * Creates a Map of resolved reusable columns for use during layer-by-layer processing
-   */
-  buildReusableColumnsStore(schema: GenLogicSchema): Map<string, ColumnDefinition> {
-    const store = new Map<string, ColumnDefinition>();
-
-    if (!schema.columns) return store;
-
-    // Process reusable columns using existing method
-    const processed = this.processReusableColumns(schema.columns);
-
-    // Convert to Map
-    for (const [name, def] of Object.entries(processed)) {
-      store.set(name, def);
-    }
-
-    return store;
-  }
-
-  /**
    * Process schema layer-by-layer with integrated validation
    *
    * LAYER-BY-LAYER PROCESSING:
@@ -358,54 +339,40 @@ export class SchemaProcessor {
    * separate validate-then-process approach.
    */
   processSchemaByLayers(
-    schema: GenLogicSchema,
-    layers: Map<string, number>,
-    reusableColumns: Map<string, ColumnDefinition>
+    yamlFlattenedLists: YamlFlattenedLists,
+    layers: Map<string, number>
   ): ProcessedSchema {
     const processedTables = new Map<string, ProcessedTable>();
     const processed: ProcessedSchema = { tables: {} };
 
-    // Add matching tables to processed schema (they have a fixed structure)
-    if (schema.matching_tables) {
-      for (const [tableName, definition] of Object.entries(schema.matching_tables)) {
-        const matchingTable: ProcessedTable = {
-          comment: definition.comment,
-          columns: {
-            id: {
-              type: 'SERIAL',
-              primary_key: true,
-              unique: false,
-              sequence: true
-            },
-            string_match: {
-              type: 'VARCHAR',
-              size: 200
-            },
-            [definition.result_column_name]: {
-              type: 'VARCHAR',
-              size: 100
-            },
-            range_low_bound: {
-              type: 'NUMERIC',
-              size: 10,
-              decimal: 2
-            },
-            range_high_bound: {
-              type: 'NUMERIC',
-              size: 10,
-              decimal: 2
-            }
-          },
-          foreignKeys: {},
-          generatedColumns: {},
-          fkColumnMapping: {}
-        };
-        processedTables.set(tableName, matchingTable);
-        processed.tables[tableName] = matchingTable;
-      }
+    // Build lookup structures from flat lists
+    const tableMap = new Map<string, FlattenedTable>();
+    for (const table of yamlFlattenedLists.tables) {
+      tableMap.set(table.name, table);
     }
 
-    if (!schema.tables) return processed;
+    const columnsByTable = new Map<string, FlattenedColumn[]>();
+    for (const col of yamlFlattenedLists.columns) {
+      if (!columnsByTable.has(col.tableName)) {
+        columnsByTable.set(col.tableName, []);
+      }
+      columnsByTable.get(col.tableName)!.push(col);
+    }
+
+    const fksByTable = new Map<string, FlattenedForeignKey[]>();
+    for (const fk of yamlFlattenedLists.foreignKeys) {
+      if (!fksByTable.has(fk.childTable)) {
+        fksByTable.set(fk.childTable, []);
+      }
+      fksByTable.get(fk.childTable)!.push(fk);
+    }
+
+    const reusableColumnsMap = new Map<string, FlattenedReusableColumn>();
+    for (const col of yamlFlattenedLists.reusableColumns) {
+      reusableColumnsMap.set(col.name, col);
+    }
+
+    if (yamlFlattenedLists.tables.length === 0) return processed;
 
     const maxLayer = Math.max(...layers.values());
 
@@ -416,16 +383,22 @@ export class SchemaProcessor {
         .map(([name, _]) => name);
 
       for (const tableName of tablesInLayer) {
-        const table = schema.tables[tableName];
-        if (!table) continue;
+        const tableMetadata = tableMap.get(tableName);
+        if (!tableMetadata) continue;
+
+        const tableCols = columnsByTable.get(tableName) || [];
+        const tableFKs = fksByTable.get(tableName) || [];
 
         // Build columns for this table WITH INTEGRATED VALIDATION
         const processedTable = this.processTableWithValidation(
           tableName,
-          table,
-          schema,
-          reusableColumns,
-          processedTables
+          tableMetadata,
+          tableCols,
+          tableFKs,
+          reusableColumnsMap,
+          fksByTable,
+          processedTables,
+          layer  // Pass current layer number
         );
 
         processedTables.set(tableName, processedTable);
@@ -434,207 +407,247 @@ export class SchemaProcessor {
     }
 
     // Post-process: Copy label/format/type from source columns for SYNC/SNAPSHOT automations
-    this.propagateTypeAndMetadata(processed, schema);
+    this.propagateTypeAndMetadata(processed, fksByTable);
 
     return processed;
   }
 
   /**
    * Process a single table with integrated validation
-   * This is the NEW method that validates as it builds
+   * Now works from flat lists instead of hierarchical schema
    */
   private processTableWithValidation(
     tableName: string,
-    table: TableDefinition,
-    schema: GenLogicSchema,
-    reusableColumns: Map<string, ColumnDefinition>,
-    processedTables: Map<string, ProcessedTable>
+    tableMetadata: FlattenedTable,
+    tableCols: FlattenedColumn[],
+    tableFKs: FlattenedForeignKey[],
+    reusableColumns: Map<string, FlattenedReusableColumn>,
+    allFKsByTable: Map<string, FlattenedForeignKey[]>,
+    processedTables: Map<string, ProcessedTable>,
+    layer: number
   ): ProcessedTable {
     // Validate table name is not a reserved word
     this.validateNotReservedWord(tableName, 'table');
 
     const columns = new Map<string, ColumnDefinition>();
-    const fkExtensions: Record<string, { automation?: any, generated?: string }> = {};
+    const fkExtensions: Record<string, { automation?: any, formula?: string }> = {};
 
-    // Step 1: Resolve column inheritance
-    if (table.columns) {
-      for (const [columnName, column] of Object.entries(table.columns)) {
-        // Validate column name is not a reserved word
-        this.validateNotReservedWord(columnName, 'column');
+    // Build FK name set for FK extension detection
+    const fkNames = new Set(tableFKs.map(fk => fk.childColumn || fk.parentTable));
 
-        // Check if this is an FK extension (automation/generated only on FK column)
-        if (typeof column === 'object' && column !== null && !('$ref' in column) && !('type' in column)) {
-          const hasOnlyExtensions = Object.keys(column).every(k =>
-            k === 'automation' || k === 'generated' || k === 'comment'
+    // Step 1: Process columns from flat list (already parsed!)
+    for (const flatCol of tableCols) {
+      const columnName = flatCol.columnName;
+
+      // Validate column name is not a reserved word
+      this.validateNotReservedWord(columnName, 'column');
+
+      // Check if this is an FK extension (only automation/formula, no type)
+      const hasType = flatCol.type !== undefined;
+      const hasRef = flatCol.$ref !== undefined;
+      const hasAutomation = flatCol.automation !== undefined;
+      const hasFormula = flatCol.formula !== undefined;
+
+      if (!hasType && !hasRef && (hasAutomation || hasFormula)) {
+        // VALIDATION: Mutual exclusion - cannot have both automation and formula
+        if (hasAutomation && hasFormula) {
+          throw new Error(
+            `Table '${tableName}', column '${columnName}': ` +
+            `cannot have both 'automation' and 'formula' properties`
           );
-
-          if (hasOnlyExtensions && (column.automation || column.formula)) {
-            // VALIDATION: Mutual exclusion - cannot have both automation and formula
-            if (column.automation && column.formula) {
-              throw new Error(
-                `Table '${_tableName}', column '${columnName}': ` +
-                `cannot have both 'automation' and 'formula' properties`
-              );
-            }
-
-            // Check if this is a SYNC/SNAPSHOT automation (regular column, needs type inference)
-            const isSyncSnapshot = typeof column.automation === 'string' &&
-              (column.automation.startsWith('SYNC ') || column.automation.startsWith('SNAPSHOT '));
-
-            if (isSyncSnapshot) {
-              // This is a regular column with SYNC/SNAPSHOT automation
-              columns.set(columnName, {
-                type: '', // Empty placeholder
-                automation: column.automation,
-                ...(column.formula && { formula: column.formula }),
-                ...(column.comment && { comment: column.comment })
-              } as ColumnDefinition);
-              continue;
-            }
-
-            // If it has 'generated' but no 'automation', check if it's an FK extension
-            if (column.formula && !column.automation) {
-              // Check if this column matches a foreign key name
-              const isFKExtension = table.foreign_keys && columnName in table.foreign_keys;
-
-              if (!isFKExtension) {
-                // ERROR: Not an FK extension, formula column must have type or $ref
-                throw new Error(
-                  `Table '${tableName}', column '${columnName}': ` +
-                  `generated columns must specify a type or use $ref to inherit from a reusable column`
-                );
-              }
-
-              // It's an FK extension with formula expression
-              fkExtensions[columnName] = {
-                generated: column.formula
-              };
-              continue;
-            }
-
-            // Otherwise, it's an FK extension
-            fkExtensions[columnName] = {
-              automation: column.automation,
-              generated: column.formula
-            };
-            continue;
-          }
         }
 
-        // Normal column processing - resolve inheritance
-        const reusableColsRecord: Record<string, ColumnDefinition> = {};
-        for (const [name, def] of reusableColumns) {
-          reusableColsRecord[name] = def;
+        // Check if this is a SYNC/SNAPSHOT automation (regular column, needs type inference)
+        const isSyncSnapshot = typeof flatCol.automation === 'string' &&
+          (flatCol.automation.startsWith('SYNC ') || flatCol.automation.startsWith('SNAPSHOT '));
+
+        if (isSyncSnapshot) {
+          // This is a regular column with SYNC/SNAPSHOT automation
+          columns.set(columnName, {
+            type: '', // Empty placeholder - will be filled by propagateTypeAndMetadata
+            automation: flatCol.automation,
+            ...(flatCol.formula && { formula: flatCol.formula }),
+            ...(flatCol.comment && { comment: flatCol.comment })
+          } as ColumnDefinition);
+          continue;
         }
 
-        const resolved = this.resolveColumnInheritance(columnName, column, reusableColsRecord);
-        columns.set(columnName, resolved);
+        // Check if this column matches a foreign key
+        const isFKExtension = fkNames.has(columnName);
+
+        if (!isFKExtension && hasFormula) {
+          // ERROR: Not an FK extension, formula column must have type or $ref
+          throw new Error(
+            `Table '${tableName}', column '${columnName}': ` +
+            `formula columns must specify a type or use $ref to inherit from a reusable column`
+          );
+        }
+
+        // It's an FK extension
+        fkExtensions[columnName] = {
+          ...(hasAutomation && { automation: flatCol.automation }),
+          ...(hasFormula && { formula: flatCol.formula })
+        };
+        continue;
       }
+
+      // Normal column processing - resolve $ref if present
+      let resolvedCol: ColumnDefinition;
+
+      if (flatCol.$ref) {
+        const reusable = reusableColumns.get(flatCol.$ref);
+        if (!reusable) {
+          throw new Error(
+            `Table '${tableName}', column '${columnName}': ` +
+            `references unknown reusable column '$ref: ${flatCol.$ref}'`
+          );
+        }
+
+        // Merge reusable column with any overrides from flatCol
+        resolvedCol = {
+          type: flatCol.type || reusable.type || '',
+          ...(flatCol.size !== undefined ? { size: flatCol.size } : reusable.size !== undefined ? { size: reusable.size } : {}),
+          ...(flatCol.decimal !== undefined ? { decimal: flatCol.decimal } : reusable.decimal !== undefined ? { decimal: reusable.decimal } : {}),
+          primary_key: flatCol.primary_key ?? reusable.primary_key ?? false,
+          unique: flatCol.unique ?? reusable.unique ?? false,
+          not_null: flatCol.not_null ?? reusable.not_null ?? false,
+          sequence: flatCol.sequence ?? reusable.sequence ?? false,
+          ...(flatCol.default !== undefined ? { default: flatCol.default } : reusable.default !== undefined ? { default: reusable.default } : {}),
+          ...(flatCol.automation !== undefined ? { automation: flatCol.automation } : reusable.automation !== undefined ? { automation: reusable.automation } : {}),
+          ...(flatCol.formula !== undefined ? { formula: flatCol.formula } : reusable.formula !== undefined ? { formula: reusable.formula } : {}),
+          ...(flatCol.format !== undefined ? { format: flatCol.format } : reusable.format !== undefined ? { format: reusable.format } : {}),
+          ...(flatCol.label !== undefined ? { label: flatCol.label } : reusable.label !== undefined ? { label: reusable.label } : {}),
+          ...(flatCol.comment !== undefined ? { comment: flatCol.comment } : reusable.comment !== undefined ? { comment: reusable.comment } : {})
+        };
+      } else {
+        // No $ref, just use the parsed fields directly
+        resolvedCol = {
+          type: flatCol.type || '',
+          ...(flatCol.size !== undefined && { size: flatCol.size }),
+          ...(flatCol.decimal !== undefined && { decimal: flatCol.decimal }),
+          primary_key: flatCol.primary_key ?? false,
+          unique: flatCol.unique ?? false,
+          not_null: flatCol.not_null ?? false,
+          sequence: flatCol.sequence ?? false,
+          ...(flatCol.default !== undefined && { default: flatCol.default }),
+          ...(flatCol.automation !== undefined && { automation: flatCol.automation }),
+          ...(flatCol.formula !== undefined && { formula: flatCol.formula }),
+          ...(flatCol.format !== undefined && { format: flatCol.format }),
+          ...(flatCol.label !== undefined && { label: flatCol.label }),
+          ...(flatCol.comment !== undefined && { comment: flatCol.comment })
+        };
+      }
+
+      columns.set(columnName, resolvedCol);
     }
 
-    // Normalize foreign keys
-    const normalizedForeignKeys: Record<string, ForeignKeyDefinition> = {};
-    if (table.foreign_keys) {
-      for (const [fkName, fkDef] of Object.entries(table.foreign_keys)) {
-        normalizedForeignKeys[fkName] = typeof fkDef === 'string'
-          ? { table: fkDef }
-          : fkDef;
-      }
-
-    }
-
-    // Step 2: Generate FK columns (parent tables already processed)
+    // Step 2: Generate FK columns from flat FK list (parent tables already processed)
     const generatedColumns = new Map<string, ColumnDefinition>();
     const fkColumnMapping: Record<string, string[]> = {};
+    const normalizedForeignKeys: Record<string, ForeignKeyDefinition> = {};
 
-    for (const [fkName, fk] of Object.entries(normalizedForeignKeys)) {
-      // Special case: self-referential FK (e.g., employees.manager_id → employees.id)
-      // The parent table is the current table being processed
+    for (const flatFK of tableFKs) {
+      const parentTableName = flatFK.parentTable;
+
+      // Get parent table (either already processed or self-referential)
       let parentTable: ProcessedTable;
-      if (fk.table === tableName) {
+      if (parentTableName === tableName) {
         // Self-referential FK - use current table's columns
         parentTable = {
-          comment: table.comment,
+          comment: tableMetadata.comment,
           columns: Object.fromEntries(columns),
-          foreignKeys: normalizedForeignKeys,
+          foreignKeys: {},
           generatedColumns: {},
           fkColumnMapping: {}
         };
       } else {
         // Normal FK - parent must already be processed
-        const pt = processedTables.get(fk.table);
+        const pt = processedTables.get(parentTableName);
         if (!pt) {
-          // Check if the table exists in the schema at all
-          if (!schema.tables || !schema.tables[fk.table]) {
-            throw new Error(
-              `Table '${tableName}', FK '${fkName}': ` +
-              `parent table '${fk.table}' does not exist in schema`
-            );
-          }
-          // Table exists but not yet processed - layer calculation error
           throw new Error(
-            `Table '${tableName}', FK '${fkName}': ` +
-            `parent table '${fk.table}' not yet processed ` +
-            `(this indicates layer calculation error)`
+            `Table '${tableName}', FK to '${parentTableName}': ` +
+            `parent table not yet processed (layer calculation error)`
           );
         }
         parentTable = pt;
       }
 
+      // Find parent's primary key columns
       const primaryKeyColumns = this.findPrimaryKeyColumnsFromMap(parentTable);
       if (primaryKeyColumns.length === 0) {
-        throw new Error(`Table '${tableName}', FK '${fkName}': parent table '${fk.table}' has no primary key columns`);
+        throw new Error(
+          `Table '${tableName}', FK to '${parentTableName}': ` +
+          `parent table has no primary key columns`
+        );
       }
 
-      const generatedFkColumns: string[] = [];
-
-      for (const pkColumn of primaryKeyColumns) {
-        let fkColumnName: string;
-
-        if (!fk.prefix && !fk.suffix && primaryKeyColumns.length === 1) {
-          fkColumnName = fkName;
-        } else {
-          fkColumnName = this.generateFKColumnName(pkColumn.name, fk);
-        }
-
-        // Convert SERIAL types to underlying integer types
-        let fkType = pkColumn.definition.type;
-        if (fkType.toUpperCase() === 'SERIAL') {
-          fkType = 'INTEGER';
-        } else if (fkType.toUpperCase() === 'BIGSERIAL') {
-          fkType = 'BIGINT';
-        } else if (fkType.toUpperCase() === 'SMALLSERIAL') {
-          fkType = 'SMALLINT';
-        }
-
-        const fkColumnDef: ColumnDefinition = {
-          type: fkType,
-          ...(pkColumn.definition.size && { size: pkColumn.definition.size }),
-          ...(pkColumn.definition.decimal && { decimal: pkColumn.definition.decimal }),
-          primary_key: false,
-          unique: false,
-          sequence: false,
-          ...(fk.not_null && { not_null: true }),
-          ...(pkColumn.definition.label && { label: pkColumn.definition.label }),
-          ...(pkColumn.definition.format && { format: pkColumn.definition.format })
-        };
-
-        // Apply FK extensions
-        if (fkExtensions[fkColumnName]) {
-          const extension = fkExtensions[fkColumnName];
-          if (extension.automation) {
-            fkColumnDef.automation = extension.automation;
-          }
-          if (extension.formula) {
-            fkColumnDef.formula = extension.formula;
-          }
-        }
-
-        generatedColumns.set(fkColumnName, fkColumnDef);
-        generatedFkColumns.push(fkColumnName);
+      // ENFORCE: Single-column primary keys only
+      if (primaryKeyColumns.length > 1) {
+        throw new Error(
+          `Table '${tableName}', FK to '${parentTableName}': ` +
+          `parent table has composite primary key (not supported - use single-column PKs only)`
+        );
       }
 
-      fkColumnMapping[fkName] = generatedFkColumns;
+      const pkColumn = primaryKeyColumns[0];
+      const parentPKColumnName = pkColumn.name;
+
+      // Determine FK column name in child table
+      let fkColumnName: string;
+      if (flatFK.childColumn) {
+        fkColumnName = flatFK.childColumn;
+      } else {
+        // Infer: parentTableName_id
+        fkColumnName = `${parentTableName}_id`;
+      }
+
+      // Convert SERIAL types to underlying integer types
+      let fkType = pkColumn.definition.type;
+      if (fkType.toUpperCase() === 'SERIAL') {
+        fkType = 'INTEGER';
+      } else if (fkType.toUpperCase() === 'BIGSERIAL') {
+        fkType = 'BIGINT';
+      } else if (fkType.toUpperCase() === 'SMALLSERIAL') {
+        fkType = 'SMALLINT';
+      }
+
+      const fkColumnDef: ColumnDefinition = {
+        type: fkType,
+        ...(pkColumn.definition.size && { size: pkColumn.definition.size }),
+        ...(pkColumn.definition.decimal && { decimal: pkColumn.definition.decimal }),
+        primary_key: false,
+        unique: false,
+        sequence: false,
+        ...(flatFK.notNull && { not_null: true }),
+        ...(pkColumn.definition.label && { label: pkColumn.definition.label }),
+        ...(pkColumn.definition.format && { format: pkColumn.definition.format })
+      };
+
+      // Apply FK extensions
+      if (fkExtensions[fkColumnName]) {
+        const extension = fkExtensions[fkColumnName];
+        if (extension.automation) {
+          fkColumnDef.automation = extension.automation;
+        }
+        if (extension.formula) {
+          fkColumnDef.formula = extension.formula;
+        }
+      }
+
+      generatedColumns.set(fkColumnName, fkColumnDef);
+
+      // Store FK mapping (legacy - kept for backward compat)
+      fkColumnMapping[parentTableName] = [fkColumnName];
+
+      // Build complete FK definition with all info needed for DDL generation
+      normalizedForeignKeys[parentTableName] = {
+        table: parentTableName,
+        column: fkColumnName,           // Child column (the FK column we generated)
+        references: parentPKColumnName, // Parent PK column
+        ...(flatFK.notNull && { not_null: true }),
+        ...(flatFK.delete === 'cascade' && { delete_cascade: true }),
+        ...(flatFK.autoCreateParent && { auto_create_parent: true })
+      };
     }
 
     // Merge FK columns into main columns map
@@ -642,12 +655,8 @@ export class SchemaProcessor {
       columns.set(colName, colDef);
     }
 
-    // Step 3: Validate formula columns (dependencies must exist in THIS table)
-    for (const [colName, col] of columns) {
-      if (col.formula) {
-        this.validateGeneratedColumn(tableName, colName, col, columns);
-      }
-    }
+    // Step 3: Formula validation moved to Phase 8.1 for consistency
+    // (all @ sigil validations happen together in Phase 8)
 
     // Step 4: Validate automations (FK and columns must exist)
     for (const [colName, col] of columns) {
@@ -656,65 +665,44 @@ export class SchemaProcessor {
           tableName,
           colName,
           col,
-          table,
-          schema,
+          tableFKs,
+          allFKsByTable,
           processedTables
         );
       }
     }
 
-    // Step 5: Validate auto_create (all referenced columns must exist)
-    if (table.foreign_keys) {
-      for (const [fkName, fkDef] of Object.entries(table.foreign_keys)) {
-        const fk = typeof fkDef === 'string' ? { table: fkDef } : fkDef;
-        if (fk.auto_create) {
-          this.validateAutoCreateDefinition(
-            tableName,
-            fkName,
-            fk,
-            columns,
-            processedTables
+    // Step 5: Validate auto_create_parent (parent must have PK)
+    for (const flatFK of tableFKs) {
+      if (flatFK.autoCreateParent) {
+        const parentTable = processedTables.get(flatFK.parentTable);
+        if (!parentTable) {
+          throw new Error(
+            `Table '${tableName}', FK to '${flatFK.parentTable}': ` +
+            `auto_create_parent requires parent table to be processed`
           );
         }
-
-        // Validate auto_create_parent (parent must have PK)
-        if (fk.auto_create_parent) {
-          const parentTable = processedTables.get(fk.table);
-          if (!parentTable) {
-            throw new Error(
-              `Table '${tableName}', FK '${fkName}': ` +
-              `auto_create_parent references parent table '${fk.table}' which is not yet processed`
-            );
-          }
-          const parentPK = this.findPrimaryKeyColumnsFromMap(parentTable);
-          if (parentPK.length === 0) {
-            throw new Error(
-              `Table '${tableName}', FK '${fkName}': ` +
-              `auto_create_parent requires parent table '${fk.table}' to have a primary key`
-            );
-          }
+        const parentPK = this.findPrimaryKeyColumnsFromMap(parentTable);
+        if (parentPK.length === 0) {
+          throw new Error(
+            `Table '${tableName}', FK to '${flatFK.parentTable}': ` +
+            `auto_create_parent requires parent table to have a primary key`
+          );
         }
       }
     }
 
     // Step 6: Validate indexes and constraints (columns must exist)
-    this.validateTableIndexesAndConstraints(tableName, table, columns);
-
-    // Step 6.5: Validate table-level CHECK constraints
-    if (table.constraints && table.constraints.length > 0) {
-      for (const constraint of table.constraints) {
-        this.validateConstraintExpression(tableName, constraint, columns);
-      }
-    }
+    // NOTE: These are validated from yamlFlattenedLists in a later phase
 
     // Step 7: If this is a singleton table, add DEFAULT 0 to the first PK column
-    if (table.singleton) {
+    if (tableMetadata.singleton) {
       // Find the first primary key column
       let firstPKColumn: string | undefined;
 
       // Check composite PK first
-      if (table.primary_key && table.primary_key.length > 0) {
-        firstPKColumn = table.primary_key[0];
+      if (tableMetadata.primaryKey && tableMetadata.primaryKey.length > 0) {
+        firstPKColumn = tableMetadata.primaryKey[0];
       } else {
         // Check for column-level primary key
         for (const [colName, colDef] of columns) {
@@ -743,15 +731,15 @@ export class SchemaProcessor {
     }
 
     return {
-      comment: table.comment,
-      singleton: table.singleton,  // Pass through singleton flag
+      comment: tableMetadata.comment,
+      singleton: tableMetadata.singleton,  // Pass through singleton flag
+      layer,  // Dependency layer for ordered DDL generation
       columns: columnsRecord,
-      primaryKey: table.primary_key,  // Pass through composite PK definition
+      primaryKey: tableMetadata.primaryKey,  // Pass through composite PK definition
       foreignKeys: normalizedForeignKeys,
       generatedColumns: {},
       fkColumnMapping,
-      fkExtensions,
-      constraints: table.constraints  // Pass through CHECK constraints
+      fkExtensions
     };
   }
 
@@ -773,66 +761,10 @@ export class SchemaProcessor {
   /**
    * Validate a formula column's references
    */
-  private validateGeneratedColumn(
-    tableName: string,
-    columnName: string,
-    columnDef: ColumnDefinition,
-    allColumns: Map<string, ColumnDefinition>
-  ): void {
-    const generatedExpr = columnDef.formula!;
-
-    // Extract @column_name references
-    const atMatches = generatedExpr.match(/@(\w+)/g) || [];
-    const referencedCols = atMatches.map(m => m.substring(1));
-
-    // Require at least one @ reference
-    if (atMatches.length === 0) {
-      throw new Error(
-        `Table '${tableName}', column '${columnName}': ` +
-        `formula expression must reference at least one column using '@column_name' syntax`
-      );
-    }
-
-    // Validate each referenced column exists
-    for (const refCol of referencedCols) {
-      if (!allColumns.has(refCol)) {
-        throw new Error(
-          `Table '${tableName}', column '${columnName}': ` +
-          `formula expression references non-existent column '@${refCol}'`
-        );
-      }
-    }
-
-    // Check for bare identifiers that match column names
-    const allIdentifiers = generatedExpr.match(/(?<!@)\b([a-z_][a-z0-9_]*)\b/gi) || [];
-
-    const sqlKeywords = new Set([
-      'CASE', 'WHEN', 'THEN', 'ELSE', 'END', 'AND', 'OR', 'NOT', 'NULL',
-      'TRUE', 'FALSE', 'IS', 'IN', 'LIKE', 'BETWEEN', 'EXISTS',
-      'COALESCE', 'NULLIF', 'CAST', 'EXTRACT', 'SUBSTRING', 'TRIM',
-      'UPPER', 'LOWER', 'LENGTH', 'CONCAT', 'REPLACE',
-      'SUM', 'COUNT', 'AVG', 'MAX', 'MIN', 'ABS', 'ROUND', 'CEIL', 'FLOOR',
-      'GREATEST', 'LEAST', 'DATE', 'TIME', 'TIMESTAMP', 'INTERVAL'
-    ]);
-
-    const bareColumnRefs: string[] = [];
-    for (const id of allIdentifiers) {
-      if (sqlKeywords.has(id.toUpperCase())) {
-        continue;
-      }
-      if (allColumns.has(id)) {
-        bareColumnRefs.push(id);
-      }
-    }
-
-    if (bareColumnRefs.length > 0) {
-      throw new Error(
-        `Table '${tableName}', column '${columnName}': ` +
-        `formula expression contains bare column reference(s) without '@' sigil: ${bareColumnRefs.join(', ')}. ` +
-        `Use '@column_name' syntax for all column references.`
-      );
-    }
-  }
+  /**
+   * DELETED: validateGeneratedColumn - moved to Phase 8.1 (processor.ts validateFormulasAndCycles)
+   * All @ sigil validations now happen together in Phase 8
+   */
 
   /**
    * Validate an automation column
@@ -841,13 +773,13 @@ export class SchemaProcessor {
     tableName: string,
     columnName: string,
     columnDef: ColumnDefinition,
-    table: TableDefinition,
-    schema: GenLogicSchema,
+    tableFKs: FlattenedForeignKey[],
+    allFKsByTable: Map<string, FlattenedForeignKey[]>,
     processedTables: Map<string, ProcessedTable>
   ): void {
-    // Automation validation is handled by the existing validation phase
-    // This is a placeholder for now - we can add inline validation here if needed
-    // The main validation happens in validateAutomationInference which checks FK inference
+    // Automation validation is handled by automation-parser inferForeignKey()
+    // which will validate FK paths when automation is resolved
+    // This is a placeholder for now - deeper validation happens in trigger generation
   }
 
   /**
@@ -1009,11 +941,14 @@ export interface ProcessedSchema {
 export interface ProcessedTable {
   comment?: string;
   singleton?: boolean;  // If true, table can only contain one row
+  layer?: number;  // Dependency layer (0 = no FKs, 1 = depends on layer 0, etc.)
   columns: Record<string, ColumnDefinition>;
   primaryKey?: string[];  // Composite primary key column names
   foreignKeys: Record<string, ForeignKeyDefinition>;
   generatedColumns: Record<string, ColumnDefinition>; // FK columns generated automatically
   fkColumnMapping: Record<string, string[]>; // Maps FK name to generated column names
   fkExtensions?: Record<string, { automation?: any, generated?: string }>; // Extensions for FK columns
+  indexes?: string[][];  // Indexes: array of column lists
+  uniqueConstraints?: string[][];  // Unique constraints: array of column lists
   constraints?: string[];  // Table-level CHECK constraint expressions
 }

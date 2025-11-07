@@ -1,4 +1,5 @@
 import type { GenLogicSchema, DataFlowGraph, ValidationResult } from './types.js';
+import type { YamlFlattenedLists } from './yaml-flattened-lists.js';
 
 /**
  * Data Flow Graph Builder and Cycle Detection
@@ -9,7 +10,32 @@ import type { GenLogicSchema, DataFlowGraph, ValidationResult } from './types.js
 export class DataFlowGraphValidator {
 
   /**
-   * Build foreign key relationship graph
+   * Build foreign key relationship graph from flattened lists
+   * Each edge represents a foreign key from child table to parent table
+   */
+  buildForeignKeyGraphFromLists(flattenedLists: YamlFlattenedLists): DataFlowGraph {
+    const nodes = new Set<string>();
+    const edges = new Map<string, Set<string>>();
+
+    // Add all tables as nodes
+    for (const table of flattenedLists.tables) {
+      nodes.add(table.name);
+      edges.set(table.name, new Set());
+    }
+
+    // Add edges from foreign keys
+    for (const fk of flattenedLists.foreignKeys) {
+      const childEdges = edges.get(fk.childTable);
+      if (childEdges) {
+        childEdges.add(fk.parentTable);
+      }
+    }
+
+    return { nodes, edges };
+  }
+
+  /**
+   * Build foreign key relationship graph (LEGACY - use buildForeignKeyGraphFromLists)
    * Each edge represents a foreign key from child table to parent table
    */
   buildForeignKeyGraph(schema: GenLogicSchema): DataFlowGraph {
@@ -298,65 +324,82 @@ export class DataFlowGraphValidator {
 
   /**
    * Assign layer numbers to tables based on FK dependencies
+   * Works directly on flattened lists - no graph conversion needed
+   *
    * Layer 0 = tables with no FKs (no dependencies)
    * Layer 1 = tables with FKs only to layer 0 tables
    * Layer 2 = tables with FKs to layer 0 or 1 tables, etc.
    *
    * This ensures child tables are processed after parent tables
+   * Uses Kahn's algorithm which naturally detects cycles
    */
-  assignTableLayers(graph: DataFlowGraph): Map<string, number> {
+  assignTableLayers(flattenedLists: YamlFlattenedLists): Map<string, number> {
     const layers = new Map<string, number>();
     const inDegree = new Map<string, number>();
 
-    // Calculate in-degrees: count how many OTHER tables each table depends on
-    // (number of outgoing FK edges FROM this table)
+    // Initialize in-degree for all tables
+    for (const table of flattenedLists.tables) {
+      inDegree.set(table.name, 0);
+    }
+
+    // Count dependencies: how many OTHER tables does each table depend on?
     // Exclude self-references - self-referential FKs don't create dependencies
-    for (const node of graph.nodes) {
-      const outgoingEdges = graph.edges.get(node) || new Set();
-      // Count only edges to OTHER tables (exclude self-references)
-      let count = 0;
-      for (const target of outgoingEdges) {
-        if (target !== node) {
-          count++;
-        }
+    for (const fk of flattenedLists.foreignKeys) {
+      if (fk.childTable !== fk.parentTable) {
+        inDegree.set(fk.childTable, (inDegree.get(fk.childTable) || 0) + 1);
       }
-      inDegree.set(node, count);
     }
 
     // Topological sort by layers using Kahn's algorithm
     let currentLayer = 0;
     let processed = 0;
+    const totalTables = flattenedLists.tables.length;
 
-    while (processed < graph.nodes.size) {
-      // Find all nodes with in-degree 0 (no remaining dependencies)
+    while (processed < totalTables) {
+      // Find all tables with in-degree 0 (no remaining dependencies)
       const currentLayerNodes: string[] = [];
-      for (const [node, degree] of inDegree) {
-        if (degree === 0 && !layers.has(node)) {
-          currentLayerNodes.push(node);
+      for (const [tableName, degree] of inDegree) {
+        if (degree === 0 && !layers.has(tableName)) {
+          currentLayerNodes.push(tableName);
         }
       }
 
       // If no nodes found but we haven't processed all, there's a cycle
       if (currentLayerNodes.length === 0) {
-        // Assign remaining nodes to next layer (cycle detected earlier should prevent this)
-        for (const node of graph.nodes) {
-          if (!layers.has(node)) {
-            layers.set(node, currentLayer);
+        // Collect all unprocessed tables - they're participating in the cycle
+        const cycleNodes: string[] = [];
+        for (const table of flattenedLists.tables) {
+          if (!layers.has(table.name)) {
+            cycleNodes.push(table.name);
           }
         }
-        break;
+
+        // Build detailed error showing FK relationships between cycle participants
+        const cycleEdges: string[] = [];
+        for (const fk of flattenedLists.foreignKeys) {
+          if (cycleNodes.includes(fk.childTable) &&
+              cycleNodes.includes(fk.parentTable) &&
+              fk.childTable !== fk.parentTable) {
+            cycleEdges.push(`${fk.childTable} → ${fk.parentTable}`);
+          }
+        }
+
+        throw new Error(
+          `Foreign key cycle detected involving ${cycleNodes.length} table(s): ${cycleNodes.join(', ')}\n` +
+          `Circular dependencies:\n  ${cycleEdges.join('\n  ')}`
+        );
       }
 
       // Assign current layer
-      for (const node of currentLayerNodes) {
-        layers.set(node, currentLayer);
+      for (const tableName of currentLayerNodes) {
+        layers.set(tableName, currentLayer);
         processed++;
 
-        // Decrease in-degree for all nodes that depend on this node
-        // (nodes that have FK FROM them TO this node)
-        for (const [source, targets] of graph.edges) {
-          if (targets.has(node)) {
-            inDegree.set(source, (inDegree.get(source) || 0) - 1);
+        // Decrease in-degree for all tables that depend on this table
+        // (tables that have FK FROM them TO this table)
+        for (const fk of flattenedLists.foreignKeys) {
+          if (fk.parentTable === tableName && fk.childTable !== tableName) {
+            inDegree.set(fk.childTable, (inDegree.get(fk.childTable) || 0) - 1);
           }
         }
       }

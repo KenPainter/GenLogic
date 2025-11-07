@@ -1,7 +1,7 @@
 // Schema Flattener - Transforms hierarchical YAML into flat lists
 //
 // Converts GenLogicSchema (nested tables/columns/FKs) into YamlFlattenedLists (flat arrays)
-// NO processing, cross-referencing, or validation - just structural transformation
+// Parses SQL definition strings and validates FK syntax during flattening
 
 import type { GenLogicSchema, TableDefinition } from './types.js';
 import type {
@@ -14,6 +14,7 @@ import type {
   FlattenedCheckConstraint,
   FlattenedSeedRow
 } from './yaml-flattened-lists.js';
+import { parseSQLType } from './sql-type-parser.js';
 
 export class SchemaFlattener {
 
@@ -33,15 +34,45 @@ export class SchemaFlattener {
       seedRows: []
     };
 
-    // Extract reusable columns - flatten the structure
+    // Extract reusable columns - flatten and parse SQL definitions
     if (schema.columns) {
       for (const [name, colDef] of Object.entries(schema.columns)) {
         if (typeof colDef === 'string') {
-          // Simple string definition
-          yamlFlattenedLists.reusableColumns.push({ name, definition: colDef });
+          // Simple string definition - parse it
+          try {
+            const parsed = parseSQLType(colDef);
+            yamlFlattenedLists.reusableColumns.push({ name, ...parsed });
+          } catch (error) {
+            throw new Error(
+              `Invalid SQL definition for reusable column '${name}': "${colDef}"\n` +
+              `Error: ${error instanceof Error ? error.message : String(error)}`
+            );
+          }
         } else if (colDef && typeof colDef === 'object') {
-          // Object with properties - spread them all at top level
-          yamlFlattenedLists.reusableColumns.push({ name, ...colDef });
+          // Object with properties
+          const result: any = { name };
+
+          // If it has a 'definition' property, parse it
+          if ('definition' in colDef && typeof colDef.definition === 'string') {
+            try {
+              const parsed = parseSQLType(colDef.definition);
+              Object.assign(result, parsed);
+            } catch (error) {
+              throw new Error(
+                `Invalid SQL definition for reusable column '${name}': "${colDef.definition}"\n` +
+                `Error: ${error instanceof Error ? error.message : String(error)}`
+              );
+            }
+          }
+
+          // Spread other properties (automation, formula, format, label, comment, etc.)
+          for (const [key, value] of Object.entries(colDef)) {
+            if (key !== 'definition') {
+              result[key] = value;
+            }
+          }
+
+          yamlFlattenedLists.reusableColumns.push(result);
         }
       }
     }
@@ -63,24 +94,49 @@ export class SchemaFlattener {
         }
       }
 
-      // Extract columns and automations
+      // Extract columns and automations - parse SQL definitions
       if (table.columns) {
         for (const [columnName, colDef] of Object.entries(table.columns)) {
-          // Extract column definition (flattened)
           if (typeof colDef === 'string') {
-            // Simple string definition
-            yamlFlattenedLists.columns.push({
-              tableName,
-              columnName,
-              definition: colDef
-            });
+            // Simple string definition - parse it
+            try {
+              const parsed = parseSQLType(colDef);
+              yamlFlattenedLists.columns.push({
+                tableName,
+                columnName,
+                ...parsed
+              });
+            } catch (error) {
+              throw new Error(
+                `Invalid SQL definition for column '${tableName}.${columnName}': "${colDef}"\n` +
+                `Error: ${error instanceof Error ? error.message : String(error)}`
+              );
+            }
           } else if (colDef && typeof colDef === 'object' && !Array.isArray(colDef)) {
-            // Object with properties - spread them all at top level
-            yamlFlattenedLists.columns.push({
-              tableName,
-              columnName,
-              ...colDef
-            });
+            // Object with properties
+            const result: any = { tableName, columnName };
+
+            // If it has a 'definition' property, parse it
+            if ('definition' in colDef && typeof colDef.definition === 'string') {
+              try {
+                const parsed = parseSQLType(colDef.definition);
+                Object.assign(result, parsed);
+              } catch (error) {
+                throw new Error(
+                  `Invalid SQL definition for column '${tableName}.${columnName}': "${colDef.definition}"\n` +
+                  `Error: ${error instanceof Error ? error.message : String(error)}`
+                );
+              }
+            }
+
+            // Spread other properties (automation, formula, format, label, comment, $ref, etc.)
+            for (const [key, value] of Object.entries(colDef)) {
+              if (key !== 'definition') {
+                result[key] = value;
+              }
+            }
+
+            yamlFlattenedLists.columns.push(result);
 
             // Extract automation if present
             if ('automation' in colDef && colDef.automation) {

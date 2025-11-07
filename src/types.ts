@@ -67,11 +67,14 @@ export interface ColumnReference extends Partial<ColumnDefinition> {
 
 export interface ForeignKeyDefinition {
   comment?: string;
-  table: string;    // VALIDATION REQUIRED: Must exist in 'tables' section
+  table: string;    // Parent table name
+  column?: string;  // Child column name (in ProcessedSchema after Phase 6)
+  references?: string;  // Parent column name (in ProcessedSchema after Phase 6)
   prefix?: string;
   suffix?: string;
   not_null?: boolean;
   delete?: 'restrict' | 'cascade';
+  delete_cascade?: boolean;  // Alternate form of delete: 'cascade'
   auto_create_parent?: boolean;  // Auto-create parent row when child references non-existent parent
   auto_create?: AutoCreateDefinition;  // FK-following auto-creation (sync/spread)
 }

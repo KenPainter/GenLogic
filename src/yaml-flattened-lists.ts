@@ -33,18 +33,30 @@ export interface FlattenedTable {
 }
 
 /**
- * Column definition with table context - flattened structure
+ * Column definition with table context - flattened and PARSED
  */
 export interface FlattenedColumn {
   tableName: string;
   columnName: string;
-  definition?: string;      // SQL type definition (e.g., "serial primary key", "integer")
+
+  // Parsed SQL type fields (from parseSQLType)
+  type?: string;            // SQL type (e.g., "integer", "varchar", "numeric")
+  size?: number;            // Size for varchar, char, bit
+  decimal?: number;         // Decimal places for numeric/decimal
+  primary_key?: boolean;    // PRIMARY KEY constraint
+  unique?: boolean;         // UNIQUE constraint
+  not_null?: boolean;       // NOT NULL constraint
+  sequence?: boolean;       // AUTO INCREMENT (from serial types)
+  default?: string;         // DEFAULT value
+
+  // GenLogic properties
   automation?: string;      // Automation expression
   formula?: string;         // Formula expression
   format?: string;          // Display format hint
   label?: string;           // Display label
   comment?: string;         // Human-readable description
-  $ref?: string;            // Reference to reusable column
+  $ref?: string;            // Reference to reusable column (raw, not resolved yet)
+
   [key: string]: any;       // Allow other properties to pass through
 }
 
@@ -110,15 +122,27 @@ export interface FlattenedSeedRow {
 }
 
 /**
- * Reusable column definition - flattened structure
+ * Reusable column definition - flattened and PARSED
  */
 export interface FlattenedReusableColumn {
   name: string;
-  definition?: string;      // SQL type definition (e.g., "numeric(12,2) default 0")
+
+  // Parsed SQL type fields (from parseSQLType)
+  type?: string;            // SQL type (e.g., "integer", "varchar", "numeric")
+  size?: number;            // Size for varchar, char, bit
+  decimal?: number;         // Decimal places for numeric/decimal
+  primary_key?: boolean;    // PRIMARY KEY constraint
+  unique?: boolean;         // UNIQUE constraint
+  not_null?: boolean;       // NOT NULL constraint
+  sequence?: boolean;       // AUTO INCREMENT (from serial types)
+  default?: string;         // DEFAULT value
+
+  // GenLogic properties
   automation?: string;      // Automation expression
   formula?: string;         // Formula expression
   format?: string;          // Display format hint
   label?: string;           // Display label
   comment?: string;         // Human-readable description
+
   [key: string]: any;       // Allow other properties to pass through
 }

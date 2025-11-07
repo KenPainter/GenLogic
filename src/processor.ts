@@ -78,39 +78,31 @@ export class GenLogicProcessor {
         throw new Error(`Schema syntax validation failed:\n${syntaxResult.errors.join('\n')}`);
       }
 
-      // PHASE 3.5: Flatten schema into raw lists (experimental - not yet used)
+      // PHASE 4: Flatten schema into raw lists (experimental - not yet used)
       console.log('Flattening schema structure...');
       const yamlFlattenedLists = this.schemaFlattener.flatten(schema);
       this.writeFlatSchema(schemaPath, yamlFlattenedLists);
 
-      throw new Error('Processing must stop until we refactor downstream code to support new FK syntax');
-
-      // PHASE 4: Database connection (only after schema is valid)
-      console.log('Connecting to database...');
-      await this.database.connect();
-      console.log('Database connection established');
-
-      // PHASE 5: Build reusable columns store
-      console.log('Building reusable columns...');
-      const reusableColumns = this.schemaProcessor.buildReusableColumnsStore(schema);
-
-      // PHASE 6: Build FK graph and assign layers (FAIL FAST on cycles)
-      console.log('Building dependency graph...');
-      const fkGraph = this.graphValidator.buildForeignKeyGraph(schema);
-      const cycleResult = this.graphValidator.detectCycles(fkGraph);
-      if (!cycleResult.isValid) {
-        throw new Error(`Foreign key cycles detected:\n${cycleResult.errors.join('\n')}`);
-      }
-      const tableLayers = this.graphValidator.assignTableLayers(fkGraph);
+      // PHASE 5: Assign table layers from flattened lists (FAIL FAST on cycles)
+      console.log('Building dependency graph and assigning layers...');
+      const tableLayers = this.graphValidator.assignTableLayers(yamlFlattenedLists);
       console.log(`   Tables organized into ${Math.max(...tableLayers.values()) + 1} layers`);
 
-      // PHASE 7: Process schema layer-by-layer with integrated validation
+      // PHASE 6: Process schema layer-by-layer with integrated validation
+      //   This phase builds the initial processedSchema.
+      //   Once we are ready to connect to the database in Phase 10,
+      //   processedSchema will be the COMPLETE schema and it will
+      //   be all we need to diff against the database.
+      //   But right now, it is NOT THERE YET.
       console.log('Processing schema by layers...');
       const processedSchema = this.schemaProcessor.processSchemaByLayers(
-        schema,
-        tableLayers,
-        reusableColumns
+        yamlFlattenedLists,
+        tableLayers
       );
+
+      // YOLO MARKER
+      throw new Error('Processing must stop until we refactor downstream code to support new FK syntax');
+
 
       // PHASE 7.4: Validate automation foreign key inference
       console.log('Validating automation definitions...');
@@ -118,6 +110,12 @@ export class GenLogicProcessor {
       if (!automationResult.isValid) {
         throw new Error(`Automation validation failed:\n${automationResult.errors.join('\n')}`);
       }
+
+      // PHASE 4: Database connection (only after schema is valid)
+      console.log('Connecting to database...');
+      await this.database.connect();
+      console.log('Database connection established');
+
 
       // PHASE 7.6: Validate content sections
       console.log('Validating content sections...');
