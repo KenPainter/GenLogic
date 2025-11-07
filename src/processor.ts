@@ -100,11 +100,26 @@ export class GenLogicProcessor {
         tableLayers
       );
 
+      // PHASE 7.1: Add indexes to processedSchema with validation
+      console.log('Adding indexes to processed schema...');
+      this.schemaProcessor.addIndexesToProcessedSchema(yamlFlattenedLists, processedSchema);
+
+      // PHASE 7.2: Add unique constraints to processedSchema with validation
+      console.log('Adding unique constraints to processed schema...');
+      this.schemaProcessor.addUniqueConstraintsToProcessedSchema(yamlFlattenedLists, processedSchema);
+
+      // PHASE 7.3: Add CHECK constraints to processedSchema with validation
+      console.log('Adding CHECK constraints to processed schema...');
+      this.schemaProcessor.addCheckConstraintsToProcessedSchema(yamlFlattenedLists, processedSchema);
+
+
+      // Phase 8.1: formula validation
+
       // YOLO MARKER
       throw new Error('Processing must stop until we refactor downstream code to support new FK syntax');
 
 
-      // PHASE 7.4: Validate automation foreign key inference
+      // PHASE 8.2: Validate automation foreign key inference
       console.log('Validating automation definitions...');
       const automationResult = this.validator.validateAutomationInference(schema);
       if (!automationResult.isValid) {

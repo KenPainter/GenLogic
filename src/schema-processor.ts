@@ -413,6 +413,94 @@ export class SchemaProcessor {
   }
 
   /**
+   * Add indexes from flattened lists to processedSchema with validation
+   */
+  addIndexesToProcessedSchema(
+    yamlFlattenedLists: YamlFlattenedLists,
+    processedSchema: ProcessedSchema
+  ): void {
+    for (const index of yamlFlattenedLists.indexes) {
+      const table = processedSchema.tables[index.tableName];
+      if (!table) {
+        throw new Error(`Index references non-existent table '${index.tableName}'`);
+      }
+
+      // Validate all columns exist
+      for (const colName of index.columns) {
+        if (!table.columns[colName]) {
+          throw new Error(`Index on table '${index.tableName}' references non-existent column '${colName}'`);
+        }
+      }
+
+      // Add index to table
+      if (!table.indexes) {
+        table.indexes = [];
+      }
+      table.indexes.push(index.columns);
+    }
+  }
+
+  /**
+   * Add unique constraints from flattened lists to processedSchema with validation
+   */
+  addUniqueConstraintsToProcessedSchema(
+    yamlFlattenedLists: YamlFlattenedLists,
+    processedSchema: ProcessedSchema
+  ): void {
+    for (const constraint of yamlFlattenedLists.uniqueConstraints) {
+      const table = processedSchema.tables[constraint.tableName];
+      if (!table) {
+        throw new Error(`Unique constraint references non-existent table '${constraint.tableName}'`);
+      }
+
+      // Validate all columns exist
+      for (const colName of constraint.columns) {
+        if (!table.columns[colName]) {
+          throw new Error(`Unique constraint on table '${constraint.tableName}' references non-existent column '${colName}'`);
+        }
+      }
+
+      // Add unique constraint to table
+      if (!table.uniqueConstraints) {
+        table.uniqueConstraints = [];
+      }
+      table.uniqueConstraints.push(constraint.columns);
+    }
+  }
+
+  /**
+   * Add CHECK constraints from flattened lists to processedSchema with validation
+   */
+  addCheckConstraintsToProcessedSchema(
+    yamlFlattenedLists: YamlFlattenedLists,
+    processedSchema: ProcessedSchema
+  ): void {
+    for (const checkConstraint of yamlFlattenedLists.checkConstraints) {
+      const table = processedSchema.tables[checkConstraint.tableName];
+      if (!table) {
+        throw new Error(`CHECK constraint references non-existent table '${checkConstraint.tableName}'`);
+      }
+
+      // Validate all @column_name references exist
+      const columnRefs = checkConstraint.expression.match(/@[a-zA-Z_][a-zA-Z0-9_]*/g) || [];
+      for (const ref of columnRefs) {
+        const colName = ref.substring(1); // Remove @ prefix
+        if (!table.columns[colName]) {
+          throw new Error(
+            `CHECK constraint on table '${checkConstraint.tableName}' references non-existent column '${colName}' in expression: ${checkConstraint.expression}`
+          );
+        }
+      }
+
+      // Add CHECK constraint to table
+      if (!table.constraints) {
+        table.constraints = [];
+      }
+      table.constraints.push(checkConstraint.expression);
+    }
+  }
+
+  /**
    * Process a single table with integrated validation
    * Now works from flat lists instead of hierarchical schema
    */
