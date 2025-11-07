@@ -501,6 +501,107 @@ export class SchemaProcessor {
   }
 
   /**
+   * Validate formula columns and detect cycles in formula dependencies
+   * Works on ProcessedSchema after all tables are built
+   */
+  validateFormulasAndCycles(processedSchema: ProcessedSchema): void {
+    for (const [tableName, table] of Object.entries(processedSchema.tables)) {
+      // Build dependency graph for this table's formulas
+      const nodes = new Set<string>();
+      const edges = new Map<string, Set<string>>();
+
+      // Add all columns as nodes
+      for (const columnName of Object.keys(table.columns)) {
+        nodes.add(columnName);
+        edges.set(columnName, new Set());
+      }
+
+      // Validate each formula column
+      for (const [columnName, column] of Object.entries(table.columns)) {
+        if (!column.formula) continue;
+
+        // Validate: formula must have at least one @ sigil
+        const columnRefs = column.formula.match(/@[a-zA-Z_][a-zA-Z0-9_]*/g) || [];
+        if (columnRefs.length === 0) {
+          throw new Error(
+            `Table '${tableName}', column '${columnName}': formula must reference at least one column using @ sigil. Formula: ${column.formula}`
+          );
+        }
+
+        // Validate: all @column_name references exist
+        for (const ref of columnRefs) {
+          const refColumnName = ref.substring(1); // Remove @ prefix
+          if (!table.columns[refColumnName]) {
+            throw new Error(
+              `Table '${tableName}', column '${columnName}': formula references non-existent column '${refColumnName}'. Formula: ${column.formula}`
+            );
+          }
+
+          // Build dependency edge: refColumn -> columnName (refColumn must be computed before columnName)
+          const refEdges = edges.get(refColumnName);
+          if (refEdges) {
+            refEdges.add(columnName);
+          }
+        }
+      }
+
+      // Detect cycles using topological sort (Kahn's algorithm)
+      const inDegree = new Map<string, number>();
+      for (const node of nodes) {
+        inDegree.set(node, 0);
+      }
+
+      // Calculate in-degrees
+      for (const [_, neighbors] of edges) {
+        for (const neighbor of neighbors) {
+          inDegree.set(neighbor, (inDegree.get(neighbor) || 0) + 1);
+        }
+      }
+
+      // Queue nodes with in-degree 0
+      const queue: string[] = [];
+      for (const [node, degree] of inDegree) {
+        if (degree === 0) {
+          queue.push(node);
+        }
+      }
+
+      // Process queue
+      let processed = 0;
+      while (queue.length > 0) {
+        const node = queue.shift()!;
+        processed++;
+
+        const neighbors = edges.get(node);
+        if (neighbors) {
+          for (const neighbor of neighbors) {
+            const newDegree = (inDegree.get(neighbor) || 0) - 1;
+            inDegree.set(neighbor, newDegree);
+            if (newDegree === 0) {
+              queue.push(neighbor);
+            }
+          }
+        }
+      }
+
+      // If we didn't process all nodes, there's a cycle
+      if (processed < nodes.size) {
+        // Find nodes in cycle (nodes with non-zero in-degree)
+        const cycleNodes: string[] = [];
+        for (const [node, degree] of inDegree) {
+          if (degree > 0) {
+            cycleNodes.push(node);
+          }
+        }
+
+        throw new Error(
+          `Table '${tableName}': circular dependency detected in formula columns. Columns in cycle: ${cycleNodes.join(', ')}`
+        );
+      }
+    }
+  }
+
+  /**
    * Process a single table with integrated validation
    * Now works from flat lists instead of hierarchical schema
    */

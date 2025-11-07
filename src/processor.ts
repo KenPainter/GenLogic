@@ -112,8 +112,9 @@ export class GenLogicProcessor {
       console.log('Adding CHECK constraints to processed schema...');
       this.schemaProcessor.addCheckConstraintsToProcessedSchema(yamlFlattenedLists, processedSchema);
 
-
-      // Phase 8.1: formula validation
+      // PHASE 8.1: Validate formulas and detect cycles
+      console.log('Validating formula columns and checking for cycles...');
+      this.schemaProcessor.validateFormulasAndCycles(processedSchema);
 
       // YOLO MARKER
       throw new Error('Processing must stop until we refactor downstream code to support new FK syntax');
@@ -126,10 +127,6 @@ export class GenLogicProcessor {
         throw new Error(`Automation validation failed:\n${automationResult.errors.join('\n')}`);
       }
 
-      // PHASE 4: Database connection (only after schema is valid)
-      console.log('Connecting to database...');
-      await this.database.connect();
-      console.log('Database connection established');
 
 
       // PHASE 7.6: Validate content sections
@@ -138,6 +135,12 @@ export class GenLogicProcessor {
       if (!contentResult.isValid) {
         throw new Error(`Content validation failed:\n${contentResult.errors.join('\n')}`);
       }
+
+      // PHASE 4: Database connection (only after schema is valid)
+      console.log('Connecting to database...');
+      await this.database.connect();
+      console.log('Database connection established');
+
 
       // PHASE 8: Database introspection and diffing
       console.log('Analyzing current database state...');
