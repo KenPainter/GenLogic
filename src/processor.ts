@@ -90,7 +90,7 @@ export class GenLogicProcessor {
 
       // PHASE 6: Process schema layer-by-layer with integrated validation
       //   This phase builds the initial processedSchema.
-      //   Once we are ready to connect to the database in Phase 10,
+      //   Once we are ready to connect to the database in Phase 9,
       //   processedSchema will be the COMPLETE schema and it will
       //   be all we need to diff against the database.
       //   But right now, it is NOT THERE YET.
@@ -99,11 +99,15 @@ export class GenLogicProcessor {
         yamlFlattenedLists,
         tableLayers
       );
-
+      
       // PHASE 6.1: Build reverse FK index (inboundForeignKeys)
       console.log('Building inbound foreign key index...');
       this.schemaProcessor.addInboundForeignKeysToProcessedSchema(processedSchema);
       
+      // PHASE 6.2: Copy seed rows to processedSchema
+      console.log('Adding seed rows to processed schema...');
+      this.schemaProcessor.addSeedRowsToProcessedSchema(yamlFlattenedLists, processedSchema);
+
 
       // PHASE 7.1: Add indexes to processedSchema with validation
       console.log('Adding indexes to processed schema...');
@@ -117,33 +121,32 @@ export class GenLogicProcessor {
       console.log('Adding CHECK constraints to processed schema...');
       this.schemaProcessor.addCheckConstraintsToProcessedSchema(yamlFlattenedLists, processedSchema);
 
+
       // PHASE 8.1: Validate formulas and detect cycles
       console.log('Validating formula columns and checking for cycles...');
       this.schemaProcessor.validateFormulasAndCycles(processedSchema);
+      // Write processed schema to disk for inspection
+      this.writeProcessedSchema(schemaPath, processedSchema);
 
       // PHASE 8.2: Validate automation definitions
       console.log('Validating automation definitions...');
       this.schemaProcessor.validateAutomations(processedSchema);
 
-      // YOLO MARKER
-      throw new Error('Processing must stop until we refactor downstream code to support new FK syntax');
 
-
-
-      // PHASE 9: Validate content sections
-      console.log('Validating content sections...');
-      const contentResult = this.contentManager.validateContent(schema, processedSchema);
-      if (!contentResult.isValid) {
-        throw new Error(`Content validation failed:\n${contentResult.errors.join('\n')}`);
-      }
-
-      // PHASE 4: Database connection (only after schema is valid)
+      // PHASE 9: Database connection
+      //
+      //   processedSchema is now COMPLETE AND ENTIRE
+      //   for all downstream processing steps
+      //
       console.log('Connecting to database...');
       await this.database.connect();
       console.log('Database connection established');
 
+      // YOLO MARKER
+      throw new Error('Processing must stop until we refactor downstream code to support new FK syntax');
 
-      // PHASE 8: Database introspection and diffing
+
+      // PHASE 10: Database introspection and diffing
       console.log('Analyzing current database state...');
 
       // PHASE 8.5: Drop ALL GenLogic triggers first for clean slate
@@ -419,6 +422,17 @@ export class GenLogicProcessor {
     writeFileSync(flatSchemaPath, json, 'utf-8');
 
     console.log(`   Flat schema written to: ${flatSchemaPath}`);
+  }
+
+  private writeProcessedSchema(schemaPath: string, processedSchema: any): void {
+    // Generate output path: replace .yaml/.yml with .processed.json
+    const processedSchemaPath = schemaPath.replace(/\.(yaml|yml)$/i, '.processed.json');
+
+    // Write formatted JSON
+    const json = JSON.stringify(processedSchema, null, 2);
+    writeFileSync(processedSchemaPath, json, 'utf-8');
+
+    console.log(`   Processed schema written to: ${processedSchemaPath}`);
   }
 
   /**

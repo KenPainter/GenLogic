@@ -480,6 +480,41 @@ export class SchemaProcessor {
   }
 
   /**
+   * Copy seed rows from flattened lists to processedSchema WITH VALIDATION
+   * Validates that all columns in seed data exist in the table
+   */
+  addSeedRowsToProcessedSchema(
+    yamlFlattenedLists: YamlFlattenedLists,
+    processedSchema: ProcessedSchema
+  ): void {
+    for (const seedRow of yamlFlattenedLists.seedRows) {
+      const tableName = seedRow.tableName;
+      const table = processedSchema.tables[tableName];
+
+      if (!table) {
+        throw new Error(`Seed row references non-existent table '${tableName}'`);
+      }
+
+      // Validate: all columns in seed data must exist in table
+      for (const columnName of Object.keys(seedRow.data)) {
+        if (!table.columns[columnName]) {
+          throw new Error(
+            `Seed row for table '${tableName}' references non-existent column '${columnName}'`
+          );
+        }
+      }
+
+      // Initialize seedRows array if needed
+      if (!table.seedRows) {
+        table.seedRows = [];
+      }
+
+      // Add the seed row data
+      table.seedRows.push(seedRow.data);
+    }
+  }
+
+  /**
    * Add indexes from flattened lists to processedSchema with validation
    */
   addIndexesToProcessedSchema(
@@ -785,6 +820,7 @@ export class SchemaProcessor {
       };
 
       // Convert foreignKeys to the old foreign_keys structure
+      // Since FKs are now keyed by child column name, this works for multiple FKs to same parent
       for (const [fkName, fk] of Object.entries(table.foreignKeys)) {
         minimalSchema.tables[tableName].foreign_keys[fkName] = {
           table: fk.table
@@ -1121,10 +1157,15 @@ export class SchemaProcessor {
       generatedColumns.set(fkColumnName, fkColumnDef);
 
       // Store FK mapping (legacy - kept for backward compat)
-      fkColumnMapping[parentTableName] = [fkColumnName];
+      // If there are multiple FKs to same parent, keep appending
+      if (!fkColumnMapping[parentTableName]) {
+        fkColumnMapping[parentTableName] = [];
+      }
+      fkColumnMapping[parentTableName].push(fkColumnName);
 
       // Build complete FK definition with all info needed for DDL generation
-      normalizedForeignKeys[parentTableName] = {
+      // KEY BY CHILD COLUMN NAME to support multiple FKs to same parent table
+      normalizedForeignKeys[fkColumnName] = {
         table: parentTableName,
         column: fkColumnName,           // Child column (the FK column we generated)
         references: parentPKColumnName, // Parent PK column
@@ -1437,6 +1478,7 @@ export interface ProcessedTable {
     fkName: string;            // Name of the FK (for SUM(fkName) syntax)
     childColumn: string;       // Column name in child table
   }>;
+  seedRows?: Array<Record<string, any>>;  // Seed data rows for this table
   indexes?: string[][];  // Indexes: array of column lists
   uniqueConstraints?: string[][];  // Unique constraints: array of column lists
   constraints?: string[];  // Table-level CHECK constraint expressions

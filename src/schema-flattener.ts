@@ -97,7 +97,14 @@ export class SchemaFlattener {
       // Extract columns and automations - parse SQL definitions
       if (table.columns) {
         for (const [columnName, colDef] of Object.entries(table.columns)) {
-          if (typeof colDef === 'string') {
+          if (colDef === null || colDef === undefined) {
+            // Shorthand: "columnName:" means "$ref: columnName" (inherit from reusable column)
+            yamlFlattenedLists.columns.push({
+              tableName,
+              columnName,
+              $ref: columnName
+            });
+          } else if (typeof colDef === 'string') {
             // Simple string definition - parse it
             try {
               const parsed = parseSQLType(colDef);
