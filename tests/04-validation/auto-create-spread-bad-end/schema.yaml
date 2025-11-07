@@ -12,10 +12,10 @@ tables:
         definition: serial primary key
       date:
         definition: date
-    foreign_keys:
+    foreign-keys:
       project_id:
         table: projects
-        auto_create:
+        auto-create:
           on: [insert]
           spread:
             start: start_date

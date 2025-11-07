@@ -30,5 +30,5 @@ tables:
       order_id: integer
       unit_price: numeric(10,2)
       quantity: integer
-    foreign_keys:
+    foreign-keys:
       order: { table: orders }

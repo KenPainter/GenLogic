@@ -9,10 +9,10 @@ tables:
 
   # Child table with auto_create sync (1:1 relationship)
   order_audit:
-    foreign_keys:
+    foreign-keys:
       order_id:
         table: orders
-        auto_create:
+        auto-create:
           on: [insert, update, delete]
           copy_columns:
             customer_name: audited_customer

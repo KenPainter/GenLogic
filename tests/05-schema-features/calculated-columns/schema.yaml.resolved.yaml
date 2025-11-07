@@ -9,7 +9,7 @@ tables:
   orders:
     _table_info:
       has_automations: false
-      foreign_keys: 0
+      foreign-keys: 0
     columns:
       price:
         definition: numeric

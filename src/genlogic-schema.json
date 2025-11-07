@@ -42,7 +42,7 @@
       },
       "additionalProperties": false
     },
-    "matching_tables": {
+    "matching-tables": {
       "type": "object",
       "description": "Pattern matching tables with fixed structure (id, string_match, result, range_low_bound, range_high_bound)",
       "patternProperties": {
@@ -224,16 +224,7 @@
           },
           "additionalProperties": false
         },
-        "primary_key": {
-          "type": "array",
-          "description": "Composite primary key - array of column names that form the primary key. Use this for multi-column PKs. Single-column PKs should use 'primary key' in the column definition.",
-          "items": {
-            "type": "string",
-            "pattern": "^[a-zA-Z_][a-zA-Z0-9_]{0,62}$"
-          },
-          "minItems": 1
-        },
-        "foreign_keys": {
+        "foreign-keys": {
           "type": "object",
           "description": "GENLOGIC CORE: Foreign keys to parent tables. Key = parent table name, Value = FK definition(s)",
           "patternProperties": {
@@ -261,7 +252,7 @@
           },
           "additionalProperties": false
         },
-        "unique_constraints": {
+        "unique-constraints": {
           "type": "array",
           "description": "Composite unique constraints - each item is an array of column names that must be unique in combination",
           "items": {
@@ -328,7 +319,7 @@
           "type": "string",
           "description": "Suffix for created column names"
         },
-        "not_null": {
+        "not-null": {
           "type": "boolean",
           "description": "Whether the generated FK column(s) should be NOT NULL (required relationship)"
         },
@@ -337,11 +328,11 @@
           "enum": ["restrict", "cascade"],
           "description": "ON DELETE behavior - restrict (default) or cascade"
         },
-        "auto_create_parent": {
+        "auto-create-parent": {
           "type": "boolean",
           "description": "GENLOGIC: Auto-create parent row with only PK when child references non-existent parent (requires parent to have PK)"
         },
-        "auto_create": {
+        "auto-create": {
           "$ref": "#/definitions/autoCreateDefinition",
           "description": "GENLOGIC: Auto-creation behavior when parent is referenced"
         }
@@ -377,15 +368,15 @@
               "type": "string",
               "description": "Column name in parent table for interval"
             },
-            "generated_column": {
+            "generated-column": {
               "type": "string",
               "description": "Column name in this (child) table for generated dates"
             }
           },
-          "required": ["start", "end", "interval", "generated_column"],
+          "required": ["start", "end", "interval", "generated-column"],
           "additionalProperties": false
         },
-        "copy_columns": {
+        "copy-columns": {
           "type": "object",
           "description": "Map of parent column to child column for value copying",
           "additionalProperties": {
@@ -415,13 +406,13 @@
           "type": "string",
           "description": "Human-readable description of this matching table"
         },
-        "result_column_name": {
+        "result-column-name": {
           "type": "string",
           "description": "Name of the result column in the matching table",
           "pattern": "^[a-zA-Z_][a-zA-Z0-9_]{0,62}$"
         }
       },
-      "required": ["result_column_name"],
+      "required": ["result-column-name"],
       "additionalProperties": false
     },
     "automationDefinition": {
@@ -447,19 +438,19 @@
         },
         "mode": {
           "type": "string",
-          "enum": ["stored_procedure"],
+          "enum": ["stored-procedure"],
           "description": "Execution mode"
         },
-        "source_table": {
+        "source-table": {
           "type": "string",
           "pattern": "^[a-zA-Z_][a-zA-Z0-9_]{0,62}$",
           "description": "Source table with rules - VALIDATION REQUIRED: Must exist in 'tables' section"
         },
-        "source_columns": {
+        "source-columns": {
           "type": "object",
           "description": "Column mapping from source table",
           "properties": {
-            "match_column": {
+            "match-column": {
               "type": "string",
               "description": "Column specifying which destination column to match"
             },
@@ -467,11 +458,11 @@
               "type": "string",
               "description": "Column specifying comparison operator"
             },
-            "compare_value": {
+            "compare-value": {
               "type": "string",
               "description": "Column with pattern to match"
             },
-            "target_value": {
+            "target-value": {
               "type": "string",
               "description": "Column with value to set in destination"
             },
@@ -480,10 +471,10 @@
               "description": "Column for tie-breaking"
             }
           },
-          "required": ["match_column", "operator", "compare_value", "target_value", "priority"],
+          "required": ["match-column", "operator", "compare-value", "target-value", "priority"],
           "additionalProperties": false
         },
-        "destination_columns": {
+        "destination-columns": {
           "type": "array",
           "items": {
             "type": "string"
@@ -494,17 +485,17 @@
           "type": "array",
           "items": {
             "type": "string",
-            "enum": ["equals", "starts_with", "contains", "ends_with"]
+            "enum": ["equals", "starts-with", "contains", "ends-with"]
           },
           "description": "Allowed operators"
         },
-        "overwrite_policy": {
+        "overwrite-policy": {
           "type": "string",
-          "enum": ["always", "if_null", "never"],
+          "enum": ["always", "if-null", "never"],
           "description": "When to overwrite existing values (default: if_null)"
         }
       },
-      "required": ["type", "mode", "source_table", "source_columns", "destination_columns", "operators"],
+      "required": ["type", "mode", "source-table", "source-columns", "destination-columns", "operators"],
       "additionalProperties": false
     }
   }

@@ -12,7 +12,7 @@ tables:
         definition: serial primary key
       name:
         definition: varchar(100)
-    foreign_keys:
+    foreign-keys:
       category_id: categories
     seed-rows:
       - id: 1

@@ -7,14 +7,14 @@ tables:
       total_amount:
         definition: integer default 0
 
-  # Child table attempting auto_create_parent on FK to table without PK
+  # Child table attempting auto-create-parent on FK to table without PK
   transactions:
     columns:
       transaction_id:
         definition: serial primary key
       amount:
         definition: integer
-    foreign_keys:
+    foreign-keys:
       category_name:
         table: categories
-        auto_create_parent: true
+        auto-create-parent: true

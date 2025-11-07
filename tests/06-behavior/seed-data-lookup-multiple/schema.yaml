@@ -26,7 +26,7 @@ tables:
       id: serial primary key
       user_id: integer
       role_id: integer
-    foreign_keys:
+    foreign-keys:
       user: users
       role: roles
     seed-rows:

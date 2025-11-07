@@ -44,9 +44,9 @@ export class ResolvedSchemaGenerator {
     }
 
     // Generate documentation for matching tables
-    if (schema.matching_tables) {
-      for (const [tableName, definition] of Object.entries(schema.matching_tables)) {
-        resolved.matching_tables[tableName] = this.generateMatchingTableDoc(tableName, definition);
+    if (schema["matching-tables"]) {
+      for (const [tableName, definition] of Object.entries(schema["matching-tables"])) {
+        resolved["matching-tables"][tableName] = this.generateMatchingTableDoc(tableName, definition);
       }
     }
 
@@ -91,8 +91,8 @@ export class ResolvedSchemaGenerator {
     }
 
     // Add unique constraints if present
-    if (tableDefSrc.unique_constraints && tableDefSrc.unique_constraints.length > 0) {
-      tableDoc.unique_constraints = tableDefSrc.unique_constraints.map((cols: string[]) => ({
+    if (tableDefSrc["unique-constraints"] && tableDefSrc["unique-constraints"].length > 0) {
+      tableDoc["unique-constraints"] = tableDefSrc["unique-constraints"].map((cols: string[]) => ({
         columns: cols
       }));
     }
@@ -470,7 +470,7 @@ export class ResolvedSchemaGenerator {
    * Generate documentation for a matching table
    */
   private generateMatchingTableDoc(tableName: string, definition: MatchingTableDefinition): any {
-    const resultColumn = definition.result_column_name;
+    const resultColumn = definition["result-column-name"];
 
     return {
       _table_info: {

@@ -414,12 +414,12 @@ export class TriggerGenerator {
     // Collect auto_create (sync/spread) from foreign keys
     // Key insight: auto_create is on child table's FK, but triggers go on PARENT table
     for (const [childTableName, table] of Object.entries(schema.tables)) {
-      if (!table.foreign_keys) continue;
+      if (!table["foreign-keys"]) continue;
 
-      for (const [fkName, fk] of Object.entries(table.foreign_keys)) {
-        if (!fk.auto_create) continue;
+      for (const [fkName, fk] of Object.entries(table["foreign-keys"])) {
+        if (!fk["auto-create"]) continue;
 
-        const ac = fk.auto_create;
+        const ac = fk["auto-create"];
         const parentTableName = fk.table;
 
         if (ac.spread) {
@@ -435,10 +435,10 @@ export class TriggerGenerator {
               interval: ac.spread.interval
             },
             trackingColumn: this.getFKColumnNames(childTableName, parentTableName, fkName, processedSchema)[0],  // FK column in child
-            generatedColumn: ac.spread.generated_column  // NEW: column to populate with generated dates
+            generatedColumn: ac.spread["generated-column"]  // NEW: column to populate with generated dates
           };
-          if (ac.copy_columns) {
-            spreadTarget.columnMap = ac.copy_columns;
+          if (ac["copy-columns"]) {
+            spreadTarget.columnMap = ac["copy-columns"];
           }
           if (ac.literals) {
             spreadTarget.literals = ac.literals;
@@ -462,8 +462,8 @@ export class TriggerGenerator {
                 this.getFKColumnNames(childTableName, parentTableName, fkName, processedSchema)[0]
             }
           };
-          if (ac.copy_columns) {
-            syncTarget.columnMap = ac.copy_columns;
+          if (ac["copy-columns"]) {
+            syncTarget.columnMap = ac["copy-columns"];
           }
           if (ac.literals) {
             syncTarget.literals = ac.literals;
@@ -480,11 +480,11 @@ export class TriggerGenerator {
     // Collect auto_create_parent from foreign keys
     // Key insight: auto_create_parent is on child table's FK, trigger goes on child table (BEFORE INSERT)
     for (const [childTableName, table] of Object.entries(schema.tables)) {
-      if (!table.foreign_keys) continue;
+      if (!table["foreign-keys"]) continue;
 
-      for (const [fkName, fkDef] of Object.entries(table.foreign_keys)) {
+      for (const [fkName, fkDef] of Object.entries(table["foreign-keys"])) {
         const fk = typeof fkDef === 'string' ? { table: fkDef } : fkDef;
-        if (!fk.auto_create_parent) continue;
+        if (!fk["auto-create-parent"]) continue;
 
         const parentTableName = fk.table;
         const fkColumns = this.getFKColumnNames(childTableName, parentTableName, fkName, processedSchema);

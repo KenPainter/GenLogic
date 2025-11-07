@@ -5,14 +5,14 @@ tables:
       discount_percent: numeric(5,2)
 
   customers:
-    foreign_keys:
+    foreign-keys:
       discount_group: discount_groups
     columns:
       customer_id: serial primary key
       discount_group_id: integer
 
   orders:
-    foreign_keys:
+    foreign-keys:
       customer: customers
       discount_group: discount_groups
     columns:

@@ -12,12 +12,12 @@ export interface GenLogicSchema {
   constants?: Record<string, string | number | boolean>;
   columns?: Record<string, ColumnDefinition>;
   tables?: Record<string, TableDefinition>;
-  matching_tables?: Record<string, MatchingTableDefinition>;
+  'matching-tables'?: Record<string, MatchingTableDefinition>;
 }
 
 export interface MatchingTableDefinition {
   comment?: string;
-  result_column_name: string;
+  'result-column-name': string;
 }
 
 export interface ColumnDefinition {
@@ -46,9 +46,9 @@ export interface TableDefinition {
   comment?: string;
   singleton?: boolean;  // If true, table can only contain one row
   columns?: Record<string, TableColumnDefinition>;
-  primary_key?: string[];  // Composite primary key - array of column names
-  foreign_keys?: Record<string, ForeignKeyDefinition | string>;  // String = simple shorthand
-  unique_constraints?: string[][];  // Array of column name arrays: [['col1', 'col2'], ['col3', 'col4']]
+  'primary-key'?: string[];  // Composite primary key - array of column names (not supported - validation will reject)
+  'foreign-keys'?: Record<string, ForeignKeyDefinition | string>;  // String = simple shorthand
+  'unique-constraints'?: string[][];  // Array of column name arrays: [['col1', 'col2'], ['col3', 'col4']]
   indexes?: string[][];  // Array of column name arrays: [['col1'], ['col2', 'col3']]
   constraints?: string[];  // Array of CHECK constraint expressions using @column_name syntax
   'seed-rows'?: Record<string, any>[];
@@ -67,14 +67,16 @@ export interface ColumnReference extends Partial<ColumnDefinition> {
 
 export interface ForeignKeyDefinition {
   comment?: string;
+  name?: string;    // FK name from YAML (in ProcessedSchema after Phase 6) - used by automation parser
   table: string;    // Parent table name
   column?: string;  // Child column name (in ProcessedSchema after Phase 6)
   references?: string;  // Parent column name (in ProcessedSchema after Phase 6)
   prefix?: string;
   suffix?: string;
   not_null?: boolean;
-  delete?: 'restrict' | 'cascade';
-  delete_cascade?: boolean;  // Alternate form of delete: 'cascade'
+  onDelete: 'restrict' | 'cascade';  // ON DELETE action (always present after Phase 6)
+  delete?: 'restrict' | 'cascade';  // Legacy format (deprecated)
+  delete_cascade?: boolean;  // Legacy format (deprecated)
   auto_create_parent?: boolean;  // Auto-create parent row when child references non-existent parent
   auto_create?: AutoCreateDefinition;  // FK-following auto-creation (sync/spread)
 }

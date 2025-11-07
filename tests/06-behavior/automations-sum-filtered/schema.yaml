@@ -26,5 +26,5 @@ tables:
       batch_id: integer
       amount: numeric(10,2)
       account_id_offset: integer
-    foreign_keys:
+    foreign-keys:
       batch: { table: batches }

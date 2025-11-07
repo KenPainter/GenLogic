@@ -41,7 +41,7 @@ tables:
         $ref: currency_col
         label: Account Balance  # Override label
       # user_id will be generated with label "User ID" and format "id"
-    foreign_keys:
+    foreign-keys:
       user_id: users
 
   transactions:
@@ -60,7 +60,7 @@ tables:
         format: datetime
       # account_id gets "Account ID" / "id"
       # user_id gets "User ID" / "id" from the FK
-    foreign_keys:
+    foreign-keys:
       account_id: accounts
       user_id: users
 
@@ -79,6 +79,6 @@ tables:
       synced_balance:
         definition: numeric(10,2)
         automation: SYNC @accounts.balance
-    foreign_keys:
+    foreign-keys:
       transaction_id: transactions
       account_id: accounts

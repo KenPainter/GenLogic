@@ -11,7 +11,7 @@ tables:
         automation: SUM @transactions.amount
 
   transactions:
-    foreign_keys:
+    foreign-keys:
       account_fk: accounts
     columns:
       transaction_id: serial primary key

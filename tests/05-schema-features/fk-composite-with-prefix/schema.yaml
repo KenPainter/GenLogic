@@ -5,7 +5,7 @@ tables:
       order_year: integer primary key
 
   order_lines:
-    foreign_keys:
+    foreign-keys:
       parent:
         table: order_headers
         prefix: parent_

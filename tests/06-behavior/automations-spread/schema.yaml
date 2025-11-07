@@ -10,10 +10,10 @@ tables:
 
   event_spread:
     comment: Child table with auto-generated rows via SPREAD
-    foreign_keys:
+    foreign-keys:
       master_id:
         table: event_master
-        auto_create:
+        auto-create:
           on: [insert, update]
           spread:
             start: start_date

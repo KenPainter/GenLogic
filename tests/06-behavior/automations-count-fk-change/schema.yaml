@@ -8,7 +8,7 @@ tables:
         automation: COUNT @products.product_id
 
   products:
-    foreign_keys:
+    foreign-keys:
       category_fk: categories
     columns:
       product_id: serial primary key

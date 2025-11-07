@@ -6,7 +6,7 @@ tables:
   posts:
     columns:
       id: integer primary key
-    foreign_keys:
+    foreign-keys:
       user:
         table: users
-        not_null: false
+        not-null: false

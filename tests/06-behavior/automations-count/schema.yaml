@@ -12,5 +12,5 @@ tables:
       id: integer primary key
       customer_id: integer
       total: numeric(10,2)
-    foreign_keys:
+    foreign-keys:
       customer: { table: customers }

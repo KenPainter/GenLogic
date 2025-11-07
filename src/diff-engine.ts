@@ -29,6 +29,7 @@ export class DiffEngine {
       primaryKeysToAdd: [],
       indexesToCreate: [],
       foreignKeysToAdd: [],
+      foreignKeysToModify: [],
       checkConstraintsToAdd: [],
       aggregationsToBackfill: [],
       triggersToRecreate: []
@@ -194,9 +195,11 @@ export class DiffEngine {
           diff.columnsToModify.push(column);
         }
 
-        // Check for new foreign keys
-        const newForeignKeys = this.findNewForeignKeys(desiredTable, currentTable);
-        for (const fk of newForeignKeys) {
+        // Check for new and modified foreign keys
+        const fkChanges = this.compareForeignKeys(desiredTable, currentTable);
+
+        // Handle new FKs
+        for (const fk of fkChanges.toAdd) {
           diff.foreignKeysToAdd.push({
             tableName,
             foreignKeyName: fk.name,
@@ -220,6 +223,19 @@ export class DiffEngine {
               isUnique: false
             });
           }
+        }
+
+        // Handle modified FKs
+        for (const fk of fkChanges.toModify) {
+          diff.foreignKeysToModify.push({
+            tableName,
+            oldConstraintName: fk.oldConstraintName,
+            newConstraintName: fk.newConstraintName,
+            fkName: fk.fkName,
+            columnNames: fk.columnNames,
+            definition: fk.definition,
+            reason: fk.reason
+          });
         }
 
         // Check for new unique constraints from processedSchema
@@ -376,7 +392,7 @@ export class DiffEngine {
       const modification = this.detectSafeColumnModification(
         currentTable.name,
         name,
-        currentCol.type,
+        currentCol,
         desiredDef
       );
 
@@ -391,15 +407,16 @@ export class DiffEngine {
   /**
    * Detect if column modification is safe (expansion only)
    * Returns ColumnModification if safe expansion detected, null otherwise
+   * Also detects NOT NULL changes (adding or removing)
    */
   private detectSafeColumnModification(
     tableName: string,
     columnName: string,
-    currentType: string,
+    currentCol: {type: string, nullable: boolean},
     desiredDef: ColumnDefinition
   ): ColumnModification | null {
     // Parse current type
-    const currentParsed = this.parseColumnType(currentType);
+    const currentParsed = this.parseColumnType(currentCol.type);
 
     // Build desired type from definition
     const desiredType = this.buildTypeString(desiredDef);
@@ -412,9 +429,36 @@ export class DiffEngine {
     if (currentNormalized !== desiredNormalized) {
       throw new Error(
         `Cannot change column type for ${tableName}.${columnName}: ` +
-        `database has ${currentType}, schema specifies ${desiredType}. ` +
+        `database has ${currentCol.type}, schema specifies ${desiredType}. ` +
         `Type changes are not supported. Use manual ALTER TABLE if needed.`
       );
+    }
+
+    // Check for NOT NULL changes
+    // currentCol.nullable = true means column IS nullable (can be NULL)
+    // desiredDef["not-null"] = true means column should NOT be nullable (NOT NULL)
+    const currentIsNullable = currentCol.nullable;
+    const desiredIsNullable = !desiredDef["not-null"];
+
+    if (currentIsNullable && !desiredIsNullable) {
+      // Adding NOT NULL - this is potentially unsafe but we'll allow it
+      // SQL generator should add a check to ensure no NULLs exist
+      return {
+        tableName,
+        columnName,
+        currentType: currentCol.type,
+        newType: desiredType,
+        reason: 'Adding NOT NULL constraint'
+      };
+    } else if (!currentIsNullable && desiredIsNullable) {
+      // Removing NOT NULL - this is always safe
+      return {
+        tableName,
+        columnName,
+        currentType: currentCol.type,
+        newType: desiredType,
+        reason: 'Removing NOT NULL constraint'
+      };
     }
 
     // Check for safe expansions (using normalized type names)
@@ -432,7 +476,7 @@ export class DiffEngine {
           return {
             tableName,
             columnName,
-            currentType,
+            currentType: currentCol.type,
             newType: desiredType,
             reason: `VARCHAR size expanded from ${currentParsed.size} to ${desiredParsed.size}`
           };
@@ -452,7 +496,7 @@ export class DiffEngine {
           return {
             tableName,
             columnName,
-            currentType,
+            currentType: currentCol.type,
             newType: desiredType,
             reason: `CHAR size expanded from ${currentParsed.size} to ${desiredParsed.size}`
           };
@@ -497,7 +541,7 @@ export class DiffEngine {
           return {
             tableName,
             columnName,
-            currentType,
+            currentType: currentCol.type,
             newType: desiredType,
             reason: `NUMERIC expanded (${changes.join(', ')})`
           };
@@ -593,22 +637,29 @@ export class DiffEngine {
   }
 
   /**
-   * Find foreign keys that exist in desired schema but not in current database
+   * Compare foreign keys between desired and current schema
+   * Detects both new FKs and modifications to existing FKs (ON DELETE changes, etc.)
    * Compare by STRUCTURE (columns + referenced table), not by generated name
    */
-  private findNewForeignKeys(
+  private compareForeignKeys(
     desiredTable: ProcessedTable,
     currentTable: DatabaseTable
-  ): Array<{name: string, fkName: string, definition: any, columnNames: string[]}> {
-    const newForeignKeys: Array<{name: string, fkName: string, definition: any, columnNames: string[]}> = [];
+  ): {
+    toAdd: Array<{name: string, fkName: string, definition: any, columnNames: string[]}>,
+    toModify: Array<{oldConstraintName: string, newConstraintName: string, fkName: string, definition: any, columnNames: string[], reason: string}>
+  } {
+    const toAdd: Array<{name: string, fkName: string, definition: any, columnNames: string[]}> = [];
+    const toModify: Array<{oldConstraintName: string, newConstraintName: string, fkName: string, definition: any, columnNames: string[], reason: string}> = [];
 
-    // Build structure signature for existing FKs: "col1,col2->parent_table"
-    const existingFKStructures = new Set(
-      currentTable.foreignKeys.map(fk => {
-        // DatabaseForeignKey.column is singular (current DB state)
-        return `${fk.column}->${fk.referencedTable}`;
-      })
-    );
+    // Build map of existing FKs: "col->table" => DatabaseForeignKey
+    const existingFKMap = new Map<string, {constraint: string, onDelete: string}>();
+    for (const fk of currentTable.foreignKeys) {
+      const key = `${fk.column}->${fk.referencedTable}`;
+      existingFKMap.set(key, {
+        constraint: fk.name,
+        onDelete: fk.onDelete
+      });
+    }
 
     for (const [fkName, definition] of Object.entries(desiredTable.foreignKeys)) {
       // Get the column names for this FK from the mapping
@@ -621,19 +672,64 @@ export class DiffEngine {
         ? `${columnNames[0]}->${referencedTable}`
         : `${columnNames.join(',')}->${referencedTable}`;
 
-      if (!existingFKStructures.has(fkStructure)) {
-        // Generate a consistent FK constraint name
+      const existingFK = existingFKMap.get(fkStructure);
+
+      if (!existingFK) {
+        // FK doesn't exist - add it
         const constraintName = `fk_${currentTable.name}_${fkName}`;
-        newForeignKeys.push({
+        toAdd.push({
           name: constraintName,
           fkName,
           definition,
           columnNames
         });
+      } else {
+        // FK exists - check if properties changed
+        const desiredOnDelete = this.normalizeOnDelete(definition);
+        const currentOnDelete = this.normalizeOnDeleteFromDB(existingFK.onDelete);
+
+        if (desiredOnDelete !== currentOnDelete) {
+          // ON DELETE behavior changed
+          const constraintName = `fk_${currentTable.name}_${fkName}`;
+          toModify.push({
+            oldConstraintName: existingFK.constraint,
+            newConstraintName: constraintName,
+            fkName,
+            definition,
+            columnNames,
+            reason: `Changed ON DELETE from ${currentOnDelete} to ${desiredOnDelete}`
+          });
+        }
       }
     }
 
-    return newForeignKeys;
+    return { toAdd, toModify };
+  }
+
+  /**
+   * Normalize ON DELETE value from schema definition
+   * Returns: 'CASCADE' or 'RESTRICT'
+   */
+  private normalizeOnDelete(fkDef: any): string {
+    // New format: onDelete field (Phase 6+)
+    if (fkDef.onDelete === 'cascade') return 'CASCADE';
+    if (fkDef.onDelete === 'restrict') return 'RESTRICT';
+
+    // Legacy format support (for backward compatibility)
+    if (fkDef["delete-cascade"] === true) return 'CASCADE';
+    if (fkDef.delete === 'cascade') return 'CASCADE';
+    if (fkDef.delete === 'restrict') return 'RESTRICT';
+
+    // Default: RESTRICT (GenLogic's safe default)
+    return 'RESTRICT';
+  }
+
+  /**
+   * Normalize ON DELETE value from database
+   * PostgreSQL returns: 'CASCADE', 'RESTRICT', 'NO ACTION', 'SET NULL', 'SET DEFAULT'
+   */
+  private normalizeOnDeleteFromDB(dbValue: string): string {
+    return dbValue.toUpperCase();
   }
 
   /**
@@ -705,6 +801,7 @@ export interface SchemaDiff {
   primaryKeysToAdd: PrimaryKeyAddition[];  // Composite primary keys to add to existing tables
   indexesToCreate: IndexCreation[];
   foreignKeysToAdd: ForeignKeyAddition[];
+  foreignKeysToModify: ForeignKeyModification[];  // Foreign keys with changed properties (ON DELETE, etc.)
   checkConstraintsToAdd: CheckConstraintAddition[];
   aggregationsToBackfill: AggregationBackfill[]; // New aggregation columns needing backfill
   triggersToRecreate: string[]; // Table names that need trigger recreation
@@ -752,6 +849,16 @@ export interface ForeignKeyAddition {
   fkName: string;
   definition: any;
   columnNames: string[];
+}
+
+export interface ForeignKeyModification {
+  tableName: string;
+  oldConstraintName: string;  // Existing constraint name in database
+  newConstraintName: string;  // New constraint name to create
+  fkName: string;
+  columnNames: string[];
+  definition: any;
+  reason: string;  // Description of what changed (e.g., "Changed ON DELETE from NO ACTION to CASCADE")
 }
 
 export interface CheckConstraintAddition {

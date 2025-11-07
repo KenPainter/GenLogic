@@ -150,7 +150,7 @@ export class SchemaProcessor {
           delete merged.decimal;
           delete merged.primary_key;
           delete merged.unique;
-          delete merged.not_null;
+          delete merged["not-null"];
           delete merged.sequence;
           delete merged.default;
           // Apply new parsed values
@@ -247,19 +247,19 @@ export class SchemaProcessor {
     fksByTable: Map<string, FlattenedForeignKey[]>
   ): void {
     // Build minimal schema for resolveAutomation's inferForeignKey
-    // inferForeignKey only needs schema.tables[].foreign_keys
+    // inferForeignKey only needs schema.tables[]["foreign-keys"]
     const minimalSchema: GenLogicSchema = {
       tables: {}
     };
 
     for (const [tableName, fks] of fksByTable) {
       minimalSchema.tables![tableName] = {
-        foreign_keys: {}
+        "foreign-keys": {}
       };
 
       for (const fk of fks) {
         // Use parent table name as FK name (for inference)
-        minimalSchema.tables![tableName].foreign_keys![fk.parentTable] = { table: fk.parentTable };
+        minimalSchema.tables![tableName]["foreign-keys"]![fk.parentTable] = { table: fk.parentTable };
       }
     }
 
@@ -824,13 +824,13 @@ export class SchemaProcessor {
 
     for (const [tableName, table] of Object.entries(processedSchema.tables)) {
       minimalSchema.tables[tableName] = {
-        foreign_keys: {}
+        "foreign-keys": {}
       };
 
-      // Convert foreignKeys to the old foreign_keys structure
+      // Convert foreignKeys to the old foreign-keys structure
       // Since FKs are now keyed by child column name, this works for multiple FKs to same parent
       for (const [fkName, fk] of Object.entries(table.foreignKeys)) {
-        minimalSchema.tables[tableName].foreign_keys[fkName] = {
+        minimalSchema.tables[tableName]["foreign-keys"][fkName] = {
           table: fk.table
         };
       }
@@ -1041,7 +1041,7 @@ export class SchemaProcessor {
           ...(flatCol.decimal !== undefined ? { decimal: flatCol.decimal } : reusable.decimal !== undefined ? { decimal: reusable.decimal } : {}),
           primary_key: flatCol.primary_key ?? reusable.primary_key ?? false,
           unique: flatCol.unique ?? reusable.unique ?? false,
-          not_null: flatCol.not_null ?? reusable.not_null ?? false,
+          not_null: flatCol["not-null"] ?? reusable["not-null"] ?? false,
           sequence: flatCol.sequence ?? reusable.sequence ?? false,
           ...(flatCol.default !== undefined ? { default: flatCol.default } : reusable.default !== undefined ? { default: reusable.default } : {}),
           ...(flatCol.automation !== undefined ? { automation: flatCol.automation } : reusable.automation !== undefined ? { automation: reusable.automation } : {}),
@@ -1058,7 +1058,7 @@ export class SchemaProcessor {
           ...(flatCol.decimal !== undefined && { decimal: flatCol.decimal }),
           primary_key: flatCol.primary_key ?? false,
           unique: flatCol.unique ?? false,
-          not_null: flatCol.not_null ?? false,
+          not_null: flatCol["not-null"] ?? false,
           sequence: flatCol.sequence ?? false,
           ...(flatCol.default !== undefined && { default: flatCol.default }),
           ...(flatCol.automation !== undefined && { automation: flatCol.automation }),
@@ -1069,7 +1069,26 @@ export class SchemaProcessor {
         };
       }
 
+      // PostgreSQL requires primary keys to be NOT NULL
+      // Mirror this constraint in our schema representation
+      if (resolvedCol.primary_key) {
+        resolvedCol["not-null"] = true;
+      }
+
       columns.set(columnName, resolvedCol);
+    }
+
+    // Step 1.5: Validate primary key constraint - single column only
+    const primaryKeyColumns = Array.from(columns.entries())
+      .filter(([_, col]) => col.primary_key)
+      .map(([name, _]) => name);
+
+    if (primaryKeyColumns.length > 1) {
+      throw new Error(
+        `Table '${tableName}' has composite primary key (${primaryKeyColumns.join(', ')}). ` +
+        `GenLogic only supports single-column primary keys. ` +
+        `Use a surrogate key (e.g., 'id: serial primary key') plus a unique constraint on (${primaryKeyColumns.join(', ')}).`
+      );
     }
 
     // Step 2: Generate FK columns from flat FK list (parent tables already processed)
@@ -1180,8 +1199,8 @@ export class SchemaProcessor {
         table: parentTableName,
         column: fkColumnName,           // Child column (the FK column we generated)
         references: parentPKColumnName, // Parent PK column
+        onDelete: flatFK.delete,        // Always present: 'restrict' or 'cascade'
         ...(flatFK.notNull && { not_null: true }),
-        ...(flatFK.delete === 'cascade' && { delete_cascade: true }),
         ...(flatFK.autoCreateParent && { auto_create_parent: true })
       };
     }
@@ -1328,7 +1347,7 @@ export class SchemaProcessor {
     childColumns: Map<string, ColumnDefinition>,
     processedTables: Map<string, ProcessedTable>
   ): void {
-    const ac = fk.auto_create!;
+    const ac = fk["auto-create"]!;
     const parentTable = processedTables.get(fk.table);
 
     if (!parentTable) {
@@ -1348,19 +1367,19 @@ export class SchemaProcessor {
       if (!parentColumns.has(ac.spread.interval)) {
         throw new Error(`Table '${tableName}', FK '${fkName}': auto_create.spread.interval '${ac.spread.interval}' does not exist in parent table '${fk.table}'`);
       }
-      if (!childColumns.has(ac.spread.generated_column)) {
-        throw new Error(`Table '${tableName}', FK '${fkName}': auto_create.spread.generated_column '${ac.spread.generated_column}' does not exist in child table`);
+      if (!childColumns.has(ac.spread["generated-column"])) {
+        throw new Error(`Table '${tableName}', FK '${fkName}': auto_create.spread["generated-column"] '${ac.spread["generated-column"]}' does not exist in child table`);
       }
     }
 
     // Validate copy_columns
-    if (ac.copy_columns) {
-      for (const [parentCol, childCol] of Object.entries(ac.copy_columns)) {
+    if (ac["copy-columns"]) {
+      for (const [parentCol, childCol] of Object.entries(ac["copy-columns"])) {
         if (!parentColumns.has(parentCol)) {
-          throw new Error(`Table '${tableName}', FK '${fkName}': auto_create.copy_columns parent column '${parentCol}' does not exist in parent table '${fk.table}'`);
+          throw new Error(`Table '${tableName}', FK '${fkName}': auto_create["copy-columns"] parent column '${parentCol}' does not exist in parent table '${fk.table}'`);
         }
         if (!childColumns.has(childCol)) {
-          throw new Error(`Table '${tableName}', FK '${fkName}': auto_create.copy_columns child column '${childCol}' does not exist in child table`);
+          throw new Error(`Table '${tableName}', FK '${fkName}': auto_create["copy-columns"] child column '${childCol}' does not exist in child table`);
         }
       }
     }
@@ -1384,9 +1403,9 @@ export class SchemaProcessor {
     columns: Map<string, ColumnDefinition>
   ): void {
     // Validate unique_constraints
-    if (table.unique_constraints) {
-      for (let i = 0; i < table.unique_constraints.length; i++) {
-        const constraintCols = table.unique_constraints[i];
+    if (table["unique-constraints"]) {
+      for (let i = 0; i < table["unique-constraints"].length; i++) {
+        const constraintCols = table["unique-constraints"][i];
 
         if (constraintCols.length === 0) {
           throw new Error(`Table '${tableName}', unique_constraints[${i}]: constraint must have at least one column`);

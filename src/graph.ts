@@ -52,8 +52,8 @@ export class DataFlowGraphValidator {
 
     // Add edges for foreign key relationships
     for (const [tableName, table] of Object.entries(schema.tables)) {
-      if (table.foreign_keys) {
-        for (const [_fkName, fkDef] of Object.entries(table.foreign_keys)) {
+      if (table["foreign-keys"]) {
+        for (const [_fkName, fkDef] of Object.entries(table["foreign-keys"])) {
           // Normalize: FK can be string (table name) or object
           const targetTable = typeof fkDef === 'string' ? fkDef : fkDef.table;
 

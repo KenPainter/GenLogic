@@ -161,12 +161,12 @@ export class SchemaValidator {
 
     // Validate auto_create on foreign keys
     for (const [childTableName, table] of Object.entries(schema.tables)) {
-      if (!table.foreign_keys) continue;
+      if (!table["foreign-keys"]) continue;
 
-      for (const [fkName, fk] of Object.entries(table.foreign_keys)) {
-        if (!fk.auto_create) continue;
+      for (const [fkName, fk] of Object.entries(table["foreign-keys"])) {
+        if (!fk["auto-create"]) continue;
 
-        const ac = fk.auto_create;
+        const ac = fk["auto-create"];
         const parentTableName = fk.table;
         const parentColumns = getAllColumns(parentTableName);
         const childColumns = getAllColumns(childTableName);
@@ -182,19 +182,19 @@ export class SchemaValidator {
           if (!parentColumns.has(ac.spread.interval)) {
             errors.push(`Table '${childTableName}', foreign_key '${fkName}': auto_create.spread.interval '${ac.spread.interval}' does not exist in parent table '${parentTableName}'`);
           }
-          if (!childColumns.has(ac.spread.generated_column)) {
-            errors.push(`Table '${childTableName}', foreign_key '${fkName}': auto_create.spread.generated_column '${ac.spread.generated_column}' does not exist in child table`);
+          if (!childColumns.has(ac.spread["generated-column"])) {
+            errors.push(`Table '${childTableName}', foreign_key '${fkName}': auto_create.spread["generated-column"] '${ac.spread["generated-column"]}' does not exist in child table`);
           }
         }
 
         // Validate copy_columns - both parent and child must exist
-        if (ac.copy_columns) {
-          for (const [parentCol, childCol] of Object.entries(ac.copy_columns)) {
+        if (ac["copy-columns"]) {
+          for (const [parentCol, childCol] of Object.entries(ac["copy-columns"])) {
             if (!parentColumns.has(parentCol)) {
-              errors.push(`Table '${childTableName}', foreign_key '${fkName}': auto_create.copy_columns parent column '${parentCol}' does not exist in parent table '${parentTableName}'`);
+              errors.push(`Table '${childTableName}', foreign_key '${fkName}': auto_create["copy-columns"] parent column '${parentCol}' does not exist in parent table '${parentTableName}'`);
             }
             if (!childColumns.has(childCol)) {
-              errors.push(`Table '${childTableName}', foreign_key '${fkName}': auto_create.copy_columns child column '${childCol}' does not exist in child table`);
+              errors.push(`Table '${childTableName}', foreign_key '${fkName}': auto_create["copy-columns"] child column '${childCol}' does not exist in child table`);
             }
           }
         }
@@ -237,9 +237,9 @@ export class SchemaValidator {
       const availableColumns = new Set(Object.keys(processedTable.columns || {}));
 
       // Validate unique_constraints
-      if (table.unique_constraints) {
-        for (let i = 0; i < table.unique_constraints.length; i++) {
-          const columns = table.unique_constraints[i];
+      if (table["unique-constraints"]) {
+        for (let i = 0; i < table["unique-constraints"].length; i++) {
+          const columns = table["unique-constraints"][i];
 
           if (columns.length === 0) {
             errors.push(`Table '${tableName}', unique_constraints[${i}]: constraint must have at least one column`);

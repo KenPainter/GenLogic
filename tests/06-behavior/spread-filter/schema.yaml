@@ -9,10 +9,10 @@ tables:
       frequency: varchar(20)
 
   event_occurrences:
-    foreign_keys:
+    foreign-keys:
       event_id:
         table: events
-        auto_create:
+        auto-create:
           on: [insert]
           spread:
             start: start_date

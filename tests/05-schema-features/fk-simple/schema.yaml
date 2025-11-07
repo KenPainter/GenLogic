@@ -6,5 +6,5 @@ tables:
   posts:
     columns:
       id: integer primary key
-    foreign_keys:
+    foreign-keys:
       user: users

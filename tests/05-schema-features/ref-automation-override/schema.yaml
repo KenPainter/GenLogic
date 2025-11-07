@@ -8,7 +8,7 @@ tables:
     columns:
       id: serial primary key
       amount: numeric(10,2)
-    foreign_keys:
+    foreign-keys:
       parent: parents
 
   parents:

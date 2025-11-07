@@ -16,7 +16,7 @@ tables:
       name: varchar(100)
       price: numeric(10,2)
       category_id: integer
-    foreign_keys:
+    foreign-keys:
       category: categories
     seed-rows:
       - name: Laptop

@@ -17,5 +17,5 @@ tables:
       global_totals_id: integer default 1  # All sales reference the singleton row
       amount: numeric(10,2)
       sale_date: date
-    foreign_keys:
+    foreign-keys:
       global_totals: global_totals

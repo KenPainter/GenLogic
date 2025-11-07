@@ -6,7 +6,7 @@ tables:
   posts:
     columns:
       id: integer primary key
-    foreign_keys:
+    foreign-keys:
       creator:
         table: users
         prefix: created

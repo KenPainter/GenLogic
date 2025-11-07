@@ -8,11 +8,11 @@ export class MatchingGenerator {
   generateMatchingSQL(schema: GenLogicSchema, processedSchema: ProcessedSchema): string[] {
     const statements: string[] = [];
 
-    if (!schema.matching_tables) {
+    if (!schema["matching-tables"]) {
       return statements;
     }
 
-    for (const [tableName, definition] of Object.entries(schema.matching_tables)) {
+    for (const [tableName, definition] of Object.entries(schema["matching-tables"])) {
       // Generate CREATE TABLE statement
       statements.push(this.generateTableDDL(tableName, definition));
 
@@ -30,7 +30,7 @@ export class MatchingGenerator {
    * Generate CREATE TABLE statement with fixed structure
    */
   private generateTableDDL(tableName: string, definition: MatchingTableDefinition): string {
-    const resultColumn = definition.result_column_name;
+    const resultColumn = definition["result-column-name"];
 
     return `
 -- GENLOGIC MATCHING TABLE: ${tableName}
@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS ${tableName} (
    */
   private generateMatchBestFunction(tableName: string, definition: MatchingTableDefinition): string {
     const functionName = `${tableName}_match_best`;
-    const resultColumn = definition.result_column_name;
+    const resultColumn = definition["result-column-name"];
 
     return `
 -- GENLOGIC: Best match function for ${tableName}
@@ -118,7 +118,7 @@ $$ LANGUAGE plpgsql STABLE;`;
    */
   private generateMatchAllFunction(tableName: string, definition: MatchingTableDefinition): string {
     const functionName = `${tableName}_match_all`;
-    const resultColumn = definition.result_column_name;
+    const resultColumn = definition["result-column-name"];
 
     return `
 -- GENLOGIC: All matches function for ${tableName}

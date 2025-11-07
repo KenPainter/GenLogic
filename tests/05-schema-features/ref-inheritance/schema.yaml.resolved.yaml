@@ -9,7 +9,7 @@ tables:
   users:
     _table_info:
       has_automations: false
-      foreign_keys: 0
+      foreign-keys: 0
     columns:
       user_id:
         definition: integer
@@ -41,7 +41,7 @@ tables:
   posts:
     _table_info:
       has_automations: false
-      foreign_keys: 0
+      foreign-keys: 0
     columns:
       post_id:
         definition: integer

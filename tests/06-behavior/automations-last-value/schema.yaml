@@ -13,5 +13,5 @@ tables:
       device_id: integer
       value: numeric(10,2)
       timestamp: timestamp
-    foreign_keys:
+    foreign-keys:
       device: { table: devices }

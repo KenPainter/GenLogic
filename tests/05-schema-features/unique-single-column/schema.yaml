@@ -3,5 +3,5 @@ tables:
     columns:
       id: serial primary key
       email: varchar(255)
-    unique_constraints:
+    unique-constraints:
       - [email]

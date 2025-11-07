@@ -7,7 +7,7 @@ tables:
         automation: MAX @order_items.unit_price
 
   order_items:
-    foreign_keys:
+    foreign-keys:
       order_fk: orders
     columns:
       item_id: serial primary key

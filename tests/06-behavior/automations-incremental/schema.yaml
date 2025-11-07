@@ -11,5 +11,5 @@ tables:
       id: integer primary key
       account_id: integer
       amount: numeric(10,2)
-    foreign_keys:
+    foreign-keys:
       account: { table: accounts }

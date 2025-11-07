@@ -12,11 +12,11 @@ tables:
         definition: serial primary key
       name:
         definition: varchar(100)
-    foreign_keys:
-      # Nullable FK (not_null: false)
+    foreign-keys:
+      # Nullable FK (not-null: false)
       category_id:
         table: categories
-        not_null: false
+        not-null: false
     # Unique constraint on nullable FK (valid but may warn)
-    unique_constraints:
+    unique-constraints:
       - [category_id]

@@ -79,14 +79,14 @@ export function inferForeignKey(
     throw new Error(`Child table "${childTableName}" not found in schema`);
   }
 
-  if (!childTable.foreign_keys) {
+  if (!childTable["foreign-keys"]) {
     throw new Error(`Child table "${childTableName}" has no foreign keys`);
   }
 
   // Find all FKs that reference the parent table
   const matchingFKs: string[] = [];
 
-  for (const [fkName, fkDef] of Object.entries(childTable.foreign_keys)) {
+  for (const [fkName, fkDef] of Object.entries(childTable["foreign-keys"])) {
     const targetTable = typeof fkDef === 'string' ? fkDef : fkDef.table;
 
     if (targetTable === parentTableName) {
@@ -125,14 +125,14 @@ export function validateForeignKey(
     throw new Error(`Child table "${childTableName}" not found in schema`);
   }
 
-  if (!childTable.foreign_keys) {
+  if (!childTable["foreign-keys"]) {
     throw new Error(`Child table "${childTableName}" has no foreign keys`);
   }
 
-  const fkDef = childTable.foreign_keys[foreignKeyName];
+  const fkDef = childTable["foreign-keys"][foreignKeyName];
 
   if (!fkDef) {
-    const availableFKs = Object.keys(childTable.foreign_keys).join(', ');
+    const availableFKs = Object.keys(childTable["foreign-keys"]).join(', ');
     throw new Error(
       `Foreign key "${foreignKeyName}" not found in table "${childTableName}". Available: [${availableFKs}]`
     );

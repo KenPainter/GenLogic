@@ -95,8 +95,8 @@ export class SchemaFlattener {
       yamlFlattenedLists.tables.push(this.extractTable(tableName, table));
 
       // Extract foreign keys
-      if (table.foreign_keys) {
-        for (const [parentTable, fkDef] of Object.entries(table.foreign_keys)) {
+      if (table["foreign-keys"]) {
+        for (const [parentTable, fkDef] of Object.entries(table["foreign-keys"])) {
           const extractedFKs = this.extractForeignKeys(tableName, parentTable, fkDef);
           yamlFlattenedLists.foreignKeys.push(...extractedFKs);
         }
@@ -186,8 +186,8 @@ export class SchemaFlattener {
       }
 
       // Extract unique constraints
-      if (table.unique_constraints) {
-        for (const constraintColumns of table.unique_constraints) {
+      if (table["unique-constraints"]) {
+        for (const constraintColumns of table["unique-constraints"]) {
           yamlFlattenedLists.uniqueConstraints.push({
             tableName,
             columns: constraintColumns

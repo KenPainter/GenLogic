@@ -9,5 +9,5 @@ tables:
       id: integer primary key
       title: varchar(100)
       user_id: integer
-    foreign_keys:
+    foreign-keys:
       user: { table: users }

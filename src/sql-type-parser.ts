@@ -82,7 +82,7 @@ export function parseSQLType(sqlTypeString: string): ParsedSQLType {
   }
 
   if (sql.match(/\bnot\s+null\b/i)) {
-    result.not_null = true;
+    result["not-null"] = true;
     sql = sql.replace(/\bnot\s+null\b/i, '').trim();
   }
 
@@ -140,7 +140,7 @@ export function formatSQLType(parsed: ParsedSQLType): string {
   // Add modifiers
   if (parsed.primary_key) sql += ' PRIMARY KEY';
   if (parsed.unique) sql += ' UNIQUE';
-  if (parsed.not_null) sql += ' NOT NULL';
+  if (parsed["not-null"]) sql += ' NOT NULL';
 
   // Add DEFAULT clause
   if (parsed.default !== undefined) {

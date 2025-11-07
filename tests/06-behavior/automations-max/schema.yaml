@@ -12,5 +12,5 @@ tables:
       id: integer primary key
       portfolio_id: integer
       amount: numeric(10,2)
-    foreign_keys:
+    foreign-keys:
       portfolio: { table: portfolios }

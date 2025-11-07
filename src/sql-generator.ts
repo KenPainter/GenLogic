@@ -6,6 +6,7 @@ import type {
   ColumnModification,
   PrimaryKeyAddition,
   ForeignKeyAddition,
+  ForeignKeyModification,
   CheckConstraintAddition,
   AggregationBackfill
 } from './diff-engine.js';
@@ -31,6 +32,7 @@ export class SQLGenerator {
       modifyColumns: [],
       cleanupForeignKeys: [],
       addForeignKeys: [],
+      modifyForeignKeys: [],
       addCheckConstraints: [],
       backfillAggregations: [],
       createIndexes: [],
@@ -96,6 +98,20 @@ export class SQLGenerator {
     // 4. Add foreign key constraints
     for (const fk of diff.foreignKeysToAdd) {
       statements.addForeignKeys.push(this.generateAddForeignKeySQL(fk));
+    }
+
+    // 4.25. Modify existing foreign key constraints (ON DELETE changes, etc.)
+    // This generates DROP + ADD for the constraint
+    for (const fk of diff.foreignKeysToModify) {
+      const dropSQL = `ALTER TABLE "${fk.tableName}" DROP CONSTRAINT "${fk.oldConstraintName}";`;
+      const addSQL = this.generateAddForeignKeySQL({
+        tableName: fk.tableName,
+        foreignKeyName: fk.newConstraintName,
+        fkName: fk.fkName,
+        definition: fk.definition,
+        columnNames: fk.columnNames
+      });
+      statements.modifyForeignKeys.push(dropSQL, addSQL);
     }
 
     // 4.5. Add CHECK constraints for numeric NaN/Infinity protection
@@ -279,7 +295,14 @@ export class SQLGenerator {
   private generateAddForeignKeySQL(fk: ForeignKeyAddition): string {
     const fkDef = fk.definition;
     const referencedTable = fkDef.table;
-    const onDelete = fkDef.delete === 'cascade' ? 'CASCADE' : 'RESTRICT';
+
+    // Read onDelete from new unified field, with fallback to legacy formats
+    let onDelete = 'RESTRICT';  // Default
+    if (fkDef.onDelete) {
+      onDelete = fkDef.onDelete === 'cascade' ? 'CASCADE' : 'RESTRICT';
+    } else if (fkDef.delete === 'cascade' || fkDef["delete-cascade"] === true) {
+      onDelete = 'CASCADE';
+    }
 
     // Use the column names from the FK addition
     const columnList = fk.columnNames.map(col => `"${col}"`).join(', ');
@@ -432,7 +455,7 @@ export class SQLGenerator {
     }
 
     // Add constraints
-    if (definition.not_null) {
+    if (definition["not-null"]) {
       sql += ' NOT NULL';
     }
 
@@ -542,6 +565,7 @@ export interface SQLStatements {
   modifyColumns: string[];
   cleanupForeignKeys: string[];
   addForeignKeys: string[];
+  modifyForeignKeys: string[];  // DROP + ADD statements for FK property changes (ON DELETE, etc.)
   addCheckConstraints: string[];
   backfillAggregations: string[];  // UPDATE statements to backfill new aggregation columns
   createIndexes: string[];

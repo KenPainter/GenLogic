@@ -7,14 +7,14 @@ tables:
       total_amount:
         automation: SUM @transactions.amount
 
-  # Child table with auto_create_parent enabled
+  # Child table with auto-create-parent enabled
   transactions:
     columns:
       transaction_id:
         definition: serial primary key
       amount:
         definition: integer not null
-    foreign_keys:
+    foreign-keys:
       category_name:
         table: categories
-        auto_create_parent: true
+        auto-create-parent: true

@@ -12,5 +12,5 @@ tables:
       id: integer primary key
       product_id: integer
       amount: numeric(10,2)
-    foreign_keys:
+    foreign-keys:
       product: { table: products }

@@ -7,6 +7,6 @@ tables:
     columns:
       id: integer primary key
       user_id: integer
-    foreign_keys:
+    foreign-keys:
       user:
         table: users

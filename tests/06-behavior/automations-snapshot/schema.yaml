@@ -12,5 +12,5 @@ tables:
       price_at_purchase:
         definition: numeric(10,2)
         automation: "SNAPSHOT @products.base_price"
-    foreign_keys:
+    foreign-keys:
       product: { table: products }

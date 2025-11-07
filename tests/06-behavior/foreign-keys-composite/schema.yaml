@@ -6,7 +6,7 @@ tables:
       customer_name: varchar(100)
 
   order_lines:
-    foreign_keys:
+    foreign-keys:
       order: { table: order_headers }
     columns:
       line_id: serial primary key

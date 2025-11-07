@@ -9,7 +9,7 @@ tables:
   order_headers:
     _table_info:
       has_automations: false
-      foreign_keys: 0
+      foreign-keys: 0
     columns:
       order_id:
         definition: integer
@@ -41,7 +41,7 @@ tables:
   order_lines:
     _table_info:
       has_automations: false
-      foreign_keys: 1
+      foreign-keys: 1
     columns:
       line_id:
         definition: integer

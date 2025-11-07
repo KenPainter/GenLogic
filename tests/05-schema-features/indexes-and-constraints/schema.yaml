@@ -18,11 +18,11 @@ tables:
       grade: varchar(2)
       enrollment_date: date
 
-    foreign_keys:
+    foreign-keys:
       student: students
       course: courses
 
-    unique_constraints:
+    unique-constraints:
       - [student, course, semester]  # Can only enroll once per course per semester
 
     indexes:

@@ -8,10 +8,10 @@ tables:
       frequency: varchar(20)
 
   scheduled_occurrences:
-    foreign_keys:
+    foreign-keys:
       schedule_id:
         table: schedules
-        auto_create:
+        auto-create:
           on: [insert]
           spread:
             start: start_date

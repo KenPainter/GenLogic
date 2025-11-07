@@ -5,7 +5,7 @@ tables:
       email: varchar(255)
       username: varchar(50)
       ssn: varchar(11)
-    unique_constraints:
+    unique-constraints:
       - [email]
       - [username]
       - [ssn]

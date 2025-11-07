@@ -13,5 +13,5 @@ tables:
       category_tax:
         definition: numeric(5,2)
         automation: SYNC @categories.tax_rate
-    foreign_keys:
+    foreign-keys:
       category: { table: categories }

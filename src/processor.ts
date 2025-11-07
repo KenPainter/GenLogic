@@ -144,11 +144,7 @@ export class GenLogicProcessor {
       console.log('Database connection established');
 
 
-      // PHASE 10.1
-      console.log('Identifying previous GenLogic triggers...');
-      const existingTriggers = await this.database.getAllGenLogicTriggers();
-
-      // PHASE 10.2
+      // PHASE 10: Database introspection
       console.log('Identifying current database elements...');
       const currentSchema = await this.database.analyzeCurrentSchema();
 
@@ -162,10 +158,8 @@ export class GenLogicProcessor {
       // Dump diff for examination
       this.writeDiffToFile(diff, schemaPath);
 
-      // YOLO MARKER
-      throw new Error('Processing must stop until we refactor downstream code to support new FK syntax');
 
-      // PHASE 9: SQL generation
+      // PHASE 12: SQL generation
       console.log('Generating SQL statements...');
       const ddlStatements = this.sqlGenerator.generateSQL(diff, processedSchema);
       const triggerStatements = this.triggerGenerator.generateTriggers(schema, processedSchema);
@@ -177,8 +171,12 @@ export class GenLogicProcessor {
       const contentStatements = this.contentManager.generateContentInserts(schema, processedSchema, newTables);
       const permissionStatements = this.permissionsGenerator.generateAllPermissions(this.config.database, schema, processedSchema);
 
+      // YOLO MARKER
+      throw new Error('Processing must stop until we refactor downstream code to support new FK syntax');
+
+
       // ROBUST LAYER-BY-LAYER EXECUTION ORDER:
-      // PHASE 1: Drop all triggers (global operation)
+      // PHASE 1: Drop all triggers (global operation - drop ALL triggers on tables we own)
       // PHASE 2: For each layer (0, 1, 2, ...):
       //   1. Create tables in this layer
       //   2. Add columns to tables in this layer
@@ -195,10 +193,19 @@ export class GenLogicProcessor {
       //   - Create matching functions
       //   - Set permissions
 
-      // Generate DROP TRIGGER statements from identified triggers
-      const dropAllTriggersSQL = existingTriggers.map(({ triggerName, tableName }) =>
-        `DROP TRIGGER IF EXISTS ${triggerName} ON "${tableName}";`
-      );
+      // Generate DROP TRIGGER statements for ALL triggers on tables we own
+      // (any table defined in our schema)
+      const dropAllTriggersSQL: string[] = [];
+      for (const tableName of Object.keys(processedSchema.tables)) {
+        const currentTable = currentSchema[tableName];
+        if (currentTable) {
+          for (const trigger of currentTable.triggers) {
+            dropAllTriggersSQL.push(
+              `DROP TRIGGER IF EXISTS ${trigger.name} ON "${tableName}";`
+            );
+          }
+        }
+      }
 
       const allStatements: string[] = [
         ...dropAllTriggersSQL
@@ -227,6 +234,7 @@ export class GenLogicProcessor {
             ...layerDDL.modifyColumns,
             ...layerContent,                      // Seed data BEFORE FKs and aggregations
             ...layerDDL.cleanupForeignKeys,
+            ...layerDDL.modifyForeignKeys,        // Modify existing FKs (DROP + ADD)
             ...layerDDL.addForeignKeys,
             ...layerDDL.addCheckConstraints,
             ...layerDDL.backfillAggregations,     // Child data exists, backfill to parents
@@ -252,6 +260,7 @@ export class GenLogicProcessor {
         addColumn: filteredStatements.filter(s => s.startsWith('ALTER TABLE') && s.includes('ADD COLUMN')).length,
         modifyColumn: filteredStatements.filter(s => s.startsWith('ALTER TABLE') && s.includes('ALTER COLUMN')).length,
         addForeignKey: filteredStatements.filter(s => s.startsWith('ALTER TABLE') && s.includes('ADD CONSTRAINT') && s.includes('FOREIGN KEY')).length,
+        dropForeignKey: filteredStatements.filter(s => s.startsWith('ALTER TABLE') && s.includes('DROP CONSTRAINT')).length,
         addPrimaryKey: filteredStatements.filter(s => s.startsWith('ALTER TABLE') && s.includes('ADD CONSTRAINT') && s.includes('PRIMARY KEY')).length,
         addCheckConstraint: filteredStatements.filter(s => s.startsWith('ALTER TABLE') && s.includes('ADD CONSTRAINT') && s.includes('CHECK')).length,
         createIndex: filteredStatements.filter(s => s.startsWith('CREATE INDEX') || s.startsWith('CREATE UNIQUE INDEX')).length,
@@ -303,6 +312,7 @@ export class GenLogicProcessor {
         if (statementCounts.createTable > 0) console.log(`      • ${statementCounts.createTable} CREATE TABLE`);
         if (statementCounts.addColumn > 0) console.log(`      • ${statementCounts.addColumn} ADD COLUMN`);
         if (statementCounts.modifyColumn > 0) console.log(`      • ${statementCounts.modifyColumn} MODIFY COLUMN`);
+        if (statementCounts.dropForeignKey > 0) console.log(`      • ${statementCounts.dropForeignKey} DROP FOREIGN KEY`);
         if (statementCounts.addForeignKey > 0) console.log(`      • ${statementCounts.addForeignKey} ADD FOREIGN KEY`);
         if (statementCounts.addPrimaryKey > 0) console.log(`      • ${statementCounts.addPrimaryKey} ADD PRIMARY KEY`);
         if (statementCounts.addCheckConstraint > 0) console.log(`      • ${statementCounts.addCheckConstraint} ADD CHECK CONSTRAINT`);
@@ -584,6 +594,8 @@ export class GenLogicProcessor {
       primaryKeysToAdd: diff.primaryKeysToAdd.filter(pk => tableNames.has(pk.tableName)),
 
       foreignKeysToAdd: diff.foreignKeysToAdd.filter(fk => tableNames.has(fk.tableName)),
+
+      foreignKeysToModify: diff.foreignKeysToModify.filter(fk => tableNames.has(fk.tableName)),
 
       checkConstraintsToAdd: diff.checkConstraintsToAdd.filter(c => tableNames.has(c.tableName)),
 
