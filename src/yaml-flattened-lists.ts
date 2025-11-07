@@ -76,9 +76,10 @@ export interface FlattenedForeignKey {
   fkName: string;           // FK name from YAML (used by automation parser)
   parentTable: string;      // Parent table (referenced table)
   childColumn: string | null;  // Child column name (null = inferred from parent table/PK)
-  notNull: boolean;         // NOT NULL constraint
-  delete: 'restrict' | 'cascade';  // ON DELETE action
-  autoCreateParent: boolean;  // Auto-create parent row if referenced value doesn't exist
+  definition?: string;      // Unparsed FK definition string (e.g., "FK accounts not null")
+  notNull?: boolean;        // NOT NULL constraint (parsed in later phases)
+  delete?: 'restrict' | 'cascade';  // ON DELETE action (parsed in later phases)
+  autoCreateParent?: boolean;  // Auto-create parent row if referenced value doesn't exist (parsed in later phases)
 }
 
 /**

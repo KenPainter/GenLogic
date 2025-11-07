@@ -6,9 +6,7 @@ tables:
       name: varchar(100)
 
   transactions:
-    foreign-keys:
-      accounts: account_id
     columns:
       id: serial primary key
-      account_id: integer
+      account_id: FK accounts
       amount: numeric(10,2)

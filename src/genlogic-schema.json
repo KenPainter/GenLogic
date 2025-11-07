@@ -216,38 +216,10 @@
         },
         "columns": {
           "type": "object",
-          "description": "Column definitions - can inherit from reusable columns or define inline",
+          "description": "Column definitions - can inherit from reusable columns or define inline. Columns can be foreign keys using FK syntax (e.g., 'FK parent_table not null')",
           "patternProperties": {
             "^[a-zA-Z_][a-zA-Z0-9_]{0,62}$": {
               "$ref": "#/definitions/tableColumnDefinition"
-            }
-          },
-          "additionalProperties": false
-        },
-        "foreign-keys": {
-          "type": "object",
-          "description": "GENLOGIC CORE: Foreign keys to parent tables. Key = parent table name, Value = FK definition(s)",
-          "patternProperties": {
-            "^[a-zA-Z_][a-zA-Z0-9_]{0,62}$": {
-              "oneOf": [
-                {
-                  "type": "null",
-                  "description": "Pattern 1: Inferred column name - column will be inferred from parent table name or PK"
-                },
-                {
-                  "type": "string",
-                  "description": "Pattern 2: Single FK definition string - 'column_name [not null] [delete cascade] [auto create parent]'"
-                },
-                {
-                  "type": "array",
-                  "description": "Pattern 3: Multiple FKs to same parent table - array of FK definition strings",
-                  "items": {
-                    "type": "string",
-                    "description": "FK definition: 'column_name [not null] [delete cascade] [auto create parent]'"
-                  },
-                  "minItems": 1
-                }
-              ]
             }
           },
           "additionalProperties": false

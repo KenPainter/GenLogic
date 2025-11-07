@@ -10,7 +10,7 @@
  */
 
 import { test, expect, describe } from 'bun:test';
-import { readdirSync } from 'fs';
+import { readdirSync, readFileSync, existsSync } from 'fs';
 import { join, basename } from 'path';
 import { GenLogicProcessor } from '../src/processor.js';
 
@@ -30,6 +30,16 @@ describe('Phase 10 - Schema Validation', () => {
 
     if (expectFailure) {
       test(`${file} should FAIL validation`, async () => {
+        // Check for expected error file
+        const baseName = file.replace(/\.yaml$/, '');
+        const expectedErrorPath = join(SCHEMAS_DIR, `${baseName}.expected-error.txt`);
+
+        if (!existsSync(expectedErrorPath)) {
+          throw new Error(`Missing expected error file: ${baseName}.expected-error.txt`);
+        }
+
+        const expectedError = readFileSync(expectedErrorPath, 'utf-8').trim();
+
         // Suppress console output during tests
         const originalLog = console.log;
         const originalError = console.error;
@@ -44,8 +54,19 @@ describe('Phase 10 - Schema Validation', () => {
             stopAfter: 'yaml-validate'
           });
 
-          // Should throw an error
-          await expect(processor.process(schemaPath)).rejects.toThrow();
+          // Should throw an error with expected message
+          await processor.process(schemaPath);
+
+          // If we get here, test failed - no error was thrown
+          throw new Error(`Expected error but process succeeded`);
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+
+          if (!errorMessage.includes(expectedError)) {
+            throw new Error(
+              `Wrong error message.\nExpected to include: "${expectedError}"\nActual: "${errorMessage}"`
+            );
+          }
         } finally {
           console.log = originalLog;
           console.error = originalError;

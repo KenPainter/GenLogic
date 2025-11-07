@@ -94,14 +94,6 @@ export class SchemaFlattener {
       // Extract table metadata
       yamlFlattenedLists.tables.push(this.extractTable(tableName, table));
 
-      // Extract foreign keys
-      if (table["foreign-keys"]) {
-        for (const [fkName, fkDef] of Object.entries(table["foreign-keys"])) {
-          const extractedFKs = this.extractForeignKeys(tableName, fkName, fkDef);
-          yamlFlattenedLists.foreignKeys.push(...extractedFKs);
-        }
-      }
-
       // Extract columns and automations - parse SQL definitions
       if (table.columns) {
         for (const [columnName, colDef] of Object.entries(table.columns)) {
@@ -113,8 +105,37 @@ export class SchemaFlattener {
               $ref: columnName
             });
           } else if (typeof colDef === 'string') {
+            // Check if this is a foreign key definition (starts with "FK ")
+            if (/^FK\s+/i.test(colDef)) {
+              // Foreign key: extract parent table name and store unparsed definition
+              const fkMatch = colDef.match(/^FK\s+(\w+)/i);
+              if (fkMatch) {
+                const parentTable = fkMatch[1];
+
+                // Add column with FK definition
+                yamlFlattenedLists.columns.push({
+                  tableName,
+                  columnName,
+                  definition: colDef
+                });
+
+                // Add FK entry for downstream cycle detection
+                yamlFlattenedLists.foreignKeys.push({
+                  childTable: tableName,
+                  fkName: columnName,
+                  parentTable,
+                  childColumn: columnName,
+                  definition: colDef
+                });
+              } else {
+                throw new Error(
+                  `Invalid FK definition for column '${tableName}.${columnName}': "${colDef}"\n` +
+                  `Expected format: "FK parent_table [modifiers]"`
+                );
+              }
+            }
             // Check if this string is a reusable column name (shorthand for $ref)
-            if (reusableColumnNames.has(colDef)) {
+            else if (reusableColumnNames.has(colDef)) {
               // "amount: amount" means "$ref: amount"
               yamlFlattenedLists.columns.push({
                 tableName,
@@ -141,16 +162,42 @@ export class SchemaFlattener {
             // Object with properties
             const result: any = { tableName, columnName };
 
-            // If it has a 'definition' property, parse it
+            // If it has a 'definition' property, check if it's FK or SQL type
             if ('definition' in colDef && typeof colDef.definition === 'string') {
-              try {
-                const parsed = parseSQLType(colDef.definition);
-                Object.assign(result, parsed);
-              } catch (error) {
-                throw new Error(
-                  `Invalid SQL definition for column '${tableName}.${columnName}': "${colDef.definition}"\n` +
-                  `Error: ${error instanceof Error ? error.message : String(error)}`
-                );
+              // Check if this is a foreign key definition
+              if (/^FK\s+/i.test(colDef.definition)) {
+                const fkMatch = colDef.definition.match(/^FK\s+(\w+)/i);
+                if (fkMatch) {
+                  const parentTable = fkMatch[1];
+
+                  // Store FK definition as-is
+                  result.definition = colDef.definition;
+
+                  // Add FK entry for downstream cycle detection
+                  yamlFlattenedLists.foreignKeys.push({
+                    childTable: tableName,
+                    fkName: columnName,
+                    parentTable,
+                    childColumn: columnName,
+                    definition: colDef.definition
+                  });
+                } else {
+                  throw new Error(
+                    `Invalid FK definition for column '${tableName}.${columnName}': "${colDef.definition}"\n` +
+                    `Expected format: "FK parent_table [modifiers]"`
+                  );
+                }
+              } else {
+                // Regular SQL type definition - parse it
+                try {
+                  const parsed = parseSQLType(colDef.definition);
+                  Object.assign(result, parsed);
+                } catch (error) {
+                  throw new Error(
+                    `Invalid SQL definition for column '${tableName}.${columnName}': "${colDef.definition}"\n` +
+                    `Error: ${error instanceof Error ? error.message : String(error)}`
+                  );
+                }
               }
             }
 

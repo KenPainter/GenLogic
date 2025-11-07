@@ -6,12 +6,8 @@ tables:
       name: varchar(100)
 
   ledger:
-    foreign-keys:
-      accounts:
-        - account_id_debit
-        - account_id_credit
     columns:
       ledger_id: serial primary key
-      account_id_debit: integer
-      account_id_credit: integer
+      account_id_debit: FK accounts
+      account_id_credit: FK accounts
       amount: numeric(12,2)

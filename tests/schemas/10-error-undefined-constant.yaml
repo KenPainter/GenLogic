@@ -1,0 +1,13 @@
+# Error: Reference to non-existent constant
+constants:
+  DEFAULT_USER_ID: 1
+
+tables:
+  users:
+    columns:
+      id: serial primary key
+      name: varchar(100)
+      # THIS WILL FAIL - MISSING_CONSTANT is not defined
+      status:
+        definition: varchar(20)
+        default: ${MISSING_CONSTANT}
