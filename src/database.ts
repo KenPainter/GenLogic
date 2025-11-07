@@ -245,11 +245,20 @@ export class DatabaseManager {
       ORDER BY i.relname
     `, [tableName]);
 
-    return result.rows.map(row => ({
-      name: row.index_name,
-      columns: row.column_names,
-      isUnique: row.is_unique
-    }));
+    return result.rows.map(row => {
+      // Parse PostgreSQL array format "{col1,col2}" to JavaScript array
+      let columns: string[] = row.column_names;
+      if (typeof row.column_names === 'string') {
+        // Remove braces and split by comma
+        columns = row.column_names.replace(/^\{|\}$/g, '').split(',');
+      }
+
+      return {
+        name: row.index_name,
+        columns,
+        isUnique: row.is_unique
+      };
+    });
   }
 
   /**
