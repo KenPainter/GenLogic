@@ -17,10 +17,9 @@ tables:
       - { category: Equity, display_order: 3 }
 
   accounts:
-    foreign-keys:
-      categories: category
     columns:
       account_id: serial primary key
+      category: FK categories
       account_name: varchar(30) unique
       debits: numeric(12,2)
       credits: numeric(12,2)
@@ -29,7 +28,7 @@ tables:
         formula: "debits - credits"
     indexes:
       - [ account_name ]
-      - [ category, display_order ]
+      - [ category ]
     constraints:
       - balance >= 0
       - account_name IS NOT NULL
@@ -50,15 +49,15 @@ tables:
     "content.tables.categories.columns.display_order._yamlLine": 6,
     "content.tables.categories.seed-rows._yamlLine": 7,
     "content.tables.accounts._yamlLine": 12,
-    "content.tables.accounts.foreign-keys._yamlLine": 13,
-    "content.tables.accounts.columns._yamlLine": 15,
-    "content.tables.accounts.columns.account_id._yamlLine": 16,
-    "content.tables.accounts.columns.account_name._yamlLine": 17,
-    "content.tables.accounts.columns.debits._yamlLine": 18,
-    "content.tables.accounts.columns.credits._yamlLine": 19,
-    "content.tables.accounts.columns.balance._yamlLine": 20,
-    "content.tables.accounts.indexes._yamlLine": 23,
-    "content.tables.accounts.constraints._yamlLine": 26
+    "content.tables.accounts.columns._yamlLine": 13,
+    "content.tables.accounts.columns.account_id._yamlLine": 14,
+    "content.tables.accounts.columns.category._yamlLine": 15,
+    "content.tables.accounts.columns.account_name._yamlLine": 16,
+    "content.tables.accounts.columns.debits._yamlLine": 17,
+    "content.tables.accounts.columns.credits._yamlLine": 18,
+    "content.tables.accounts.columns.balance._yamlLine": 19,
+    "content.tables.accounts.indexes._yamlLine": 22,
+    "content.tables.accounts.constraints._yamlLine": 25
   }
 }
 ```

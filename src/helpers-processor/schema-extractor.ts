@@ -33,7 +33,10 @@ export interface TableDef {
   name: string;
   _yamlLine: number | null;
   columns: Map<string, ColumnDef>;
-  // Foreign keys, indexes, constraints, seed-rows added in later phases
+  'seed-rows'?: any[];  // Extracted as-is from YAML
+  'unique-constraints'?: any[];  // Extracted as-is from YAML
+  indexes?: any[];  // Extracted as-is from YAML
+  constraints?: any[];  // Extracted as-is from YAML
   [key: string]: any;
 }
 
@@ -270,6 +273,67 @@ export function extractTables(expandedYaml: ExpandedYaml): Map<string, TableDef>
         }
 
         tableDef.columns.set(columnName, columnDef);
+      }
+    }
+
+    // Extract seed-rows (unwrap _value if present)
+    if (tableObj['seed-rows']) {
+      const seedRows = tableObj['seed-rows']._value || tableObj['seed-rows'];
+      if (Array.isArray(seedRows)) {
+        // Unwrap each row's column values
+        const unwrappedRows = seedRows.map((row: any) => {
+          const unwrapped: any = {};
+          for (const [key, val] of Object.entries(row)) {
+            if (key === '_yamlLine') continue;  // Skip _yamlLine
+            unwrapped[key] = (val as any)._value !== undefined ? (val as any)._value : val;
+          }
+          return unwrapped;
+        });
+        tableDef['seed-rows'] = unwrappedRows;
+      }
+    }
+
+    // Extract unique-constraints (unwrap _value if present)
+    if (tableObj['unique-constraints']) {
+      const uniqueConstraints = tableObj['unique-constraints']._value || tableObj['unique-constraints'];
+      if (Array.isArray(uniqueConstraints)) {
+        // Each constraint is an array of column names - unwrap each column name
+        const unwrappedConstraints = uniqueConstraints.map((constraint: any) => {
+          const constraintArr = constraint._value || constraint;
+          if (Array.isArray(constraintArr)) {
+            return constraintArr.map((col: any) => col._value !== undefined ? col._value : col);
+          }
+          return constraintArr;
+        });
+        tableDef['unique-constraints'] = unwrappedConstraints;
+      }
+    }
+
+    // Extract indexes (unwrap _value if present)
+    if (tableObj.indexes) {
+      const indexes = tableObj.indexes._value || tableObj.indexes;
+      if (Array.isArray(indexes)) {
+        // Each index is an array of column names - unwrap each column name
+        const unwrappedIndexes = indexes.map((index: any) => {
+          const indexArr = index._value || index;
+          if (Array.isArray(indexArr)) {
+            return indexArr.map((col: any) => col._value !== undefined ? col._value : col);
+          }
+          return indexArr;
+        });
+        tableDef.indexes = unwrappedIndexes;
+      }
+    }
+
+    // Extract constraints (CHECK constraints, unwrap _value if present)
+    if (tableObj.constraints) {
+      const constraints = tableObj.constraints._value || tableObj.constraints;
+      if (Array.isArray(constraints)) {
+        // Each constraint is a string expression - unwrap each one
+        const unwrappedConstraints = constraints.map((constraint: any) =>
+          constraint._value !== undefined ? constraint._value : constraint
+        );
+        tableDef.constraints = unwrappedConstraints;
       }
     }
 
