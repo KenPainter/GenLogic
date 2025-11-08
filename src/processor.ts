@@ -14,6 +14,7 @@ import { ResolvedSchemaGenerator } from './resolved-schema-generator.js';
 import { PermissionsGenerator } from './permissions-generator.js';
 import { SchemaFlattener } from './schema-flattener.js';
 import { loadYamlSchema } from './helpers-processor/yaml-loader.js';
+import { NewSchema } from './new-schema.js';
 import {
   extractConstants,
   extractTables,
@@ -21,7 +22,6 @@ import {
   createExtractedSchema
 } from './helpers-processor/schema-extractor.js';
 import { topologicalSortByLayers } from './helpers-processor/topological-sort.js';
-import { writeSchemaDebugFile } from './helpers-processor/file-writer.js';
 import { populateSchema, writePopulatedSchema } from './helpers-processor/schema-populator.js';
 
 /**
@@ -72,16 +72,26 @@ export class GenLogicProcessor {
     console.log(`Mode: ${this.config.dryRun ? 'DRY RUN' : 'EXECUTE'}`);
     console.log('');
 
-    // Allow YAML loader to throw, we do not
+    // Throws occur in the loader.  Do not wrap them
+    // because that creates work without adding value.
     //
     console.log('Loading YAML schema...');
     const parsedYaml = loadYamlSchema(schemaPath);
-    writeSchemaDebugFile(
-      { schemaPath, dumpDir: this.config.dumpDir },
-      '.parsed.json',
-      parsedYaml,
-      'Parsed YAML'
-    );
+    this.writeParsedYaml(schemaPath, parsedYaml);
+
+    // Build the new schema incrementally
+    console.log('Begin Building schema...');
+    const newSchema = new NewSchema();
+
+    // Extract constants - YAML prevents duplicates
+    console.log('  Copying constants to new schema...');
+    for (const [name, value] of Object.entries(parsedYaml.constants ?? {})) {
+      newSchema.constants[name] = value;
+    }
+
+    // Extract reusable columns - raw templates, processed later
+    console.log('  Copying reusable columns to new schema...');
+    newSchema.reusableColumns = parsedYaml.columns ?? {};
 
     console.log('YOLO MARKER: Returning before we get to unrefactored code');
     return;
@@ -368,44 +378,44 @@ export class GenLogicProcessor {
     });
   }
 
-  /**
-   * Write flattened schema to JSON file
-   */
-  private writeFlatSchema(schemaPath: string, normalizedSchema: any): void {
-    writeSchemaDebugFile(
-      { schemaPath, dumpDir: this.config.dumpDir },
-      '.flat.json',
-      normalizedSchema,
-      'Flat schema'
-    );
+  private writeParsedYaml(schemaPath: string, data: any): void {
+    const path = this.getDebugPath(schemaPath, '.parsed.json');
+    writeFileSync(path, JSON.stringify(data, null, 2));
+    console.log(`  Wrote ${path}`);
   }
 
-  private writeProcessedSchema(schemaPath: string, processedSchema: any): void {
-    writeSchemaDebugFile(
-      { schemaPath, dumpDir: this.config.dumpDir },
-      '.processed.json',
-      processedSchema,
-      'Processed schema'
-    );
+  private writeFlatSchema(schemaPath: string, data: any): void {
+    const path = this.getDebugPath(schemaPath, '.flat.json');
+    writeFileSync(path, JSON.stringify(data, null, 2));
+    console.log(`  Wrote ${path}`);
   }
 
+  private writeProcessedSchema(schemaPath: string, data: any): void {
+    const path = this.getDebugPath(schemaPath, '.processed.json');
+    writeFileSync(path, JSON.stringify(data, null, 2));
+    console.log(`  Wrote ${path}`);
+  }
 
   private writeDiffToFile(diff: any, schemaPath: string): void {
-    writeSchemaDebugFile(
-      { schemaPath, dumpDir: this.config.dumpDir },
-      '.diff.json',
-      diff,
-      'Diff'
-    );
+    const path = this.getDebugPath(schemaPath, '.diff.json');
+    writeFileSync(path, JSON.stringify(diff, null, 2));
+    console.log(`  Wrote ${path}`);
   }
 
-  private writeCurrentSchema(schemaPath: string, currentSchema: any): void {
-    writeSchemaDebugFile(
-      { schemaPath, dumpDir: this.config.dumpDir },
-      '.current.json',
-      currentSchema,
-      'Current schema'
-    );
+  private writeCurrentSchema(schemaPath: string, data: any): void {
+    const path = this.getDebugPath(schemaPath, '.current.json');
+    writeFileSync(path, JSON.stringify(data, null, 2));
+    console.log(`  Wrote ${path}`);
+  }
+
+  private getDebugDir(schemaPath: string): string {
+    return this.config.dumpDir || dirname(schemaPath);
+  }
+
+  private getDebugPath(schemaPath: string, suffix: string): string {
+    const dir = this.getDebugDir(schemaPath);
+    const base = basename(schemaPath, extname(schemaPath));
+    return join(dir, base + suffix);
   }
 
   /**
