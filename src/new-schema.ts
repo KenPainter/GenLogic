@@ -18,12 +18,14 @@
  */
 
 // Imported from ./new-schema-subtypes.ts
-import type { SchemaError } from './new-schema-subtypes.js';
+import type { SchemaError, TableDef } from './new-schema-subtypes.js';
 
 export class NewSchema {
   public constants: Record<string, any> = {};
   public reusableColumns: Record<string, any> = {};
-  public tables: Record<string, any> = {};
+
+  // Imported from ./new-schema-subtypes.ts
+  public tables: Record<string, TableDef> = {};
 
   // Imported from ./new-schema-subtypes.ts
   public errors: SchemaError[] = [];

@@ -11,3 +11,12 @@ export interface SchemaError {
   location: string;  // Navigator: e.g. "ledger.amount.formula" or "account.balance"
   message: string;
 }
+
+export interface TableDef {
+  pkColumn?: string;
+  pkDefinition?: string;
+  // As we build it out:
+  columns?: Record<string, any>;
+  constraints?: any[];
+  indexes?: any[];
+}

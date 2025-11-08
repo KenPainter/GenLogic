@@ -435,12 +435,12 @@ export class GenLogicProcessor {
    * This allows FK columns to reference parent PKs later
    */
   private extractTablePKs(parsedYaml: any, newSchema: NewSchema): void {
-    for (const [tableName, tableDef] of Object.entries(parsedYaml.tables ?? {})) {
+    for (const [tableName, yamlTable] of Object.entries(parsedYaml.tables ?? {})) {
       // Find the PK column - look for primary_key: true
       let pkColumn: string | undefined;
       let pkDefinition: string | undefined;
 
-      for (const [colName, colDef] of Object.entries((tableDef as any).columns ?? {})) {
+      for (const [colName, colDef] of Object.entries((yamlTable as any).columns ?? {})) {
         if (typeof colDef === 'string') {
           // String definition - check if it contains "primary key"
           if (colDef.toLowerCase().includes('primary key')) {
@@ -458,11 +458,12 @@ export class GenLogicProcessor {
         }
       }
 
-      // Store table with PK info
-      newSchema.tables[tableName] = {
+      // Store table with PK info (conforms to TableDef)
+      const tableDef: any = {
         pkColumn,
         pkDefinition
       };
+      newSchema.tables[tableName] = tableDef;
     }
   }
 
