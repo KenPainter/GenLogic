@@ -99,7 +99,7 @@ export class GenLogicProcessor {
       console.log('Detecting cycles and assigning layers in foreign keys...');
       const sortResult = topologicalSortByLayers(
         extracted.tables.keys(),
-        extracted.foreignKeys.map((fk: any) => [fk.childTable, fk.parentTable]),
+        extracted.foreignKeys.map((fk: any) => [fk.parentTable, fk.childTable]),
         true  // Skip self-loops
       );
       extracted.tableLayers = sortResult.layers;

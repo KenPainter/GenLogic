@@ -12,6 +12,7 @@
  */
 
 import type { ExpandedYaml } from './yaml-loader.js';
+import { validateTableName } from './validators.js';
 
 export interface ConstantDef {
   name: string;
@@ -123,7 +124,7 @@ function parseFKDefinition(fkDef: string): ParsedFKDef {
     remaining = remaining.replace(deleteMatch[0], '').trim();
   }
 
-  // What remains should be "parentTable" or "parentTable.parentColumn"
+  // What remains should be a valid table name
   if (!remaining) {
     result.error = 'FK definition missing parent table after removing patterns';
     return result;
@@ -135,20 +136,16 @@ function parseFKDefinition(fkDef: string): ParsedFKDef {
     return result;
   }
 
-  // Parse parentTable[.parentColumn]
-  const parts = remaining.split('.');
-  result.parentTable = parts[0];
-
-  if (parts.length === 2) {
-    // Explicit parent column specified
-    result.parentColumn = parts[1];
-  } else if (parts.length > 2) {
-    result.error = `Invalid FK definition: too many dots in "${remaining}"`;
+  // Validate the table name
+  const tableNameError = validateTableName(remaining);
+  if (tableNameError) {
+    result.error = `FK definition has invalid table name: ${tableNameError}`;
     return result;
-  } else {
-    // No parent column specified - mark for inference
-    result._inferDefinitionFrom = result.parentTable;
   }
+
+  // Valid table name - mark for inference of column definition
+  result.parentTable = remaining;
+  result._inferDefinitionFrom = remaining;
 
   return result;
 }
@@ -333,9 +330,8 @@ export function extractForeignKeys(
           const parsed = parseFKDefinition(columnDef);
 
           if (parsed.error) {
-            // TODO: Collect validation errors with line numbers for better error reporting
-            console.warn(`Warning at line ${columnYamlLine}: ${parsed.error} in column ${tableName}.${columnName}`);
-            continue;
+            // Throw error for invalid FK definitions
+            throw new Error(`Line ${columnYamlLine}: ${parsed.error} in column ${tableName}.${columnName}`);
           }
 
           if (!parsed.parentTable) {

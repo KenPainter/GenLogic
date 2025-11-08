@@ -5,17 +5,13 @@
  * Convention:
  * - Test files can be either .yaml or .md format
  * - Markdown format contains YAML in code blocks plus expected errors and assertions
- * - Schemas WITH "NN-error" prefix (e.g., "10-error-foo.md"): expect FAILURE at phase NN
- * - Schemas WITHOUT error prefix: expect SUCCESS through all phases
+ * - Schemas WITH "NN-error" prefix (e.g., "10-error-foo.md"): expect FAILURE
+ * - Schemas WITHOUT error prefix: expect SUCCESS
  *
- * Phases:
- * - 10: yaml-validate (YAML loading, constant substitution, JSON schema validation)
- * - 20: flattened (Schema flattening into normalized arrays)
- * - 30: processed (Layer-by-layer processing with validation)
- * - 40: diffed (Diff generation between processed and current schema)
- * - 60: ddl (SQL DDL generation)
+ * Error tests are grouped into suites by their numeric prefix (e.g., all "10-error-*"
+ * tests run in the "Error Group 10" suite). This helps organize related error cases.
  *
- * Each phase has its own test suite. Error tests are grouped by phase number.
+ * All tests (both success and error) run through the full processing pipeline.
  */
 
 import { test, expect, describe } from 'bun:test';
@@ -143,30 +139,19 @@ if (existsSync(DUMP_DIR)) {
 }
 mkdirSync(DUMP_DIR, { recursive: true });
 
-// Phase configuration: maps phase number to stopAfter value
-const PHASES = {
-  '10': { stopAfter: 'yaml-validate' },
-  '20': { stopAfter: 'flattened' },
-  '30': { stopAfter: 'processed' },
-  '40': { stopAfter: 'diffed' },
-  '60': { stopAfter: 'ddl' },
-} as const;
-
-type PhaseNumber = keyof typeof PHASES;
-
 // Discover all test files (.yaml and .md)
 const allTestFiles = readdirSync(SCHEMAS_DIR)
   .filter(f => f.endsWith('.yaml') || f.endsWith('.md'))
   .sort();
 
 // Group schemas by category
-const errorSchemas = new Map<PhaseNumber, string[]>();
+const errorSchemas = new Map<string, string[]>();
 const successSchemas: string[] = [];
 
 for (const file of allTestFiles) {
   const errorMatch = file.match(/^(\d+)-error-/);
   if (errorMatch) {
-    const phase = errorMatch[1] as PhaseNumber;
+    const phase = errorMatch[1];
     if (!errorSchemas.has(phase)) {
       errorSchemas.set(phase, []);
     }
@@ -177,9 +162,9 @@ for (const file of allTestFiles) {
 }
 
 /**
- * Test a schema that should fail at a specific phase
+ * Test a schema that should fail
  */
-async function testErrorSchema(file: string, phase: PhaseNumber) {
+async function testErrorSchema(file: string) {
   const isMarkdown = file.endsWith('.md');
   const baseName = file.replace(/\.(yaml|md)$/, '');
 
@@ -198,7 +183,7 @@ async function testErrorSchema(file: string, phase: PhaseNumber) {
     }
 
     // Write YAML to temp file in /tmp for processing (not dumps)
-    schemaPath = join('/tmp', `genlogic-test-${baseName}.yaml`);
+    schemaPath = join('/tmp', `${baseName}.yaml`);
     tempFile = schemaPath;
     writeFileSync(schemaPath, parsed.yaml);
     expectedError = parsed.expectedError;
@@ -221,12 +206,10 @@ async function testErrorSchema(file: string, phase: PhaseNumber) {
   console.error = () => {};
 
   try {
-    const phaseConfig = PHASES[phase];
     const processor = new GenLogicProcessor({
       database: 'dummy_db',
       user: process.env.USER || 'test',
       dryRun: true,
-      stopAfter: phaseConfig.stopAfter as any,
       dumpDir: DUMP_DIR,
     });
 
@@ -254,12 +237,12 @@ async function testErrorSchema(file: string, phase: PhaseNumber) {
   }
 }
 
-// Create test suites for each phase's error schemas
-for (const [phase, files] of errorSchemas.entries()) {
-  describe(`Phase ${phase} - Error Cases`, () => {
+// Create test suites for each error group (by prefix number)
+for (const [group, files] of errorSchemas.entries()) {
+  describe(`Error Group ${group}`, () => {
     for (const file of files) {
-      test(`${file} should FAIL at phase ${phase}`, async () => {
-        await testErrorSchema(file, phase);
+      test(`${file} should FAIL`, async () => {
+        await testErrorSchema(file);
       });
     }
   });
@@ -275,6 +258,7 @@ describe('Success Schemas', () => {
 
       let schemaPath: string;
       let assertions: Record<string, any> | undefined;
+      let tempFile: string | null = null;
 
       if (isMarkdown) {
         // Parse markdown file
@@ -282,8 +266,10 @@ describe('Success Schemas', () => {
         const mdContent = readFileSync(mdPath, 'utf-8');
         const parsed = parseMarkdownTest(mdContent);
 
-        // Write YAML to temp file in dumps directory for processing
-        schemaPath = join(DUMP_DIR, `${baseName}.yaml`);
+        // Write YAML to temp file in /tmp for processing
+        // But use the original basename in the temp filename so dumps match
+        schemaPath = join('/tmp', `${baseName}.yaml`);
+        tempFile = schemaPath;
         writeFileSync(schemaPath, parsed.yaml);
         assertions = parsed.assertions;
       } else {
@@ -317,6 +303,11 @@ describe('Success Schemas', () => {
       } finally {
         console.log = originalLog;
         console.error = originalError;
+
+        // Clean up temp file if it was created
+        if (tempFile && existsSync(tempFile)) {
+          rmSync(tempFile);
+        }
       }
     });
   }

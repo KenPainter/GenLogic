@@ -56,11 +56,18 @@ export function writeSchemaDebugFile(
  */
 function mapReplacer(key: string, value: any): any {
   if (value instanceof Map) {
+    // Special handling for tableLayers: Map<number, string[]> -> string[][]
+    if (key === 'tableLayers') {
+      // Sort by layer number and return just the arrays
+      const sortedEntries = Array.from(value.entries()).sort(([a], [b]) => a - b);
+      return sortedEntries.map(([_, tables]) => tables);
+    }
+
     // Check if this looks like a simple key-value map
     const firstEntry = value.entries().next().value;
     if (firstEntry && typeof firstEntry[1] === 'object' && firstEntry[1] !== null) {
       // Complex values - convert to array of objects
-      return Array.from(value.entries()).map(([k, v]) => ({ [key === 'tableLayers' ? 'layer' : 'name']: k, ...(typeof v === 'object' ? v : { value: v }) }));
+      return Array.from(value.entries()).map(([k, v]) => ({ name: k, ...(typeof v === 'object' ? v : { value: v }) }));
     } else {
       // Simple values - convert to object
       return Object.fromEntries(value);

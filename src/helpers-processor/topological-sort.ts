@@ -67,7 +67,7 @@ export function detectCycles<T extends string>(
   const recursionStack = new Set<T>();
   const cycles: T[][] = [];
 
-  const dfs = (node: T, path: T[]): boolean => {
+  const dfs = (node: T, path: T[]): void => {
     visited.add(node);
     recursionStack.add(node);
 
@@ -81,30 +81,25 @@ export function detectCycles<T extends string>(
 
         if (!visited.has(neighbor)) {
           const newPath = [...path, neighbor];
-          if (dfs(neighbor, newPath)) {
-            return true;
-          }
+          dfs(neighbor, newPath);
         } else if (recursionStack.has(neighbor)) {
           // Cycle detected - construct cycle path
           const cycleStart = path.indexOf(neighbor);
           const cycle = cycleStart >= 0 ? path.slice(cycleStart) : path;
           cycle.push(neighbor);
           cycles.push(cycle);
-          return true;
+          // Don't return - continue searching for more cycles
         }
       }
     }
 
     recursionStack.delete(node);
-    return false;
   };
 
   // Check all nodes to catch disconnected components
   for (const node of graph.nodes) {
     if (!visited.has(node)) {
-      if (dfs(node, [node])) {
-        break; // Stop on first cycle found
-      }
+      dfs(node, [node]);
     }
   }
 
@@ -126,7 +121,7 @@ export function detectCycles<T extends string>(
  * If cycles are detected, returns null for layers and includes cycle details
  *
  * @param nodes - Set of all node identifiers
- * @param dependencies - Array of [from, to] dependency pairs
+ * @param dependencies - Array of [from, to] dependency pairs (duplicates are automatically removed)
  * @param skipSelfLoops - If true, ignore self-referential edges (default: true)
  * @returns Object with layers (Map of layer→nodes or null) and cycles array
  */
@@ -147,8 +142,19 @@ export function topologicalSortByLayers<T extends string>(
     edges.set(node, new Set());
   }
 
-  // Build edges from dependencies
+  // Deduplicate dependencies (multiple edges between same nodes)
+  const uniqueDeps = new Set<string>();
+  const dedupedDependencies: Array<[T, T]> = [];
   for (const [from, to] of dependencies) {
+    const key = `${from}\0${to}`;  // Use null byte as separator (can't appear in identifiers)
+    if (!uniqueDeps.has(key)) {
+      uniqueDeps.add(key);
+      dedupedDependencies.push([from, to]);
+    }
+  }
+
+  // Build edges from deduplicated dependencies
+  for (const [from, to] of dedupedDependencies) {
     if (skipSelfLoops && from === to) {
       continue;
     }
@@ -206,8 +212,8 @@ export function topologicalSortByLayers<T extends string>(
       };
     }
 
-    // Store nodes in this layer
-    layerMap.set(currentLayer, currentLayerNodes);
+    // Store nodes in this layer (sorted for deterministic output)
+    layerMap.set(currentLayer, currentLayerNodes.sort());
 
     // Assign current layer to these nodes
     for (const node of currentLayerNodes) {
