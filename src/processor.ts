@@ -93,6 +93,12 @@ export class GenLogicProcessor {
     console.log('  Copying reusable columns to new schema...');
     newSchema.reusableColumns = parsedYaml.columns ?? {};
 
+    // Pass 1: Extract all table PKs
+    console.log('  Identifying and copying primary key definitions...');
+    this.extractTablePKs(parsedYaml, newSchema);
+
+    // YOLO MARKER - above is rock solid, below will crash
+    this.writeNewSchema(schemaPath, newSchema);
     console.log('YOLO MARKER: Returning before we get to unrefactored code');
     return;
 
@@ -408,6 +414,12 @@ export class GenLogicProcessor {
     console.log(`  Wrote ${path}`);
   }
 
+  private writeNewSchema(schemaPath: string, data: any): void {
+    const path = this.getDebugPath(schemaPath, '.newSchema.json');
+    writeFileSync(path, JSON.stringify(data, null, 2));
+    console.log(`  Wrote ${path}`);
+  }
+
   private getDebugDir(schemaPath: string): string {
     return this.config.dumpDir || dirname(schemaPath);
   }
@@ -416,6 +428,42 @@ export class GenLogicProcessor {
     const dir = this.getDebugDir(schemaPath);
     const base = basename(schemaPath, extname(schemaPath));
     return join(dir, base + suffix);
+  }
+
+  /**
+   * Pass 1: Extract primary key info from all tables
+   * This allows FK columns to reference parent PKs later
+   */
+  private extractTablePKs(parsedYaml: any, newSchema: NewSchema): void {
+    for (const [tableName, tableDef] of Object.entries(parsedYaml.tables ?? {})) {
+      // Find the PK column - look for primary_key: true
+      let pkColumn: string | undefined;
+      let pkDefinition: string | undefined;
+
+      for (const [colName, colDef] of Object.entries((tableDef as any).columns ?? {})) {
+        if (typeof colDef === 'string') {
+          // String definition - check if it contains "primary key"
+          if (colDef.toLowerCase().includes('primary key')) {
+            pkColumn = colName;
+            pkDefinition = colDef;
+            break;
+          }
+        } else if (typeof colDef === 'object' && colDef !== null) {
+          // Object definition - check for primary_key: true
+          if ((colDef as any).primary_key === true) {
+            pkColumn = colName;
+            pkDefinition = (colDef as any).definition || (colDef as any).type;
+            break;
+          }
+        }
+      }
+
+      // Store table with PK info
+      newSchema.tables[tableName] = {
+        pkColumn,
+        pkDefinition
+      };
+    }
   }
 
   /**

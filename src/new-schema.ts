@@ -23,6 +23,7 @@ import type { SchemaError } from './new-schema-subtypes.js';
 export class NewSchema {
   public constants: Record<string, any> = {};
   public reusableColumns: Record<string, any> = {};
+  public tables: Record<string, any> = {};
 
   // Imported from ./new-schema-subtypes.ts
   public errors: SchemaError[] = [];
