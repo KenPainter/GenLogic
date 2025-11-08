@@ -290,8 +290,17 @@ describe('Success Schemas', () => {
           dumpDir: DUMP_DIR,
         });
 
-        // Should not throw
-        await expect(processor.process(schemaPath)).resolves.toBeUndefined();
+        // Should not throw - if it does, capture the error for better debugging
+        try {
+          await processor.process(schemaPath);
+        } catch (error) {
+          // Re-enable console to show the actual error
+          console.log = originalLog;
+          console.error = originalError;
+          console.error(`\n❌ Error processing ${baseName}:`);
+          console.error(error instanceof Error ? error.message : String(error));
+          throw error;
+        }
 
         // Check assertions if present
         if (assertions) {

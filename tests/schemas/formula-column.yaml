@@ -7,4 +7,4 @@ tables:
       credits: numeric(12,2) default 0
       balance:
         definition: numeric(12,2)
-        formula: "@debits - @credits"
+        formula: "debits - credits"

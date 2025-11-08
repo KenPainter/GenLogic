@@ -22,6 +22,7 @@ import {
 } from './helpers-processor/schema-extractor.js';
 import { topologicalSortByLayers } from './helpers-processor/topological-sort.js';
 import { writeSchemaDebugFile } from './helpers-processor/file-writer.js';
+import { populateSchema, writePopulatedSchema } from './helpers-processor/schema-populator.js';
 
 /**
  * GenLogic Core Processor
@@ -116,6 +117,41 @@ export class GenLogicProcessor {
       if (sortResult.cycles.length > 0) {
         throw new Error(`Foreign key cycles detected:\n${sortResult.cycles.map(cycle => `  ${cycle.join(' → ')}`).join('\n')}`);
       }
+
+      // PHASE 30: Populate schema (two-pass processing)
+      console.log('Populating schema (two-pass processing)...');
+
+      // Extract reusable columns from YAML if present
+      const reusableColumns = new Map();
+      if (parsedYaml.content?.columns && typeof parsedYaml.content.columns === 'object') {
+        for (const [colName, colDef] of Object.entries(parsedYaml.content.columns)) {
+          if (colName !== '_yamlLine') {
+            // Recursively unwrap _value wrappers from YAML tracking
+            function unwrapValue(obj: any): any {
+              if (obj && typeof obj === 'object') {
+                if (obj._value !== undefined) {
+                  return unwrapValue(obj._value);
+                }
+                const result: any = {};
+                for (const [key, value] of Object.entries(obj)) {
+                  if (key !== '_yamlLine') {
+                    result[key] = unwrapValue(value);
+                  }
+                }
+                return result;
+              }
+              return obj;
+            }
+
+            reusableColumns.set(colName, unwrapValue(colDef));
+          }
+        }
+      }
+
+      const populated = populateSchema(extracted, reusableColumns);
+
+      // Write populated schema for debugging
+      writePopulatedSchema(populated, this.config.dumpDir);
 
       console.log('YOLO MARKER: Returning before we get to unrefactored code');
       return;

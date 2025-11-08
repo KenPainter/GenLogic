@@ -2,60 +2,67 @@
 
 ## Executive Summary
 
-After the YOLO marker, we process the schema in **two passes**:
+Inserted before the YOLO marker (after testing we will move the marker
+and rip out older code), we process the schema in **two passes**:
 
 ### Pass 1: Per-Column Processing (Layer-by-Layer)
 For every column in every table (processing tables in dependency order):
-1. Put the PK in a special key so downstream code can find it easily
-2. Resolve reusable column references (`$ref`)
-3. Infer FK column definitions from parent table PKs
-4. Parse and validate formula expressions using SQL parser
-    - Extract column dependencies from SQL AST
+
+1. Replace `${CONSTANT}` in any expression: definition, automation, formula, CHECK constraints, seed-rows
+2. Put the PK in a special key so downstream code can find it easily
+3. Establish column definition (pick one source):
+    - From string if present (explicit definition)
+    - From reusable column reference (`$ref`) if present
+    - Or infer from parent table PK (for FK columns)
+4. Parse and validate column definition into components:
+    - Base type (integer, varchar, numeric, etc.)
+    - Type modifiers (length, precision, scale)
+    - Nullability (NOT NULL flag)
+    - Default value (if present)
+    - Note: Diffing compares these components, not the raw definition string
+5. Parse and validate formula expressions using SQL parser:
+    - Extract column dependencies from SQL AST (ignore the `*` we add to make parseable expression)
     - **Save as edges**: `[table.computed_col, table.dependency_col]`
     - Example: `balance = debits - credits` → edges: `[accounts.balance, accounts.debits]`, `[accounts.balance, accounts.credits]`
     - Edge direction: The computed column depends on (points to) the columns it references
-5. Parse and validate automation expressions using SQL parser (WHERE clauses only)
+6. Parse and validate automation expressions using SQL parser (WHERE clauses only):
     - **SYNC (parent→child)**: Child column copies from parent
       - Edge: `[child.col, parent.col]` (child depends on parent)
       - Example: `ledger.category_base SYNC batches.category_base` → `[ledger.category_base, batches.category_base]`
     - **SUM/COUNT/MIN/MAX (child→parent)**: Parent column aggregates from children
       - Edge: `[parent.col, child.col]` (parent depends on child)
       - Example: `accounts.debits SUM ledger.amount` → `[accounts.debits, ledger.amount]`
-6. Validate column definition is populated (no empty strings after resolution)
-7. Replace `${CONSTANT}` in any expression: definition, automation, formula, CHECK constraints, seed-rows
 
-### Pass 1: Table-Level Validation (After Columns)
+### Pass 1: Table-Level Processing (After All Columns)
 After all columns are processed for a table:
-8. Validate seed-rows are naming valid columns
-9. Validate table-level unique constraints are naming valid columns
-10. Validate table-level indexes are naming valid columns
-11. Validate table-level CHECK constraints (using SQL parser and check columns exist)
-12. Generate constraint/index names to simplify SQL generation:
+
+7. Validate seed-rows are naming valid columns
+8. Validate table-level unique constraints are naming valid columns
+9. Validate table-level indexes are naming valid columns
+10. Validate table-level CHECK constraints (using SQL parser and check columns exist)
+11. Generate constraint/index names to simplify SQL generation:
     - FK constraint names: `fk_childtable_parenttable_column`
     - Unique constraint names: `uq_tablename_col1_col2`
     - Index names: `idx_tablename_col1_col2`
     - CHECK constraint names: `chk_tablename_N` (numbered sequentially)
-13. Parse column definitions into components for diffing:
-    - Base type (integer, varchar, numeric, etc.)
-    - Type modifiers (length, precision, scale)
-    - Nullability (NOT NULL flag)
-    - Default value (if present)
-    - Note: Diffing compares these components, not the raw definition string
-14. Extract sequence information for serial/bigserial columns:
+12. Extract sequence information for serial/bigserial columns:
     - Sequence name: `tablename_columnname_seq`
     - Starting value (from seed-rows, if specified)
 
 ### Pass 2: Global Validation and Cycle Detection
 After all tables have been processed:
-15. Build dependency graph from all edges collected in steps 4 and 5
-16. Detect cycles in the unified edge set → **ERROR if any found**
+
+13. Detect cycles in the unified edge set → **ERROR if any found**
     - Formula cycles: `table.a → table.b → table.a`
     - Automation cycles: `parent.sum → child.col2 → child.col1 → parent.sum`
       - Example: `child.col1 SYNC parent.sum`, `child.col2 = child.col1 * 2`, `parent.sum SUM child.col2`
       - Triggers would recurse infinitely until hitting max_stack_depth → ERROR
     - Mixed cycles: Any cycle involving both formulas and automations
-17. Assign column computation layers using topological sort (important for trigger code generation)
-   
+    - Note: We pass edges directly to topological sort - no need to "build graph" separately
+14. Assign column computation layers using topological sort (important for trigger code generation)
+
+### Final Output
+Dump the fully processed schema as `.populated.json` (next step after `.extracted.json`)   
 
 ### Key Innovation: SQL Parser for Dependency Extraction
 We use `pgsql-ast-parser` (see `test-expression-parser.ts`) to:

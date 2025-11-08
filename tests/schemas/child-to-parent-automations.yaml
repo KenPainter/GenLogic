@@ -7,30 +7,30 @@ tables:
       # Test all aggregation types
       total_amount:
         definition: numeric(12,2)
-        automation: SUM @transactions.amount
+        automation: SUM transactions.amount
       transaction_count:
         definition: integer
-        automation: COUNT @transactions.id
+        automation: COUNT transactions.id
       min_amount:
         definition: numeric(12,2)
-        automation: MIN @transactions.amount
+        automation: MIN transactions.amount
       max_amount:
         definition: numeric(12,2)
-        automation: MAX @transactions.amount
+        automation: MAX transactions.amount
       # Test aggregation with WHERE clause
       debit_total:
         definition: numeric(12,2)
-        automation: SUM @transactions.amount WHERE @transactions.type = 'debit'
+        automation: SUM transactions.amount WHERE type = 'debit'
       credit_total:
         definition: numeric(12,2)
-        automation: SUM @transactions.amount WHERE @transactions.type = 'credit'
+        automation: SUM transactions.amount WHERE type = 'credit'
       # Test named FK when child has multiple FKs to same parent
       transfer_in_total:
         definition: numeric(12,2)
-        automation: SUM(account_id_to) @transfers.amount
+        automation: SUM(account_id_to) transfers.amount
       transfer_out_total:
         definition: numeric(12,2)
-        automation: SUM(account_id_from) @transfers.amount
+        automation: SUM(account_id_from) transfers.amount
 
   transactions:
     columns:

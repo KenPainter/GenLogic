@@ -24,7 +24,7 @@ tables:
       account_name: varchar(30) unique
       balance:
         definition: numeric(12,2)
-        formula: "@debits - @credits"
+        formula: "debits - credits"
     indexes:
       - [ account_name ]
       - [ category, display_order ]
