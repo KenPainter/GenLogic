@@ -22,6 +22,8 @@ tables:
     columns:
       account_id: serial primary key
       account_name: varchar(30) unique
+      debits: numeric(12,2)
+      credits: numeric(12,2)
       balance:
         definition: numeric(12,2)
         formula: "debits - credits"
@@ -52,9 +54,11 @@ tables:
     "content.tables.accounts.columns._yamlLine": 15,
     "content.tables.accounts.columns.account_id._yamlLine": 16,
     "content.tables.accounts.columns.account_name._yamlLine": 17,
-    "content.tables.accounts.columns.balance._yamlLine": 18,
-    "content.tables.accounts.indexes._yamlLine": 21,
-    "content.tables.accounts.constraints._yamlLine": 24
+    "content.tables.accounts.columns.debits._yamlLine": 18,
+    "content.tables.accounts.columns.credits._yamlLine": 19,
+    "content.tables.accounts.columns.balance._yamlLine": 20,
+    "content.tables.accounts.indexes._yamlLine": 23,
+    "content.tables.accounts.constraints._yamlLine": 26
   }
 }
 ```

@@ -338,7 +338,8 @@ function parseWhereClause(
 
     visitor.statement(ast[0]);
 
-    return Array.from(columns).sort();
+    // Filter out '*' from SELECT clause
+    return Array.from(columns).filter(col => col !== '*').sort();
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
     throw new Error(
@@ -401,16 +402,36 @@ function parseAutomationExpression(
 /**
  * Find and extract primary key from table's columns
  * Returns the column name if found, or undefined if no PK
+ * Throws error if multiple columns have "primary key"
  */
-function extractPrimaryKey(columns: Map<string, ColumnDef>): string | undefined {
+function extractPrimaryKey(columns: Map<string, ColumnDef>, tableName?: string): string | undefined {
   const columnEntries = Array.from(columns.entries());
+  const pkColumns: string[] = [];
+
   for (const [colName, colDef] of columnEntries) {
-    const def = colDef.definition?.toLowerCase() || '';
+    // Handle both raw strings and YAML-wrapped objects
+    let def: string;
+    if (typeof colDef.definition === 'string') {
+      def = colDef.definition.toLowerCase();
+    } else if (colDef.definition && typeof colDef.definition === 'object' && '_value' in colDef.definition) {
+      def = String(colDef.definition._value).toLowerCase();
+    } else {
+      def = '';
+    }
+
     if (def.includes('primary key')) {
-      return colName;
+      pkColumns.push(colName);
     }
   }
-  return undefined;
+
+  if (pkColumns.length > 1) {
+    throw new Error(
+      `Table ${tableName || 'unknown'} has multiple primary key columns: ${pkColumns.join(', ')}\n` +
+      `Only one column can be designated as primary key`
+    );
+  }
+
+  return pkColumns.length === 1 ? pkColumns[0] : undefined;
 }
 
 /**
@@ -538,7 +559,7 @@ export function populateSchema(
       };
 
       // Step 1: Extract and store primary key
-      const pkColumn = extractPrimaryKey(extractedTable.columns);
+      const pkColumn = extractPrimaryKey(extractedTable.columns, tableName);
       if (pkColumn) {
         populatedTable._primaryKey = pkColumn;
       }
@@ -634,6 +655,16 @@ export function populateSchema(
 
           const dependencies = parseFormulaExpression(formulaExpr, tableName, columnName);
 
+          // Validate that all referenced columns exist in the same table
+          for (const dep of dependencies) {
+            if (!populatedTable.columns.has(dep)) {
+              throw new Error(
+                `Formula in ${tableName}.${columnName} references non-existent column: ${dep}\n` +
+                `Available columns: ${Array.from(populatedTable.columns.keys()).join(', ')}`
+              );
+            }
+          }
+
           populatedColumn.formula = {
             expression: formulaExpr,
             dependencies
@@ -647,6 +678,15 @@ export function populateSchema(
 
         // Step 2f: Parse automation if present
         if (columnDef.automation) {
+          // Validate that column doesn't have both formula and automation
+          if (columnDef.formula) {
+            throw new Error(
+              `Column ${tableName}.${columnName} cannot have both formula and automation\n` +
+              `Formula: ${columnDef.formula}\n` +
+              `Automation: ${columnDef.automation}`
+            );
+          }
+
           const autoExpr = substituteConstants(
             columnDef.automation,
             populated.constants,
@@ -656,9 +696,30 @@ export function populateSchema(
           const autoInfo = parseAutomationExpression(autoExpr, tableName, columnName);
           populatedColumn.automation = autoInfo;
 
+          // Validate SYNC/SNAPSHOT (parent-to-child) during PASS 1
+          // Parent tables are always processed before children due to FK ordering
+          if (autoInfo.type === 'SYNC' || autoInfo.type === 'SNAPSHOT') {
+            const parentTable = populated.tables.get(autoInfo.targetTable);
+            if (!parentTable) {
+              throw new Error(
+                `${autoInfo.type} automation in ${tableName}.${columnName} references non-existent table: ${autoInfo.targetTable}\n` +
+                `Available tables: ${Array.from(populated.tables.keys()).join(', ')}`
+              );
+            }
+
+            if (!parentTable.columns.has(autoInfo.targetColumn)) {
+              throw new Error(
+                `${autoInfo.type} automation in ${tableName}.${columnName} references non-existent column: ${autoInfo.targetTable}.${autoInfo.targetColumn}\n` +
+                `Available columns in ${autoInfo.targetTable}: ${Array.from(parentTable.columns.keys()).join(', ')}`
+              );
+            }
+          }
+          // Note: SUM/COUNT/MIN/MAX validation deferred to PASS 2
+          // (child tables may not be processed yet in layer-by-layer PASS 1)
+
           // Store edges for cycle detection
-          if (autoInfo.type === 'SYNC') {
-            // SYNC: child depends on parent
+          if (autoInfo.type === 'SYNC' || autoInfo.type === 'SNAPSHOT') {
+            // SYNC/SNAPSHOT: child depends on parent
             populated.columnEdges.push([
               `${tableName}.${columnName}`,
               `${autoInfo.targetTable}.${autoInfo.targetColumn}`
@@ -830,7 +891,51 @@ export function populateSchema(
   }
 
   // PASS 2: Global Validation and Cycle Detection
-  console.log('PASS 2: Detecting cycles and assigning column layers...');
+  console.log('PASS 2: Validating child-to-parent automations and detecting cycles...');
+
+  // Validate SUM/COUNT/MIN/MAX automations (child-to-parent, deferred from PASS 1)
+  const pass2TableEntries = Array.from(populated.tables.entries());
+  for (const [tableName, table] of pass2TableEntries) {
+    const columnEntries = Array.from(table.columns.entries());
+    for (const [columnName, column] of columnEntries) {
+      if (column.automation) {
+        const autoInfo = column.automation;
+
+        // Skip SYNC/SNAPSHOT - already validated in PASS 1
+        if (autoInfo.type === 'SYNC' || autoInfo.type === 'SNAPSHOT') {
+          continue;
+        }
+
+        // Validate SUM/COUNT/MIN/MAX automations (child-to-parent)
+        const childTable = populated.tables.get(autoInfo.targetTable);
+        if (!childTable) {
+          throw new Error(
+            `${autoInfo.type} automation in ${tableName}.${columnName} references non-existent child table: ${autoInfo.targetTable}\n` +
+            `Available tables: ${Array.from(populated.tables.keys()).join(', ')}`
+          );
+        }
+
+        if (!childTable.columns.has(autoInfo.targetColumn)) {
+          throw new Error(
+            `${autoInfo.type} automation in ${tableName}.${columnName} references non-existent column in child table ${autoInfo.targetTable}: ${autoInfo.targetColumn}\n` +
+            `Available columns in ${autoInfo.targetTable}: ${Array.from(childTable.columns.keys()).join(', ')}`
+          );
+        }
+
+        // Validate WHERE clause column references if present
+        if (autoInfo.whereColumns && autoInfo.whereColumns.length > 0) {
+          for (const whereCol of autoInfo.whereColumns) {
+            if (!childTable.columns.has(whereCol)) {
+              throw new Error(
+                `WHERE clause in ${tableName}.${columnName} references non-existent column in ${autoInfo.targetTable}: ${whereCol}\n` +
+                `Available columns in ${autoInfo.targetTable}: ${Array.from(childTable.columns.keys()).join(', ')}`
+              );
+            }
+          }
+        }
+      }
+    }
+  }
 
   // Collect all column names for topological sort
   const allColumns = new Set<string>();
