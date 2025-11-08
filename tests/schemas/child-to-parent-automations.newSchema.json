@@ -1,0 +1,122 @@
+{
+  "constants": {},
+  "reusableColumns": {},
+  "tables": {
+    "accounts": {
+      "pkColumn": "account_id",
+      "pkDefinition": "serial primary key",
+      "columns": {
+        "account_id": {
+          "definition": "serial primary key"
+        },
+        "name": {
+          "definition": "varchar(100)"
+        },
+        "total_amount": {
+          "definition": "numeric(12,2)",
+          "automation": "SUM transactions.amount"
+        },
+        "transaction_count": {
+          "definition": "integer",
+          "automation": "COUNT transactions.id"
+        },
+        "min_amount": {
+          "definition": "numeric(12,2)",
+          "automation": "MIN transactions.amount"
+        },
+        "max_amount": {
+          "definition": "numeric(12,2)",
+          "automation": "MAX transactions.amount"
+        },
+        "debit_total": {
+          "definition": "numeric(12,2)",
+          "automation": "SUM transactions.amount WHERE type = 'debit'"
+        },
+        "credit_total": {
+          "definition": "numeric(12,2)",
+          "automation": "SUM transactions.amount WHERE type = 'credit'"
+        },
+        "transfer_in_total": {
+          "definition": "numeric(12,2)",
+          "automation": "SUM(account_id_to) transfers.amount"
+        },
+        "transfer_out_total": {
+          "definition": "numeric(12,2)",
+          "automation": "SUM(account_id_from) transfers.amount"
+        }
+      }
+    },
+    "transactions": {
+      "pkColumn": "id",
+      "pkDefinition": "serial primary key",
+      "columns": {
+        "id": {
+          "definition": "serial primary key"
+        },
+        "account_id": {
+          "definition": "serial"
+        },
+        "amount": {
+          "definition": "numeric(12,2)"
+        },
+        "type": {
+          "definition": "varchar(10)"
+        }
+      },
+      "foreignKeys": [
+        {
+          "name": "fk_transactions_account_id",
+          "childColumn": "account_id",
+          "parentTable": "accounts",
+          "parentColumn": "account_id",
+          "autoCreateParent": false
+        }
+      ]
+    },
+    "transfers": {
+      "pkColumn": "transfer_id",
+      "pkDefinition": "serial primary key",
+      "columns": {
+        "transfer_id": {
+          "definition": "serial primary key"
+        },
+        "account_id_from": {
+          "definition": "serial not null"
+        },
+        "account_id_to": {
+          "definition": "serial not null"
+        },
+        "amount": {
+          "definition": "numeric(12,2)"
+        }
+      },
+      "foreignKeys": [
+        {
+          "name": "fk_transfers_account_id_from",
+          "childColumn": "account_id_from",
+          "parentTable": "accounts",
+          "parentColumn": "account_id",
+          "autoCreateParent": false
+        },
+        {
+          "name": "fk_transfers_account_id_to",
+          "childColumn": "account_id_to",
+          "parentTable": "accounts",
+          "parentColumn": "account_id",
+          "autoCreateParent": false
+        }
+      ]
+    }
+  },
+  "errors": [],
+  "fkEdges": [
+    [
+      "transactions",
+      "accounts"
+    ],
+    [
+      "transfers",
+      "accounts"
+    ]
+  ]
+}

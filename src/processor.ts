@@ -1,7 +1,6 @@
 import { writeFileSync, existsSync, mkdirSync } from 'fs';
 import { dirname, basename, extname, join } from 'path';
 import type { DatabaseConfig, GenLogicSchema } from './types.js';
-import { SchemaValidator } from './validation.js';
 import { DataFlowGraphValidator } from './graph.js';
 import { SchemaProcessor } from './schema-processor.js';
 import { DatabaseManager } from './database.js';
@@ -32,7 +31,6 @@ import { populateSchema, writePopulatedSchema } from './helpers-processor/schema
  */
 export class GenLogicProcessor {
   private config: DatabaseConfig;
-  private validator: SchemaValidator;
   private graphValidator: DataFlowGraphValidator;
   private schemaProcessor: SchemaProcessor;
   private database: DatabaseManager;
@@ -47,7 +45,6 @@ export class GenLogicProcessor {
 
   constructor(config: DatabaseConfig) {
     this.config = config;
-    this.validator = new SchemaValidator();
     this.graphValidator = new DataFlowGraphValidator();
     this.schemaProcessor = new SchemaProcessor();
     this.database = new DatabaseManager(config);
@@ -89,13 +86,19 @@ export class GenLogicProcessor {
       newSchema.constants[name] = value;
     }
 
-    // Extract reusable columns - raw templates, processed later
+    // Extract reusable columns - normalize them as we add them
     console.log('  Copying reusable columns to new schema...');
-    newSchema.reusableColumns = parsedYaml.columns ?? {};
+    for (const [name, colDef] of Object.entries(parsedYaml.columns ?? {})) {
+      newSchema.addReusableColumn(name, colDef);
+    }
 
-    // Pass 1: Extract all table PKs
+    // Extract all table PKs
     console.log('  Identifying and copying primary key definitions...');
     this.extractTablePKs(parsedYaml, newSchema);
+
+    // Process all columns
+    console.log('  Processing columns...');
+    newSchema.processColumns(parsedYaml);
 
     // YOLO MARKER - above is rock solid, below will crash
     this.writeNewSchema(schemaPath, newSchema);

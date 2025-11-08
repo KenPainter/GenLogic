@@ -1,0 +1,58 @@
+{
+  "tables": {
+    "accounts": {
+      "columns": {
+        "account_id": "serial primary key",
+        "name": "varchar(100)",
+        "total_amount": {
+          "definition": "numeric(12,2)",
+          "automation": "SUM transactions.amount"
+        },
+        "transaction_count": {
+          "definition": "integer",
+          "automation": "COUNT transactions.id"
+        },
+        "min_amount": {
+          "definition": "numeric(12,2)",
+          "automation": "MIN transactions.amount"
+        },
+        "max_amount": {
+          "definition": "numeric(12,2)",
+          "automation": "MAX transactions.amount"
+        },
+        "debit_total": {
+          "definition": "numeric(12,2)",
+          "automation": "SUM transactions.amount WHERE type = 'debit'"
+        },
+        "credit_total": {
+          "definition": "numeric(12,2)",
+          "automation": "SUM transactions.amount WHERE type = 'credit'"
+        },
+        "transfer_in_total": {
+          "definition": "numeric(12,2)",
+          "automation": "SUM(account_id_to) transfers.amount"
+        },
+        "transfer_out_total": {
+          "definition": "numeric(12,2)",
+          "automation": "SUM(account_id_from) transfers.amount"
+        }
+      }
+    },
+    "transactions": {
+      "columns": {
+        "id": "serial primary key",
+        "account_id": "FK accounts",
+        "amount": "numeric(12,2)",
+        "type": "varchar(10)"
+      }
+    },
+    "transfers": {
+      "columns": {
+        "transfer_id": "serial primary key",
+        "account_id_from": "FK accounts not null",
+        "account_id_to": "FK accounts not null",
+        "amount": "numeric(12,2)"
+      }
+    }
+  }
+}

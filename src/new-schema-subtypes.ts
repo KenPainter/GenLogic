@@ -12,11 +12,21 @@ export interface SchemaError {
   message: string;
 }
 
+export interface ForeignKeyDef {
+  name: string;              // Generated name for DDL: e.g. "fk_transactions_account_id"
+  childColumn: string;       // e.g. "account_id"
+  parentTable: string;       // e.g. "accounts"
+  parentColumn: string;      // e.g. "account_id"
+  deleteAction?: string;     // e.g. "cascade", "restrict", "set null", etc.
+  autoCreateParent?: boolean;
+}
+
 export interface TableDef {
   pkColumn?: string;
   pkDefinition?: string;
   // As we build it out:
   columns?: Record<string, any>;
+  foreignKeys?: ForeignKeyDef[];
   constraints?: any[];
   indexes?: any[];
 }

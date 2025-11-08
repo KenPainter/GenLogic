@@ -9,6 +9,6 @@ tables:
     columns:
       id: serial primary key
       debit:
-        $ref: amount
+        base: amount
       credit:
-        $ref: amount
+        base: amount
