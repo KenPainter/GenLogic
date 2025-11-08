@@ -3,7 +3,7 @@ import type {
   ColumnDefinition,
   GenLogicSchema
 } from './types.js';
-import type { ProcessedSchema, ProcessedTable } from './schema-processor.js';
+import type { PopulatedSchema, PopulatedTableDef, PopulatedColumnDef } from './helpers-processor/schema-populator.js';
 import { parseAutomationString } from './automation-parser.js';
 
 /**
@@ -18,7 +18,7 @@ export class DiffEngine {
    * Generate complete diff between desired and current schema
    */
   generateDiff(
-    desiredSchema: ProcessedSchema,
+    desiredSchema: PopulatedSchema,
     currentSchema: Record<string, DatabaseTable>,
     originalSchema?: GenLogicSchema
   ): SchemaDiff {
@@ -36,62 +36,81 @@ export class DiffEngine {
     };
 
     // Process each desired table
-    for (const [tableName, desiredTable] of Object.entries(desiredSchema.tables)) {
+    for (const [tableName, desiredTable] of desiredSchema.tables.entries()) {
       const currentTable = currentSchema[tableName];
 
       if (!currentTable) {
         // Table doesn't exist - create it with all columns
+
+        // Build foreign keys for this table from schema-level foreignKeys array
+        const tableForeignKeys: Record<string, any> = {};
+        for (const fk of desiredSchema.foreignKeys) {
+          if (fk.childTable === tableName) {
+            // This FK belongs to this table
+            tableForeignKeys[fk.generatedName] = {
+              table: fk.parentTable,
+              column: fk.parentColumn,
+              deleteAction: fk.deleteAction,
+              notNull: fk.notNull
+            };
+          }
+        }
+
+        // Convert ConstraintDef[] to string[]
+        const constraintStrings = desiredTable.constraints.map(c => c.expression);
+
         const tableCreation: TableCreation = {
           tableName,
           comment: desiredTable.comment,
           singleton: desiredTable.singleton,
           columns: this.getAllTableColumns(desiredTable),
-          foreignKeys: desiredTable.foreignKeys,
-          constraints: desiredTable.constraints
+          foreignKeys: tableForeignKeys,
+          constraints: constraintStrings
         };
 
-        // Add composite primary key if specified
-        if (desiredTable.primaryKey && desiredTable.primaryKey.length > 0) {
-          tableCreation.primaryKey = desiredTable.primaryKey;
+        // Add composite primary key if specified (look for _isPrimaryKey marker)
+        const pkColumns: string[] = [];
+        for (const [colName, colDef] of desiredTable.columns.entries()) {
+          if (colDef._isPrimaryKey) {
+            pkColumns.push(colName);
+          }
+        }
+        if (pkColumns.length > 0) {
+          tableCreation.primaryKey = pkColumns;
         }
 
         diff.tablesToCreate.push(tableCreation);
 
         // Create indexes for foreign key columns
-        for (const [fkName] of Object.entries(desiredTable.foreignKeys)) {
-          // Get the FK column names from the mapping
-          const columnNames = desiredTable.fkColumnMapping[fkName] || [fkName];
-
-          diff.indexesToCreate.push({
-            tableName,
-            indexName: `idx_${tableName}_${columnNames.join('_')}`,
-            columns: columnNames,
-            isUnique: false
-          });
-        }
-
-        // Create unique constraints from processedSchema
-        if (desiredTable.uniqueConstraints) {
-          for (const columns of desiredTable.uniqueConstraints) {
+        for (const fk of desiredSchema.foreignKeys) {
+          if (fk.childTable === tableName) {
             diff.indexesToCreate.push({
               tableName,
-              indexName: `unique_${tableName}_${columns.join('_')}`,
-              columns,
-              isUnique: true
-            });
-          }
-        }
-
-        // Create indexes from processedSchema
-        if (desiredTable.indexes) {
-          for (const columns of desiredTable.indexes) {
-            diff.indexesToCreate.push({
-              tableName,
-              indexName: `idx_${tableName}_${columns.join('_')}`,
-              columns,
+              indexName: `idx_${tableName}_${fk.childColumn}`,
+              columns: [fk.childColumn],
               isUnique: false
             });
           }
+        }
+
+        // Create unique constraints from PopulatedTableDef
+        for (const uniqueConstraint of desiredTable.uniqueConstraints) {
+          diff.indexesToCreate.push({
+            tableName,
+            indexName: uniqueConstraint.name,
+            columns: uniqueConstraint.columns,
+            isUnique: true
+          });
+        }
+
+        // Create indexes from PopulatedTableDef
+        for (const index of desiredTable.indexes) {
+          diff.indexesToCreate.push({
+            tableName,
+            indexName: index.name,
+            columns: index.columns,
+            isUnique: false
+          });
         }
       } else {
         // Table exists - check for new columns
@@ -104,68 +123,62 @@ export class DiffEngine {
           });
 
           // Check if this new column is an aggregation that needs backfilling
-          if (column.definition.automation && typeof column.definition.automation === 'string') {
-            try {
-              const parsed = parseAutomationString(column.definition.automation);
+          // In PopulatedSchema, we already have parsed automation info
+          const colDef = desiredTable.columns.get(column.name);
+          if (colDef?.automation) {
+            const auto = colDef.automation;
 
-              // Only backfill SUM, COUNT, MAX, MIN (not LAST_VALUE - we don't know which row is "last")
-              if (['SUM', 'COUNT', 'MAX', 'MIN'].includes(parsed.type)) {
-                // Get the FK column name - need to look it up from fkColumnMapping
-                // The FK column lives in the CHILD table, not the parent
-                let fkColumnName: string | undefined;
+            // Only backfill SUM, COUNT, MAX, MIN (not SYNC - we don't know which row is "last")
+            if (['SUM', 'COUNT', 'MAX', 'MIN'].includes(auto.type)) {
+              // Find the FK column from the schema-level foreignKeys
+              // The FK lives in the CHILD table (auto.targetTable)
+              let fkColumnName: string | undefined;
 
-                if (parsed.foreign_key) {
-                  // FK explicitly specified in automation (e.g., COUNT(account_id_debit))
-                  // Look up the FK column name in the CHILD table's fkColumnMapping
-                  const childTable = desiredSchema.tables[parsed.table];
-                  if (childTable) {
-                    fkColumnName = childTable.fkColumnMapping[parsed.foreign_key]?.[0];
+              if (auto.fkColumn) {
+                // FK explicitly specified in automation
+                fkColumnName = auto.fkColumn;
+              } else {
+                // FK not specified - find FK from child to parent
+                for (const fk of desiredSchema.foreignKeys) {
+                  if (fk.childTable === auto.targetTable && fk.parentTable === tableName) {
+                    fkColumnName = fk.childColumn;
+                    break;
                   }
-                } else {
-                  // FK not specified - need to find it by searching for FK that points to child table
-                  // Look through all FKs in the child table to find one that points to parent
-                  const childTable = desiredSchema.tables[parsed.table];
-                  if (childTable) {
-                    for (const [fkName, fkDef] of Object.entries(childTable.foreignKeys)) {
-                      if (fkDef.table === tableName) {
-                        // Found FK from child to parent
-                        fkColumnName = childTable.fkColumnMapping[fkName]?.[0];
-                        break;
-                      }
-                    }
-                  }
-                }
-
-                if (fkColumnName) {
-                  diff.aggregationsToBackfill.push({
-                    parentTable: tableName,
-                    aggregationColumn: column.name,
-                    aggregationType: parsed.type as 'SUM' | 'COUNT' | 'MAX' | 'MIN',
-                    childTable: parsed.table,
-                    childColumn: parsed.column,
-                    foreignKey: fkColumnName,
-                    whereClause: parsed.whereClause
-                  });
                 }
               }
-            } catch (error) {
-              // If automation parsing fails, skip backfill detection
-              // The error will be caught during trigger generation
+
+              if (fkColumnName) {
+                diff.aggregationsToBackfill.push({
+                  parentTable: tableName,
+                  aggregationColumn: column.name,
+                  aggregationType: auto.type as 'SUM' | 'COUNT' | 'MAX' | 'MIN',
+                  childTable: auto.targetTable,
+                  childColumn: auto.targetColumn,
+                  foreignKey: fkColumnName,
+                  whereClause: auto.whereClause
+                });
+              }
             }
           }
         }
 
         // Check for missing composite primary key
         // Compare by STRUCTURE (column list), not just presence
-        if (desiredTable.primaryKey && desiredTable.primaryKey.length > 0) {
+        // In PopulatedTableDef, PK columns are marked with _isPrimaryKey
+        const desiredPKColumns: string[] = [];
+        for (const [colName, colDef] of desiredTable.columns.entries()) {
+          if (colDef._isPrimaryKey) {
+            desiredPKColumns.push(colName);
+          }
+        }
+        desiredPKColumns.sort();
+
+        if (desiredPKColumns.length > 0) {
           // Get current primary key columns
           const currentPKColumns = currentTable.columns
             .filter(col => col.isPrimaryKey)
             .map(col => col.name)
             .sort();
-
-          // Compare desired vs current PK columns
-          const desiredPKColumns = [...desiredTable.primaryKey].sort();
 
           const pkMatches = currentPKColumns.length === desiredPKColumns.length &&
             currentPKColumns.every((col, idx) => col === desiredPKColumns[idx]);
@@ -176,14 +189,14 @@ export class DiffEngine {
               throw new Error(
                 `Cannot change primary key for table '${tableName}': ` +
                 `database has PK on [${currentPKColumns.join(', ')}], ` +
-                `schema specifies PK on [${desiredTable.primaryKey.join(', ')}]. ` +
+                `schema specifies PK on [${desiredPKColumns.join(', ')}]. ` +
                 `Primary key changes are not supported. Use manual ALTER TABLE if needed.`
               );
             } else {
               // Table has no PK - add it
               diff.primaryKeysToAdd.push({
                 tableName,
-                columns: desiredTable.primaryKey
+                columns: desiredPKColumns
               });
             }
           }
@@ -196,7 +209,7 @@ export class DiffEngine {
         }
 
         // Check for new and modified foreign keys
-        const fkChanges = this.compareForeignKeys(desiredTable, currentTable);
+        const fkChanges = this.compareForeignKeys(desiredTable, currentTable, tableName, desiredSchema.foreignKeys);
 
         // Handle new FKs
         for (const fk of fkChanges.toAdd) {
@@ -238,43 +251,37 @@ export class DiffEngine {
           });
         }
 
-        // Check for new unique constraints from processedSchema
+        // Check for new unique constraints from PopulatedTableDef
         // Compare by STRUCTURE (column list + uniqueness), not by generated name
-        if (desiredTable.uniqueConstraints) {
-          for (const columns of desiredTable.uniqueConstraints) {
-            const indexExists = currentTable.indexes.some(idx =>
-              idx.isUnique && this.columnsMatch(idx.columns, columns)
-            );
+        for (const uniqueConstraint of desiredTable.uniqueConstraints) {
+          const indexExists = currentTable.indexes.some(idx =>
+            idx.isUnique && this.columnsMatch(idx.columns, uniqueConstraint.columns)
+          );
 
-            if (!indexExists) {
-              const indexName = `unique_${tableName}_${columns.join('_')}`;
-              diff.indexesToCreate.push({
-                tableName,
-                indexName,
-                columns,
-                isUnique: true
-              });
-            }
+          if (!indexExists) {
+            diff.indexesToCreate.push({
+              tableName,
+              indexName: uniqueConstraint.name,
+              columns: uniqueConstraint.columns,
+              isUnique: true
+            });
           }
         }
 
-        // Check for new indexes from processedSchema
+        // Check for new indexes from PopulatedTableDef
         // Compare by STRUCTURE (column list, must be non-unique), not by generated name
-        if (desiredTable.indexes) {
-          for (const columns of desiredTable.indexes) {
-            const indexExists = currentTable.indexes.some(idx =>
-              !idx.isUnique && this.columnsMatch(idx.columns, columns)
-            );
+        for (const index of desiredTable.indexes) {
+          const indexExists = currentTable.indexes.some(idx =>
+            !idx.isUnique && this.columnsMatch(idx.columns, index.columns)
+          );
 
-            if (!indexExists) {
-              const indexName = `idx_${tableName}_${columns.join('_')}`;
-              diff.indexesToCreate.push({
-                tableName,
-                indexName,
-                columns,
-                isUnique: false
-              });
-            }
+          if (!indexExists) {
+            diff.indexesToCreate.push({
+              tableName,
+              indexName: index.name,
+              columns: index.columns,
+              isUnique: false
+            });
           }
         }
 
@@ -301,34 +308,28 @@ export class DiffEngine {
           }
         }
 
-        // Check for table-level CHECK constraints from processedSchema
+        // Check for table-level CHECK constraints from PopulatedTableDef
         // Compare by STRUCTURE (constraint expression), not by generated name
-        if (desiredTable.constraints) {
-          for (const expression of desiredTable.constraints) {
-            // Normalize both desired and existing expressions for comparison
-            const normalizedDesired = this.normalizeCheckExpression(expression);
+        for (const constraint of desiredTable.constraints) {
+          // Normalize both desired and existing expressions for comparison
+          const normalizedDesired = this.normalizeCheckExpression(constraint.expression);
 
-            // Check if a constraint with this expression already exists
-            const constraintExists = currentTable.checkConstraints.some(cc => {
-              // Extract the expression from "CHECK (expression)" format
-              const match = cc.definition.match(/^CHECK\s*\((.*)\)\s*$/i);
-              const existingExpr = match ? match[1].trim() : cc.definition.trim();
-              const normalizedExisting = this.normalizeCheckExpression(existingExpr);
-              return normalizedExisting === normalizedDesired;
+          // Check if a constraint with this expression already exists
+          const constraintExists = currentTable.checkConstraints.some(cc => {
+            // Extract the expression from "CHECK (expression)" format
+            const match = cc.definition.match(/^CHECK\s*\((.*)\)\s*$/i);
+            const existingExpr = match ? match[1].trim() : cc.definition.trim();
+            const normalizedExisting = this.normalizeCheckExpression(existingExpr);
+            return normalizedExisting === normalizedDesired;
+          });
+
+          if (!constraintExists) {
+            diff.checkConstraintsToAdd.push({
+              tableName,
+              columnName: '',  // Table-level constraint, no specific column
+              constraintName: constraint.name,
+              expression: constraint.expression
             });
-
-            if (!constraintExists) {
-              // Generate a constraint name based on table name and hash of expression
-              const hash = this.hashExpression(normalizedDesired);
-              const constraintName = `${tableName}_check_${hash}`;
-
-              diff.checkConstraintsToAdd.push({
-                tableName,
-                columnName: '',  // Table-level constraint, no specific column
-                constraintName,
-                expression
-              });
-            }
           }
         }
       }
@@ -343,11 +344,39 @@ export class DiffEngine {
   /**
    * Get all columns for a table (explicit + generated FK columns)
    */
-  private getAllTableColumns(table: ProcessedTable): Array<{name: string, definition: ColumnDefinition}> {
+  private getAllTableColumns(table: PopulatedTableDef): Array<{name: string, definition: ColumnDefinition}> {
     const columns: Array<{name: string, definition: ColumnDefinition}> = [];
 
-    // Add all columns (explicit columns + FK-generated columns are merged)
-    for (const [name, definition] of Object.entries(table.columns)) {
+    // Add all columns from PopulatedTableDef
+    for (const [name, populatedCol] of table.columns.entries()) {
+      // Convert PopulatedColumnDef to ColumnDefinition format
+      const definition: ColumnDefinition = {
+        type: populatedCol.parsedDefinition.fullDefinition,
+        comment: populatedCol.comment,
+        label: populatedCol.label,
+        format: populatedCol.format
+      };
+
+      // Add automation if present
+      if (populatedCol.automation) {
+        // Convert AutomationInfo back to string format for ColumnDefinition
+        const auto = populatedCol.automation;
+        let autoStr = `${auto.type}(${auto.targetTable}.${auto.targetColumn}`;
+        if (auto.fkColumn) {
+          autoStr += `, ${auto.fkColumn}`;
+        }
+        if (auto.whereClause) {
+          autoStr += ` WHERE ${auto.whereClause}`;
+        }
+        autoStr += ')';
+        definition.automation = autoStr;
+      }
+
+      // Add formula if present
+      if (populatedCol.formula) {
+        definition.formula = populatedCol.formula.expression;
+      }
+
       columns.push({ name, definition });
     }
 
@@ -358,16 +387,17 @@ export class DiffEngine {
    * Find columns that exist in desired schema but not in current database
    */
   private findNewColumns(
-    desiredTable: ProcessedTable,
+    desiredTable: PopulatedTableDef,
     currentTable: DatabaseTable
   ): Array<{name: string, definition: ColumnDefinition}> {
     const newColumns: Array<{name: string, definition: ColumnDefinition}> = [];
     const currentColumnNames = new Set(currentTable.columns.map(col => col.name));
 
-    // Check all columns (FK columns are now merged into columns)
-    for (const [name, definition] of Object.entries(desiredTable.columns)) {
-      if (!currentColumnNames.has(name)) {
-        newColumns.push({ name, definition });
+    // Check all columns from PopulatedTableDef
+    const allColumns = this.getAllTableColumns(desiredTable);
+    for (const column of allColumns) {
+      if (!currentColumnNames.has(column.name)) {
+        newColumns.push(column);
       }
     }
 
@@ -379,21 +409,23 @@ export class DiffEngine {
    * Supports: VARCHAR/CHAR size expansion, NUMERIC precision/scale expansion
    */
   private findModifiedColumns(
-    desiredTable: ProcessedTable,
+    desiredTable: PopulatedTableDef,
     currentTable: DatabaseTable
   ): ColumnModification[] {
     const modifications: ColumnModification[] = [];
     const currentColumnMap = new Map(currentTable.columns.map(col => [col.name, col]));
 
-    for (const [name, desiredDef] of Object.entries(desiredTable.columns)) {
-      const currentCol = currentColumnMap.get(name);
+    // Convert PopulatedColumnDef to ColumnDefinition for comparison
+    const allColumns = this.getAllTableColumns(desiredTable);
+    for (const column of allColumns) {
+      const currentCol = currentColumnMap.get(column.name);
       if (!currentCol) continue; // New column, not a modification
 
       const modification = this.detectSafeColumnModification(
         currentTable.name,
-        name,
+        column.name,
         currentCol,
-        desiredDef
+        column.definition
       );
 
       if (modification) {
@@ -642,8 +674,10 @@ export class DiffEngine {
    * Compare by STRUCTURE (columns + referenced table), not by generated name
    */
   private compareForeignKeys(
-    desiredTable: ProcessedTable,
-    currentTable: DatabaseTable
+    desiredTable: PopulatedTableDef,
+    currentTable: DatabaseTable,
+    tableName: string,
+    schemaForeignKeys: PopulatedForeignKeyDef[]
   ): {
     toAdd: Array<{name: string, fkName: string, definition: any, columnNames: string[]}>,
     toModify: Array<{oldConstraintName: string, newConstraintName: string, fkName: string, definition: any, columnNames: string[], reason: string}>
@@ -661,40 +695,45 @@ export class DiffEngine {
       });
     }
 
-    for (const [fkName, definition] of Object.entries(desiredTable.foreignKeys)) {
-      // Get the column names for this FK from the mapping
-      const columnNames = desiredTable.fkColumnMapping[fkName] || [fkName];
-      const referencedTable = definition.table;
+    // Get FKs for this table from schema-level foreignKeys array
+    const tableFKs = schemaForeignKeys.filter(fk => fk.childTable === tableName);
+
+    for (const fk of tableFKs) {
+      const columnNames = [fk.childColumn];
+      const referencedTable = fk.parentTable;
 
       // Build structure signature for this desired FK
-      // For single-column FKs, just use the column name (not "col,")
-      const fkStructure = columnNames.length === 1
-        ? `${columnNames[0]}->${referencedTable}`
-        : `${columnNames.join(',')}->${referencedTable}`;
+      const fkStructure = `${fk.childColumn}->${referencedTable}`;
 
       const existingFK = existingFKMap.get(fkStructure);
 
+      // Build definition object for compatibility with downstream code
+      const definition = {
+        table: fk.parentTable,
+        column: fk.parentColumn,
+        deleteAction: fk.deleteAction,
+        notNull: fk.notNull
+      };
+
       if (!existingFK) {
         // FK doesn't exist - add it
-        const constraintName = `fk_${currentTable.name}_${fkName}`;
         toAdd.push({
-          name: constraintName,
-          fkName,
+          name: fk.generatedName,
+          fkName: fk.fkName || fk.generatedName,
           definition,
           columnNames
         });
       } else {
         // FK exists - check if properties changed
-        const desiredOnDelete = this.normalizeOnDelete(definition);
+        const desiredOnDelete = fk.deleteAction === 'cascade' ? 'CASCADE' : 'RESTRICT';
         const currentOnDelete = this.normalizeOnDeleteFromDB(existingFK.onDelete);
 
         if (desiredOnDelete !== currentOnDelete) {
           // ON DELETE behavior changed
-          const constraintName = `fk_${currentTable.name}_${fkName}`;
           toModify.push({
             oldConstraintName: existingFK.constraint,
-            newConstraintName: constraintName,
-            fkName,
+            newConstraintName: fk.generatedName,
+            fkName: fk.fkName || fk.generatedName,
             definition,
             columnNames,
             reason: `Changed ON DELETE from ${currentOnDelete} to ${desiredOnDelete}`

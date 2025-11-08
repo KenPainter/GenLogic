@@ -153,94 +153,6 @@ export class GenLogicProcessor {
       // Write populated schema for debugging
       writePopulatedSchema(populated, this.config.dumpDir);
 
-      console.log('YOLO MARKER: Returning before we get to unrefactored code');
-      return;
-
-
-      // PHASE 10.2: Substitute constants throughout schema
-      let schema = extractCleanSchema(expandedYaml.content);
-      if (schema.constants) {
-        schema = this.substituteConstants(schema);
-      }
-
-      // PHASE 10.3: Syntax validation using JSON Schema (fail fast on bad schemas)
-      console.log('Validating schema syntax...');
-      const syntaxResult = this.validator.validateSyntax(schema);
-      if (!syntaxResult.isValid) {
-        throw new Error(`Schema syntax validation failed:\n${syntaxResult.errors.join('\n')}`);
-      }
-
-      if (this.config.stopAfter === 'yaml-validate') {
-        console.log('\nStopped after: yaml-validate');
-        return;
-      }
-
-      // PHASE 20: Flatten schema into raw lists 
-      console.log('Flattening schema structure...');
-      const yamlFlattenedLists = this.schemaFlattener.flatten(schema);
-      this.writeFlatSchema(schemaPath, yamlFlattenedLists);
-      this.dumpInternal('flattened', yamlFlattenedLists);
-
-      if (this.config.stopAfter === 'flattened') {
-        console.log('\nStopped after: flattened');
-        return;
-      }
-
-      // PHASE 30: Assign table layers from flattened lists (FAIL FAST on cycles)
-      console.log('Building dependency graph and assigning layers...');
-      const tableLayers = this.graphValidator.assignTableLayers(yamlFlattenedLists);
-      console.log(`   Tables organized into ${Math.max(...tableLayers.values()) + 1} layers`);
-
-      // PHASE 6: Process schema layer-by-layer with integrated validation
-      //   This phase builds the initial processedSchema.
-      //   Once we are ready to connect to the database in Phase 9,
-      //   processedSchema will be the COMPLETE schema and it will
-      //   be all we need to diff against the database.
-      //   But right now, it is NOT THERE YET.
-      console.log('Processing schema by layers...');
-      const processedSchema = this.schemaProcessor.processSchemaByLayers(
-        yamlFlattenedLists,
-        tableLayers
-      );
-      
-      // PHASE 6.1: Build reverse FK index (inboundForeignKeys)
-      console.log('Building inbound foreign key index...');
-      this.schemaProcessor.addInboundForeignKeysToProcessedSchema(processedSchema);
-      
-      // PHASE 6.2: Copy seed rows to processedSchema
-      console.log('Adding seed rows to processed schema...');
-      this.schemaProcessor.addSeedRowsToProcessedSchema(yamlFlattenedLists, processedSchema);
-
-
-      // PHASE 7.1: Add indexes to processedSchema with validation
-      console.log('Adding indexes to processed schema...');
-      this.schemaProcessor.addIndexesToProcessedSchema(yamlFlattenedLists, processedSchema);
-
-      // PHASE 7.2: Add unique constraints to processedSchema with validation
-      console.log('Adding unique constraints to processed schema...');
-      this.schemaProcessor.addUniqueConstraintsToProcessedSchema(yamlFlattenedLists, processedSchema);
-
-      // PHASE 7.3: Add CHECK constraints to processedSchema with validation
-      console.log('Adding CHECK constraints to processed schema...');
-      this.schemaProcessor.addCheckConstraintsToProcessedSchema(yamlFlattenedLists, processedSchema);
-
-
-      // PHASE 8.1: Validate formulas and detect cycles
-      console.log('Validating formula columns and checking for cycles...');
-      this.schemaProcessor.validateFormulasAndCycles(processedSchema);
-
-      // PHASE 8.2: Validate automation definitions
-      console.log('Validating automation definitions...');
-      this.schemaProcessor.validateAutomations(processedSchema);
-
-      // Write processed schema to disk for inspection
-      this.writeProcessedSchema(schemaPath, processedSchema);
-      this.dumpInternal('processed', processedSchema);
-
-      if (this.config.stopAfter === 'processed') {
-        console.log('\n✅ Stopped after: processed');
-        return;
-      }
 
       // PHASE 9: Database connection
       //
@@ -259,17 +171,18 @@ export class GenLogicProcessor {
       // Dump current schema for examination
       this.writeCurrentSchema(schemaPath, currentSchema);
 
-      // Phase 11: Generate diff between processedSchema and currentSchema
+      // Phase 11: Generate diff between populated schema and currentSchema
       console.log('Generating schema diff...');
-      const diff = this.diffEngine.generateDiff(processedSchema, currentSchema);
+      const diff = this.diffEngine.generateDiff(populated, currentSchema);
 
       // Dump diff for examination
       this.writeDiffToFile(diff, schemaPath);
 
-      if (this.config.stopAfter === 'diffed') {
-        console.log('\n✅ Stopped after: diffed');
-        return;
-      }
+      console.log('YOLO MARKER: Returning before we get to unrefactored code');
+      return;
+
+
+
 
       // PHASE 12: SQL generation
       console.log('Generating SQL statements...');
