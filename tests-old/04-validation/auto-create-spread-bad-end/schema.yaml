@@ -1,0 +1,25 @@
+tables:
+  projects:
+    columns:
+      id:
+        definition: serial primary key
+      start_date:
+        definition: date
+
+  tasks:
+    columns:
+      id:
+        definition: serial primary key
+      date:
+        definition: date
+    foreign-keys:
+      project_id:
+        table: projects
+        auto-create:
+          on: [insert]
+          spread:
+            start: start_date
+            # Non-existent end column
+            end: nonexistent_end
+            interval: day_interval
+            generated_column: date

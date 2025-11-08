@@ -1,0 +1,8 @@
+tables:
+  test:
+    columns:
+      id: serial primary key
+      # Test different modifier orders (all should work)
+      email1: varchar(100) unique not null default 'test@example.com'
+      email2: varchar(100) not null unique default 'test@example.com'
+      code1: varchar(20) not null default 'ABC'

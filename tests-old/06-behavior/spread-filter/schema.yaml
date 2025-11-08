@@ -1,0 +1,26 @@
+tables:
+  events:
+    columns:
+      event_id: serial primary key
+      event_name: varchar(50)
+      is_recurring: boolean
+      start_date: date
+      end_date: date
+      frequency: varchar(20)
+
+  event_occurrences:
+    foreign-keys:
+      event_id:
+        table: events
+        auto-create:
+          on: [insert]
+          spread:
+            start: start_date
+            end: end_date
+            interval: frequency
+            generated_column: occurrence_date
+          filter: "NEW.is_recurring = true"
+
+    columns:
+      occurrence_id: serial primary key
+      occurrence_date: date

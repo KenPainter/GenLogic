@@ -1,0 +1,11 @@
+tables:
+  products:
+    columns:
+      id:
+        definition: serial primary key
+      price:
+        definition: numeric(10,2)
+      # Generated column references non-existent column @quantity
+      total:
+        definition: numeric(10,2)
+        formula: "@price * @quantity"

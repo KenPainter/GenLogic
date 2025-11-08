@@ -1,0 +1,4 @@
+# Test with a schema file that doesn't exist
+--skip-common
+-d testdb
+-s /path/that/does/not/exist.yaml

@@ -1,0 +1,22 @@
+tables:
+  accounts:
+    columns:
+      id: integer primary key
+      name: varchar(50)
+      total_amount:
+        definition: numeric(10,2)
+        automation: SUM @transactions.amount
+      transaction_count:
+        definition: integer
+        automation: COUNT @transactions.id
+      max_transaction:
+        definition: numeric(10,2)
+        automation: MAX @transactions.amount
+
+  transactions:
+    columns:
+      id: integer primary key
+      account_id: integer
+      amount: numeric(10,2)
+    foreign-keys:
+      account: { table: accounts }

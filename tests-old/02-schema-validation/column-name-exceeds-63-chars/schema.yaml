@@ -1,0 +1,8 @@
+tables:
+  products:
+    columns:
+      id:
+        definition: serial primary key
+      # This column name has exactly 64 characters (exceeds PostgreSQL 63-char limit)
+      column_name_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:
+        definition: varchar(100)

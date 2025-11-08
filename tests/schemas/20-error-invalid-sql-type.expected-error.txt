@@ -1,1 +1,0 @@
-Invalid SQL definition for column 'users.bad_column'

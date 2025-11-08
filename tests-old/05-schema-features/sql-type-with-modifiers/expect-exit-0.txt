@@ -1,0 +1,1 @@
+# SQL type string with modifiers (VARCHAR(50) PRIMARY KEY)

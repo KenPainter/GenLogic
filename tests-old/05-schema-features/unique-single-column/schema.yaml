@@ -1,0 +1,7 @@
+tables:
+  test:
+    columns:
+      id: serial primary key
+      email: varchar(255)
+    unique-constraints:
+      - [email]

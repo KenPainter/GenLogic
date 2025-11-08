@@ -1,0 +1,13 @@
+tables:
+  users:
+    columns:
+      id: integer primary key
+      name: varchar(50)
+
+  posts:
+    columns:
+      id: integer primary key
+      title: varchar(100)
+      user_id: integer
+    foreign-keys:
+      user: { table: users }

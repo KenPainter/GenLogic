@@ -1,0 +1,9 @@
+tables:
+  orders:
+    columns:
+      id: serial primary key
+      price: numeric(10,2)
+      quantity: integer
+      total:
+        definition: numeric(10,2)
+        formula: "@price * @quantity"

@@ -1,0 +1,16 @@
+tables:
+  customers:
+    columns:
+      id: integer primary key
+      name: varchar(50)
+      order_count:
+        definition: integer
+        automation: COUNT @orders.id
+
+  orders:
+    columns:
+      id: integer primary key
+      customer_id: integer
+      total: numeric(10,2)
+    foreign-keys:
+      customer: { table: customers }

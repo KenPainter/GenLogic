@@ -1,0 +1,12 @@
+tables:
+  products:
+    columns:
+      id:
+        definition: serial primary key
+      name:
+        definition: varchar(100)
+    seed-rows:
+      - id: 1
+        name: "Widget"
+        # References non-existent column
+        price: 19.99

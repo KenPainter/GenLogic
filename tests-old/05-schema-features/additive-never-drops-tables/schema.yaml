@@ -1,0 +1,5 @@
+tables:
+  products:
+    columns:
+      id: serial primary key
+      name: varchar(100)

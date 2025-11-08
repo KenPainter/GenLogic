@@ -1,0 +1,1 @@
+# Test numeric types: NUMERIC(p,s), DECIMAL(p,s)

@@ -1,6 +1,0 @@
-# Error: Invalid SQL type definition that parseSQLType cannot parse
-tables:
-  users:
-    columns:
-      id: integer primary key
-      bad_column: this is not valid sql syntax at all

@@ -1,0 +1,7 @@
+tables:
+  users:
+    columns:
+      id: serial primary key
+      name: varchar(100)
+      # email column was removed from schema but GenLogic never drops columns
+      # This test documents that GenLogic will not drop the email column

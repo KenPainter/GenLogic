@@ -1,0 +1,13 @@
+tables:
+  products:
+    columns:
+      id:
+        definition: serial primary key
+      price:
+        definition: numeric(10,2)
+      quantity:
+        definition: integer
+      # Bare column reference without @ (should use @ sigil)
+      total:
+        definition: numeric(10,2)
+        formula: "price * @quantity"

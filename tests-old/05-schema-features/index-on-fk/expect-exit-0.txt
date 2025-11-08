@@ -1,0 +1,1 @@
+# Index on FK column (should auto-create)

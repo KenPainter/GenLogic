@@ -1,0 +1,5 @@
+tables:
+  custom_schema_test:
+    columns:
+      id: integer primary key
+      data: text

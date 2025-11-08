@@ -8,9 +8,6 @@ yarn-error.log*
 dist/
 build/
 *.tsbuildinfo
-tests/**/schema.ts
-tests/**/my-custom-schema.ts
-tests-old/**
 
 # Local files during dev
 debug/
@@ -73,5 +70,5 @@ postgres_test_data/
 # apps/*.ts
 # tests/**/*.ts
 
-# Test output files - JSON dumps from genlogic processing
-tests/**/*.json
+# Test output files - dumps from genlogic processing
+tests/dumps/

@@ -1,0 +1,2 @@
+# JSON Schema validation should reject column names longer than 63 chars
+additional properties

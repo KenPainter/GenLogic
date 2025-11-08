@@ -1,0 +1,12 @@
+tables:
+  users:
+    columns:
+      id: integer primary key
+
+  posts:
+    columns:
+      id: integer primary key
+    foreign-keys:
+      user:
+        table: users
+        not-null: false

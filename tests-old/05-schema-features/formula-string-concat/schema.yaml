@@ -1,0 +1,9 @@
+tables:
+  users:
+    columns:
+      id: serial primary key
+      first_name: varchar(50)
+      last_name: varchar(50)
+      full_name:
+        definition: varchar(101)
+        formula: "@first_name || ' ' || @last_name"

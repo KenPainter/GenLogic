@@ -1,0 +1,10 @@
+tables:
+  orders:
+    columns:
+      id:
+        definition: serial primary key
+      product_name:
+        definition: varchar(100)
+    foreign-keys:
+      # References a table that doesn't exist
+      customer_id: customers

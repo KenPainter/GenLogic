@@ -1,0 +1,1 @@
+[{"id":1,"name":"Widget","min_price":"19.99"}]

@@ -1,0 +1,16 @@
+tables:
+  status_codes:
+    columns:
+      id: integer primary key
+      code: varchar(20)
+      description: varchar(100)
+    seed-rows:
+      - id: 1
+        code: "ACTIVE"
+        description: "Active status"
+      - id: 2
+        code: "INACTIVE"
+        description: "Inactive status"
+      - id: 3
+        code: "PENDING"
+        description: "Pending approval"

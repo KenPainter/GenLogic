@@ -1,5 +1,0 @@
-# Error: Table name violates pattern (cannot start with number)
-tables:
-  99_users:
-    columns:
-      id: integer primary key

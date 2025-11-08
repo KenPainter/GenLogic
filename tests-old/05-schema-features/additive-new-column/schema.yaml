@@ -1,0 +1,6 @@
+tables:
+  users:
+    columns:
+      id: serial primary key
+      name: varchar(100)
+      email: varchar(255)  # New column

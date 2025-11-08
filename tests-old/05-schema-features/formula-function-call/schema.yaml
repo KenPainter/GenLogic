@@ -1,0 +1,8 @@
+tables:
+  users:
+    columns:
+      id: serial primary key
+      name: varchar(100)
+      name_upper:
+        definition: varchar(100)
+        formula: "UPPER(@name)"

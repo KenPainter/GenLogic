@@ -1,0 +1,30 @@
+tables:
+  batches:
+    columns:
+      batch_id: integer primary key
+      name: varchar(50)
+      assigned_count:
+        definition: integer default 0
+        automation: COUNT @ledger.ledger_id WHERE account_id_offset IS NOT NULL
+        comment: Number of transactions with offset account assigned
+      unassigned_count:
+        definition: integer default 0
+        automation: COUNT @ledger.ledger_id WHERE account_id_offset IS NULL
+        comment: Number of transactions without offset account
+      assigned_amount:
+        definition: numeric(10,2) default 0
+        automation: SUM @ledger.amount WHERE account_id_offset IS NOT NULL
+        comment: Total amount of assigned (balanced) transactions
+      unassigned_amount:
+        definition: numeric(10,2) default 0
+        automation: SUM @ledger.amount WHERE account_id_offset IS NULL
+        comment: Total amount of unassigned (unbalanced) transactions
+
+  ledger:
+    columns:
+      ledger_id: integer primary key
+      batch_id: integer
+      amount: numeric(10,2)
+      account_id_offset: integer
+    foreign-keys:
+      batch: { table: batches }

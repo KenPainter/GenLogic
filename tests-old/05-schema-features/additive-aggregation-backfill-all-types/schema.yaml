@@ -1,0 +1,34 @@
+tables:
+  orders:
+    columns:
+      id: serial primary key
+      customer_name: varchar(100)
+
+      # SUM aggregation - should backfill to sum of quantities
+      total_quantity:
+        definition: integer
+        automation: SUM @order_items.quantity
+
+      # COUNT aggregation - should backfill to count of items
+      item_count:
+        definition: integer
+        automation: COUNT @order_items.id
+
+      # MAX aggregation - should backfill to max price (or NULL)
+      max_price:
+        definition: numeric(10,2)
+        automation: MAX @order_items.unit_price
+
+      # MIN aggregation - should backfill to min price (or NULL)
+      min_price:
+        definition: numeric(10,2)
+        automation: MIN @order_items.unit_price
+
+  order_items:
+    columns:
+      id: serial primary key
+      order_id: integer
+      unit_price: numeric(10,2)
+      quantity: integer
+    foreign-keys:
+      order: { table: orders }

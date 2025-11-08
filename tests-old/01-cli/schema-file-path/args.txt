@@ -1,0 +1,1 @@
+-s tests/01-cli/schema-file-path/my-custom-schema.yaml

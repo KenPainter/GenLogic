@@ -1,0 +1,1 @@
+# Expect successful schema creation with label and format metadata

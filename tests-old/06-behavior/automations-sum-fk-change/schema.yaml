@@ -1,0 +1,16 @@
+tables:
+  accounts:
+    columns:
+      account_id: serial primary key
+      account_name: varchar(100)
+      balance:
+        definition: numeric(10,2)
+        automation: SUM @transactions.amount
+
+  transactions:
+    foreign-keys:
+      account_fk: accounts
+    columns:
+      transaction_id: serial primary key
+      account_fk: integer
+      amount: numeric(10,2)

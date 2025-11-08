@@ -1,0 +1,14 @@
+tables:
+  products:
+    columns:
+      id: serial primary key
+      name: varchar(100) unique
+      price: numeric(10,2)
+    seed-rows:
+      # Omit PK - it should auto-generate
+      - name: Laptop
+        price: 999.99
+      - name: Mouse
+        price: 29.99
+      - name: Keyboard
+        price: 79.99

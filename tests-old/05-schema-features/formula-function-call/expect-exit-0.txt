@@ -1,0 +1,1 @@
+# Generated column with function call (UPPER(@name))

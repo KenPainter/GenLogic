@@ -1,0 +1,6 @@
+tables:
+  users:
+    comment: User accounts and profiles
+    columns:
+      id: serial primary key
+      name: varchar(100)

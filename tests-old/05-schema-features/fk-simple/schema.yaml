@@ -1,0 +1,10 @@
+tables:
+  users:
+    columns:
+      id: integer primary key
+
+  posts:
+    columns:
+      id: integer primary key
+    foreign-keys:
+      user: users

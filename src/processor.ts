@@ -1,6 +1,5 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { writeFileSync, existsSync, mkdirSync } from 'fs';
 import { dirname, basename, extname, join } from 'path';
-import { parse, stringify } from 'yaml';
 import type { DatabaseConfig, GenLogicSchema } from './types.js';
 import { SchemaValidator } from './validation.js';
 import { DataFlowGraphValidator } from './graph.js';
@@ -14,6 +13,15 @@ import { ContentManager } from './content-manager.js';
 import { ResolvedSchemaGenerator } from './resolved-schema-generator.js';
 import { PermissionsGenerator } from './permissions-generator.js';
 import { SchemaFlattener } from './schema-flattener.js';
+import { loadYamlSchemaWithTracking, extractCleanSchema } from './helpers-processor/yaml-loader.js';
+import {
+  extractConstants,
+  extractTables,
+  extractForeignKeys,
+  createExtractedSchema
+} from './helpers-processor/schema-extractor.js';
+import { topologicalSortByLayers } from './helpers-processor/topological-sort.js';
+import { writeSchemaDebugFile } from './helpers-processor/file-writer.js';
 
 /**
  * GenLogic Core Processor
@@ -63,11 +71,58 @@ export class GenLogicProcessor {
     console.log('');
 
     try {
-      // PHASE 10.1: Load and parse YAML (fail fast on bad files)
+      // PHASE 10: Load and parse YAML with line tracking (fail fast on bad files)
+      //
       console.log('Loading YAML schema...');
-      let schema = this.loadYamlSchema(schemaPath);
+      const parsedYaml = loadYamlSchemaWithTracking(schemaPath);
+      writeSchemaDebugFile(
+        { schemaPath, dumpDir: this.config.dumpDir },
+        '.parsed.json',
+        parsedYaml,
+        'Parsed YAML'
+      );
+
+      // PHASE 10.2: Extract constants
+      console.log('Extracting constants...');
+      const extracted = createExtractedSchema(schemaPath);
+      extracted.constants = extractConstants(parsedYaml);
+
+      // PHASE 10.3: Extract tables and columns
+      console.log('Extracting tables and columns...');
+      extracted.tables = extractTables(parsedYaml);
+
+      // PHASE 10.4: Extract foreign keys
+      console.log('Extracting foreign keys...');
+      extracted.foreignKeys = extractForeignKeys(parsedYaml, extracted.tables);
+
+      // PHASE 20.1: Cycle detection and layer assignment in foreign keys
+      console.log('Detecting cycles and assigning layers in foreign keys...');
+      const sortResult = topologicalSortByLayers(
+        extracted.tables.keys(),
+        extracted.foreignKeys.map((fk: any) => [fk.childTable, fk.parentTable]),
+        true  // Skip self-loops
+      );
+      extracted.tableLayers = sortResult.layers;
+      extracted.cycles = sortResult.cycles;
+
+      // Write extracted schema for debugging
+      writeSchemaDebugFile(
+        { schemaPath, dumpDir: this.config.dumpDir },
+        '.extracted.json',
+        extracted,
+        'Extracted schema'
+      );
+
+      if (sortResult.cycles.length > 0) {
+        throw new Error(`Foreign key cycles detected:\n${sortResult.cycles.map(cycle => `  ${cycle.join(' → ')}`).join('\n')}`);
+      }
+
+      console.log('YOLO MARKER: Returning before we get to unrefactored code');
+      return;
+
 
       // PHASE 10.2: Substitute constants throughout schema
+      let schema = extractCleanSchema(expandedYaml.content);
       if (schema.constants) {
         schema = this.substituteConstants(schema);
       }
@@ -282,7 +337,6 @@ export class GenLogicProcessor {
       }, null, 2));
 
       console.log(`📄 SQL statements dumped to: ${sqlDumpPath}`);
-      throw new Error('YOLO MARKER: SQL generation complete, stopping before execution');
 
       // PHASE 11: Generate resolved schema documentation
       console.log('📝 Generating resolved schema documentation...');
@@ -301,29 +355,6 @@ export class GenLogicProcessor {
     }
   }
 
-  /**
-   * Load and parse YAML file(s)
-   * Supports both single files and glob patterns for multiple files
-   */
-  private loadYamlSchema(schemaPath: string): GenLogicSchema {
-    try {
-      const yamlContent = readFileSync(schemaPath, 'utf-8');
-      const parsed = parse(yamlContent);
-
-      // Ensure we have a valid schema structure
-      if (typeof parsed !== 'object' || parsed === null) {
-        throw new Error('Schema must be a YAML object');
-      }
-
-      return parsed as GenLogicSchema;
-
-    } catch (error) {
-      if (error instanceof Error) {
-        throw new Error(`Failed to load YAML schema: ${error.message}`);
-      }
-      throw new Error('Failed to load YAML schema: Unknown error');
-    }
-  }
 
   /**
    * Substitute constants throughout the schema
@@ -387,39 +418,23 @@ export class GenLogicProcessor {
    * Write flattened schema to JSON file
    */
   private writeFlatSchema(schemaPath: string, normalizedSchema: any): void {
-    const outputPath = this.getOutputPath(schemaPath, '.flat.json');
-
-    // Write formatted JSON
-    const json = JSON.stringify(normalizedSchema, null, 2);
-    writeFileSync(outputPath, json, 'utf-8');
-
-    console.log(`   Flat schema written to: ${outputPath}`);
+    writeSchemaDebugFile(
+      { schemaPath, dumpDir: this.config.dumpDir },
+      '.flat.json',
+      normalizedSchema,
+      'Flat schema'
+    );
   }
 
   private writeProcessedSchema(schemaPath: string, processedSchema: any): void {
-    const outputPath = this.getOutputPath(schemaPath, '.processed.json');
-
-    // Write formatted JSON
-    const json = JSON.stringify(processedSchema, null, 2);
-    writeFileSync(outputPath, json, 'utf-8');
-
-    console.log(`   Processed schema written to: ${outputPath}`);
+    writeSchemaDebugFile(
+      { schemaPath, dumpDir: this.config.dumpDir },
+      '.processed.json',
+      processedSchema,
+      'Processed schema'
+    );
   }
 
-  private getOutputPath(schemaPath: string, suffix: string): string {
-    const baseFileName = basename(schemaPath, extname(schemaPath));
-
-    if (this.config.dumpDir) {
-      // Use specified dump directory
-      if (!existsSync(this.config.dumpDir)) {
-        mkdirSync(this.config.dumpDir, { recursive: true });
-      }
-      return join(this.config.dumpDir, `${baseFileName}${suffix}`);
-    } else {
-      // Use schema file's directory (default behavior)
-      return schemaPath.replace(/\.(yaml|yml)$/i, suffix);
-    }
-  }
 
   private dumpInternal(name: string, data: any): void {
     if (!this.config.dumpInternalDir) return;
@@ -435,23 +450,21 @@ export class GenLogicProcessor {
   }
 
   private writeDiffToFile(diff: any, schemaPath: string): void {
-    const outputPath = this.getOutputPath(schemaPath, '.diff.json');
-
-    // Write formatted JSON
-    const json = JSON.stringify(diff, null, 2);
-    writeFileSync(outputPath, json, 'utf-8');
-
-    console.log(`   Diff written to: ${outputPath}`);
+    writeSchemaDebugFile(
+      { schemaPath, dumpDir: this.config.dumpDir },
+      '.diff.json',
+      diff,
+      'Diff'
+    );
   }
 
   private writeCurrentSchema(schemaPath: string, currentSchema: any): void {
-    const outputPath = this.getOutputPath(schemaPath, '.current.json');
-
-    // Write formatted JSON
-    const json = JSON.stringify(currentSchema, null, 2);
-    writeFileSync(outputPath, json, 'utf-8');
-
-    console.log(`   Current schema written to: ${outputPath}`);
+    writeSchemaDebugFile(
+      { schemaPath, dumpDir: this.config.dumpDir },
+      '.current.json',
+      currentSchema,
+      'Current schema'
+    );
   }
 
   /**

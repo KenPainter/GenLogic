@@ -1,0 +1,2 @@
+# Must reject columns with both formula and automation
+cannot have both

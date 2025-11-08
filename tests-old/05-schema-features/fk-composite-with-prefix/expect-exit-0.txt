@@ -1,0 +1,1 @@
+# Test composite FK with prefix applies to all columns

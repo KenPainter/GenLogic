@@ -1,0 +1,12 @@
+tables:
+  products:
+    columns:
+      id:
+        definition: serial primary key
+      # Circular dependency: a references b, b references a
+      column_a:
+        definition: numeric(10,2)
+        formula: "@column_b + 1"
+      column_b:
+        definition: numeric(10,2)
+        formula: "@column_a * 2"

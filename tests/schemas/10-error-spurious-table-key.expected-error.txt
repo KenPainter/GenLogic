@@ -1,1 +1,0 @@
-/tables/users: must NOT have additional properties

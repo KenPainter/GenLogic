@@ -1,0 +1,25 @@
+tables:
+  events:
+    columns:
+      event_id: serial primary key
+      event_name: varchar(50)
+      description: varchar(200)
+      start_date: date
+      end_date: date
+      frequency: varchar(20)
+
+  event_occurrences:
+    foreign-keys:
+      event_id:
+        table: events
+        auto-create:
+          on: [insert, update]
+          spread:
+            start: start_date
+            end: end_date
+            interval: frequency
+            generated_column: occurrence_date
+
+    columns:
+      occurrence_id: serial primary key
+      occurrence_date: date

@@ -1,0 +1,16 @@
+tables:
+  currencies:
+    columns:
+      code: varchar(3) primary key
+      name: varchar(50)
+      symbol: varchar(5)
+    seed-rows:
+      - code: USD
+        name: US Dollar
+        symbol: $
+      - code: EUR
+        name: Euro
+        symbol: €
+      - code: GBP
+        name: British Pound
+        symbol: £

@@ -1,0 +1,8 @@
+tables:
+  transactions:
+    columns:
+      id: integer primary key
+      amount: numeric(10,2)
+      status:
+        definition: varchar(20)
+        formula: "CASE WHEN @amount > 0 THEN 'credit' WHEN @amount < 0 THEN 'debit' ELSE 'zero' END"

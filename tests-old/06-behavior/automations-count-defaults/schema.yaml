@@ -1,0 +1,14 @@
+tables:
+  categories:
+    columns:
+      category_id: serial primary key
+      product_count:
+        definition: integer
+        automation: COUNT @products.product_id
+
+  products:
+    foreign-keys:
+      category_fk: categories
+    columns:
+      product_id: serial primary key
+      category_fk: integer

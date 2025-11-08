@@ -1,0 +1,1 @@
+must NOT have additional properties

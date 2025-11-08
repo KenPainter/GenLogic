@@ -1,0 +1,10 @@
+columns:
+  id: serial primary key
+  created_at: timestamp
+
+tables:
+  users:
+    columns:
+      id: null  # Inherit from columns
+      name: varchar(100)
+      created_at: null  # Inherit from columns

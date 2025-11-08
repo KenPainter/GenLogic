@@ -1,0 +1,1 @@
+[{"column_name":"email","data_type":"character varying","character_maximum_length":100},{"column_name":"username","data_type":"character varying","character_maximum_length":60}]

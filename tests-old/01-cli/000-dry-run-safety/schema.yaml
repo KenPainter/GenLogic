@@ -1,0 +1,5 @@
+tables:
+  test_dryrun_table:
+    columns:
+      id: serial primary key
+      name: varchar(100)

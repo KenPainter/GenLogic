@@ -1,0 +1,10 @@
+tables:
+  parent_table:
+    columns:
+      id: serial primary key
+      total: numeric(10,2)
+  child_table:
+    columns:
+      id: serial primary key
+      total:
+        automation: "SUM missing_at_sign"

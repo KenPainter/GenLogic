@@ -1,0 +1,7 @@
+tables:
+  users:
+    columns:
+      id: serial primary key
+      name: varchar(200)  # Widened from varchar(100)
+      code: char(20)      # Widened from char(10)
+      price: numeric(12,4) # Widened from numeric(10,2)

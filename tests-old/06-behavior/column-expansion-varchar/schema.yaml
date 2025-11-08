@@ -1,0 +1,9 @@
+# Test VARCHAR column size expansion
+# Initial: VARCHAR(30)
+# Expanded: VARCHAR(60)
+tables:
+  users:
+    columns:
+      user_id: serial primary key
+      username: varchar(60)
+      email: varchar(100)

@@ -1,0 +1,2 @@
+Laptop|999.99|Electronics
+Novel|19.99|Books

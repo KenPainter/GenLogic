@@ -1,0 +1,21 @@
+tables:
+  events:
+    columns:
+      id: serial primary key
+      name: varchar(200) unique
+      description: text
+      event_date: date
+      event_time: timestamp
+    seed-rows:
+      - name: "Product Launch"
+        description: "Launching our new product line"
+        event_date: "2024-06-15"
+        event_time: "2024-06-15T10:30:00Z"
+      - name: "O'Brien's Meeting"
+        description: "Meeting with O'Brien at Joe's Coffee & Cafe"
+        event_date: "2024-07-01"
+        event_time: "2024-07-01T14:00:00Z"
+      - name: 'Quote test: "Success"'
+        description: "Testing quotes: 'single' and \"double\""
+        event_date: "2024-08-01"
+        event_time: "2024-08-01T09:00:00Z"

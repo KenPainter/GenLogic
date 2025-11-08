@@ -1,0 +1,3 @@
+matching_tables:
+  custom_rules:
+    result_column_name: custom_result

@@ -1,0 +1,7 @@
+tables:
+  test:
+    columns:
+      id: serial primary key
+      external_id: varchar(50)
+    unique-constraints:
+      - [external_id]
