@@ -76,11 +76,11 @@ to do so.
 
 ## Potential TO-DO List
 
-Document limitations:
-- we don't catch malformed ${string with missing trailing curly brace
-
-
 Before Release 1.0:
+- MAJOR: improperly sequenced processing prevents cycles
+  in formulas but for completely wrong reason.  Apparently
+  column existence is being checked in formulas while
+  columns are being defined during populate stage.
 - MAJOR: Reduce child->parent updates to a single update,
   right now it is update-per-column, very in-elegant
   and bad for performance.
