@@ -5,9 +5,7 @@ export interface DatabaseConfig {
   database: string;
   user: string;
   dryRun: boolean;
-  dumpInternalDir?: string;
   dumpDir?: string;
-  stopAfter?: 'yaml-validate' | 'flattened' | 'processed' | 'diffed';
 }
 
 // YAML Schema Types - matches our JSON Schema structure

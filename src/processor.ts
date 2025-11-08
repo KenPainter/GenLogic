@@ -61,6 +61,7 @@ export class GenLogicProcessor {
     this.schemaFlattener = new SchemaFlattener();
   }
 
+
   /**
    * Main processing pipeline
    */
@@ -71,17 +72,23 @@ export class GenLogicProcessor {
     console.log(`Mode: ${this.config.dryRun ? 'DRY RUN' : 'EXECUTE'}`);
     console.log('');
 
+    // Allow YAML loader to throw, we do not
+    //
+    console.log('Loading YAML schema...');
+    const parsedYaml = loadYamlSchemaWithTracking(schemaPath);
+    writeSchemaDebugFile(
+      { schemaPath, dumpDir: this.config.dumpDir },
+      '.parsed.json',
+      parsedYaml,
+      'Parsed YAML'
+    );
+
+    console.log('YOLO MARKER: Returning before we get to unrefactored code');
+    return;
+
+
     try {
-      // PHASE 10: Load and parse YAML with line tracking (fail fast on bad files)
-      //
-      console.log('Loading YAML schema...');
-      const parsedYaml = loadYamlSchemaWithTracking(schemaPath);
-      writeSchemaDebugFile(
-        { schemaPath, dumpDir: this.config.dumpDir },
-        '.parsed.json',
-        parsedYaml,
-        'Parsed YAML'
-      );
+
 
       // PHASE 10.2: Extract constants
       console.log('Extracting constants...');
@@ -178,8 +185,6 @@ export class GenLogicProcessor {
       // Dump diff for examination
       this.writeDiffToFile(diff, schemaPath);
 
-      console.log('YOLO MARKER: Returning before we get to unrefactored code');
-      return;
 
 
 
@@ -384,19 +389,6 @@ export class GenLogicProcessor {
     );
   }
 
-
-  private dumpInternal(name: string, data: any): void {
-    if (!this.config.dumpInternalDir) return;
-
-    // Create dump directory if it doesn't exist
-    if (!existsSync(this.config.dumpInternalDir)) {
-      mkdirSync(this.config.dumpInternalDir, { recursive: true });
-    }
-
-    const dumpPath = join(this.config.dumpInternalDir, `${name}.json`);
-    const json = JSON.stringify(data, null, 2);
-    writeFileSync(dumpPath, json, 'utf-8');
-  }
 
   private writeDiffToFile(diff: any, schemaPath: string): void {
     writeSchemaDebugFile(
