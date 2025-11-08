@@ -13,7 +13,7 @@ import { ContentManager } from './content-manager.js';
 import { ResolvedSchemaGenerator } from './resolved-schema-generator.js';
 import { PermissionsGenerator } from './permissions-generator.js';
 import { SchemaFlattener } from './schema-flattener.js';
-import { loadYamlSchemaWithTracking, extractCleanSchema } from './helpers-processor/yaml-loader.js';
+import { loadYamlSchema } from './helpers-processor/yaml-loader.js';
 import {
   extractConstants,
   extractTables,
@@ -75,7 +75,7 @@ export class GenLogicProcessor {
     // Allow YAML loader to throw, we do not
     //
     console.log('Loading YAML schema...');
-    const parsedYaml = loadYamlSchemaWithTracking(schemaPath);
+    const parsedYaml = loadYamlSchema(schemaPath);
     writeSchemaDebugFile(
       { schemaPath, dumpDir: this.config.dumpDir },
       '.parsed.json',
