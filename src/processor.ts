@@ -23,7 +23,8 @@ import { generateDropPrimaryKeyDDL, generateAddPrimaryKeyDDL } from './helpers-d
 import { generateDropForeignKeyDDL, generateAddForeignKeyDDL } from './helpers-ddl/foreign-key.js';
 import { generateCheckConstraintDDL } from './helpers-ddl/check-constraint.js';
 import { generateUniqueConstraintDDL } from './helpers-ddl/unique-constraint.js';
-import { generateIndexDDL } from './helpers-ddl/index.js';
+import { generateIndexDDL } from './helpers-ddl/indexes.js';
+import { generateSeedDataDML } from './helpers-ddl/seed-data.js';
 
 /**
  * GenLogic Core Processor
@@ -251,13 +252,9 @@ export class GenLogicProcessor {
       const tablesInLayer = tableLayers[layerNum];
       console.log(`  Seeding layer ${layerNum}: ${tablesInLayer.join(', ')}`);
 
-      // TODO: Generate INSERT statements for seed-rows
-      // - For each table in tablesInLayer
-      // - Generate INSERT for table.seedRows
-      //
-      // Also backfill automation columns:
-      // - SUM/COUNT/MAX/MIN aggregations
-      // - SYNC/SNAPSHOT columns
+      // Generate INSERT statements for seed rows
+      // With a fully built database, these are just like end-user inserts
+      seedSQL.push(...generateSeedDataDML(newSchema, tablesInLayer));
     }
 
     // PHASE 3: Set permissions (global operation after all tables/triggers exist)
