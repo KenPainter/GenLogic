@@ -21,14 +21,34 @@ export interface ForeignKeyDef {
   autoCreateParent?: boolean;
 }
 
+export interface ConstraintDef {
+  name: string;
+  expression: string;
+}
+
+export interface UniqueConstraintDef {
+  name: string;
+  columns: string[];
+}
+
+export interface IndexDef {
+  name: string;
+  columns: string[];
+}
+
 export interface TableDef {
   pkColumn?: string;
   pkDefinition?: string;
+  comment?: string;
+  layer?: number;  // Topological layer for FK dependencies (for inspection)
+  columnLayers?: Record<number, string[]>;  // Layers for formula columns (JSON-dumpable)
   // As we build it out:
   columns?: Record<string, any>;
   foreignKeys?: ForeignKeyDef[];
   columnRefs?: Array<{ sourceColumn: string; referencedColumn: string }>;
   columnEdges?: Array<[string, string]>;  // For topological sort of formulas
-  constraints?: any[];
-  indexes?: any[];
+  seedRows?: any[];
+  constraints?: ConstraintDef[];
+  uniqueConstraints?: UniqueConstraintDef[];
+  indexes?: IndexDef[];
 }

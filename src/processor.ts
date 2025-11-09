@@ -100,6 +100,63 @@ export class GenLogicProcessor {
     console.log('  Processing columns...');
     newSchema.processColumns(parsedYaml);
 
+    // Process table-level properties (comment)
+    console.log('  Processing table-level properties...');
+    newSchema.processTableProperties(parsedYaml);
+
+    // Topological sorting and cycle detection
+    console.log('  Detecting cycles and layers in foreign key relationships...');
+    const fkResult = topologicalSortByLayers(
+      newSchema.fkEdges,
+      true  // skipSelfLoops: true for FKs (self-referential FKs are allowed)
+    );
+    if (fkResult.cycles.length > 0) {
+      for (const cycle of fkResult.cycles) {
+        newSchema.errors.push({
+          location: 'Foreign keys',
+          message: `Cycle detected: ${cycle.join(' -> ')}`
+        });
+      }
+    }
+
+    // Apply table layers and fill in missing tables to layer 0
+    console.log('  Applying table layers...');
+    newSchema.tableLayers = newSchema.applyTableLayers(fkResult.layers);
+
+    console.log('  Detecting cycles and layers in formula column dependencies...');
+    for (const [tableName, tableDef] of Object.entries(newSchema.tables)) {
+      if (tableDef.columnEdges && tableDef.columnEdges.length > 0) {
+        const formulaResult = topologicalSortByLayers(
+          tableDef.columnEdges,
+          false  // skipSelfLoops: false for formulas (self-referential formulas are cycles)
+        );
+        if (formulaResult.cycles.length > 0) {
+          for (const cycle of formulaResult.cycles) {
+            newSchema.errors.push({
+              location: `${tableName} formula columns`,
+              message: `Cycle detected: ${cycle.join(' -> ')}`
+            });
+          }
+        }
+        // Apply column layers to table (only formula columns will be in layers)
+        newSchema.applyColumnLayers(tableName, formulaResult.layers);
+      }
+    }
+
+    console.log('  Detecting cycles in automation dependencies...');
+    const automationResult = topologicalSortByLayers(
+      newSchema.automationEdges,
+      false  // skipSelfLoops: false for automations (self-referential automations are cycles)
+    );
+    if (automationResult.cycles.length > 0) {
+      for (const cycle of automationResult.cycles) {
+        newSchema.errors.push({
+          location: 'Automation dependencies',
+          message: `Cycle detected: ${cycle.join(' -> ')}`
+        });
+      }
+    }
+
     // YOLO MARKER - above is rock solid, below will crash
     this.writeNewSchema(schemaPath, newSchema);
     console.log('YOLO MARKER: Returning before we get to unrefactored code');

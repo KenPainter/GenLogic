@@ -120,13 +120,11 @@ export function detectCycles<T extends string>(
  *
  * If cycles are detected, returns null for layers and includes cycle details
  *
- * @param nodes - Set of all node identifiers
  * @param dependencies - Array of [from, to] dependency pairs (duplicates are automatically removed)
  * @param skipSelfLoops - If true, ignore self-referential edges (default: true)
  * @returns Object with layers (Map of layer→nodes or null) and cycles array
  */
 export function topologicalSortByLayers<T extends string>(
-  nodes: Iterable<T>,
   dependencies: Array<[T, T]>,
   skipSelfLoops: boolean = true
 ): TopologicalSortResult<T> {
@@ -134,13 +132,6 @@ export function topologicalSortByLayers<T extends string>(
   const nodeToLayer = new Map<T, number>();
   const inDegree = new Map<T, number>();
   const edges = new Map<T, Set<T>>();
-
-  // Initialize nodes
-  const nodeSet = new Set(nodes);
-  for (const node of nodeSet) {
-    inDegree.set(node, 0);
-    edges.set(node, new Set());
-  }
 
   // Deduplicate dependencies (multiple edges between same nodes)
   const uniqueDeps = new Set<string>();
@@ -151,6 +142,19 @@ export function topologicalSortByLayers<T extends string>(
       uniqueDeps.add(key);
       dedupedDependencies.push([from, to]);
     }
+  }
+
+  // Extract nodes from edges
+  const nodeSet = new Set<T>();
+  for (const [from, to] of dedupedDependencies) {
+    nodeSet.add(from);
+    nodeSet.add(to);
+  }
+
+  // Initialize nodes
+  for (const node of nodeSet) {
+    inDegree.set(node, 0);
+    edges.set(node, new Set());
   }
 
   // Build edges from deduplicated dependencies

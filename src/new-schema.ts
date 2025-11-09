@@ -18,7 +18,14 @@
  */
 
 // Imported from ./new-schema-subtypes.ts
-import type { SchemaError, TableDef, ForeignKeyDef } from './new-schema-subtypes.js';
+import type {
+  SchemaError,
+  TableDef,
+  ForeignKeyDef,
+  ConstraintDef,
+  UniqueConstraintDef,
+  IndexDef
+} from './new-schema-subtypes.js';
 import { parse, astVisitor } from 'pgsql-ast-parser';
 
 export class NewSchema {
@@ -44,6 +51,9 @@ export class NewSchema {
     referencedTable: string;
     referencedColumn: string;
   }> = [];
+
+  // Table layers for FK dependencies (JSON-dumpable)
+  public tableLayers: Record<number, string[]> = {};
 
   constructor() {
     // Empty - NewSchema is built incrementally by processor
@@ -231,6 +241,22 @@ export class NewSchema {
       this.tables[tableName].columns = {};
     }
     this.tables[tableName].columns[colName] = resolvedCol;
+
+    // Check for unknown column keys
+    const knownColumnKeys = [
+      'definition', 'base', 'type', 'size', 'decimal', 'primary_key', 'unique', 'not_null',
+      'sequence', 'default', 'label', 'comment', 'format', 'formula', 'automation',
+      'automationType', 'automationSourceTable', 'automationSourceColumn', 'automationFKColumn',
+      'fkParentTable', 'fkParentColumn', 'fkDeleteAction', 'fkAutoCreateParent'
+    ];
+    for (const key of Object.keys(resolvedCol)) {
+      if (!knownColumnKeys.includes(key)) {
+        this.errors.push({
+          location,
+          message: `Unknown column property: ${key}`
+        });
+      }
+    }
   }
 
   /**
@@ -341,13 +367,8 @@ export class NewSchema {
 
     this.tables[tableName].foreignKeys!.push(fkDef);
 
-    // Add edge for cycle detection (with deduplication)
-    const edgeExists = this.fkEdges.some(([child, parent]) =>
-      child === tableName && parent === parentTable
-    );
-    if (!edgeExists) {
-      this.fkEdges.push([tableName, parentTable]);
-    }
+    // Add edge for cycle detection (topologicalSortByLayers deduplicates for us)
+    this.fkEdges.push([tableName, parentTable]);
   }
 
   /**
@@ -537,13 +558,8 @@ export class NewSchema {
       childTable = sourceTable;
     }
 
-    // Add automation edge (with deduplication)
-    const edgeExists = this.automationEdges.some(([parent, child]) =>
-      parent === parentTable && child === childTable
-    );
-    if (!edgeExists) {
-      this.automationEdges.push([parentTable, childTable]);
-    }
+    // Add automation edge (topologicalSortByLayers deduplicates for us)
+    this.automationEdges.push([parentTable, childTable]);
 
     // Store the automation's source column dependency
     this.crossTableColumnDeps.push({
@@ -601,6 +617,222 @@ export class NewSchema {
         message: `Invalid WHERE clause: ${error instanceof Error ? error.message : String(error)}`
       });
       return null;
+    }
+  }
+
+  /**
+   * Process table-level properties: comment, seed-rows, constraints, unique-constraints, indexes
+   * Now that columns are processed, we can validate column references
+   */
+  processTableProperties(parsedYaml: any): void {
+    for (const [tableName, yamlTable] of Object.entries(parsedYaml.tables ?? {})) {
+      const table = yamlTable as any;
+      const tableColumns = this.tables[tableName].columns || {};
+
+      // Check for unknown table keys
+      const knownTableKeys = ['columns', 'comment', 'seed-rows', 'constraints', 'unique-constraints', 'indexes', 'singleton'];
+      for (const key of Object.keys(table)) {
+        if (!knownTableKeys.includes(key)) {
+          this.errors.push({
+            location: tableName,
+            message: `Unknown table property: ${key}`
+          });
+        }
+      }
+
+      // Copy comment
+      if (table.comment) {
+        this.tables[tableName].comment = table.comment;
+      }
+
+      // Process seed-rows
+      if (table['seed-rows'] && Array.isArray(table['seed-rows'])) {
+        this.tables[tableName].seedRows = table['seed-rows'];
+
+        // Validate: all column names in seed rows exist
+        for (let i = 0; i < table['seed-rows'].length; i++) {
+          const row = table['seed-rows'][i];
+          for (const colName of Object.keys(row)) {
+            if (!(colName in tableColumns)) {
+              this.errors.push({
+                location: `${tableName}.seed-rows[${i}]`,
+                message: `Seed row references non-existent column: ${colName}`
+              });
+            }
+          }
+        }
+      }
+
+      // Process constraints (CHECK constraints)
+      if (table.constraints && Array.isArray(table.constraints)) {
+        this.tables[tableName].constraints = [];
+
+        // Generate names and validate
+        for (let i = 0; i < table.constraints.length; i++) {
+          const expression = table.constraints[i];
+          const location = `${tableName}.constraints[${i}]`;
+
+          // Generate constraint name: check_tablename_1, check_tablename_2, etc.
+          const constraintDef: ConstraintDef = {
+            name: `check_${tableName}_${i + 1}`,
+            expression: expression
+          };
+
+          this.tables[tableName].constraints.push(constraintDef);
+
+          // Parse as WHERE clause to extract column references
+          const deps = this.parseSQLWhereClause(expression, location);
+          if (deps) {
+            for (const colName of deps) {
+              if (!(colName in tableColumns)) {
+                this.errors.push({
+                  location,
+                  message: `Constraint references non-existent column: ${colName}`
+                });
+              }
+            }
+          }
+        }
+      }
+
+      // Process unique-constraints
+      if (table['unique-constraints'] && Array.isArray(table['unique-constraints'])) {
+        this.tables[tableName].uniqueConstraints = [];
+
+        // Generate names and validate
+        for (let i = 0; i < table['unique-constraints'].length; i++) {
+          const uniqueCols = table['unique-constraints'][i];
+          const location = `${tableName}.unique-constraints[${i}]`;
+
+          if (!Array.isArray(uniqueCols)) {
+            this.errors.push({
+              location,
+              message: `Unique constraint must be an array of column names`
+            });
+            continue;
+          }
+
+          // Generate unique constraint name: unique_tablename_col1_col2
+          const uniqueDef: UniqueConstraintDef = {
+            name: `unique_${tableName}_${uniqueCols.join('_')}`,
+            columns: uniqueCols
+          };
+
+          this.tables[tableName].uniqueConstraints.push(uniqueDef);
+
+          // Validate column names exist
+          for (const colName of uniqueCols) {
+            if (!(colName in tableColumns)) {
+              this.errors.push({
+                location,
+                message: `Unique constraint references non-existent column: ${colName}`
+              });
+            }
+          }
+        }
+      }
+
+      // Process indexes
+      if (table.indexes && Array.isArray(table.indexes)) {
+        this.tables[tableName].indexes = [];
+
+        // Generate names and validate
+        for (let i = 0; i < table.indexes.length; i++) {
+          const indexCols = table.indexes[i];
+          const location = `${tableName}.indexes[${i}]`;
+
+          if (!Array.isArray(indexCols)) {
+            this.errors.push({
+              location,
+              message: `Index must be an array of column names`
+            });
+            continue;
+          }
+
+          // Generate index name: idx_tablename_col1_col2
+          const indexDef: IndexDef = {
+            name: `idx_${tableName}_${indexCols.join('_')}`,
+            columns: indexCols
+          };
+
+          this.tables[tableName].indexes.push(indexDef);
+
+          // Validate column names exist
+          for (const colName of indexCols) {
+            if (!(colName in tableColumns)) {
+              this.errors.push({
+                location,
+                message: `Index references non-existent column: ${colName}`
+              });
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Apply table layers from topological sort result
+   * Fills in any missing tables into layer 0
+   * Returns JSON-dumpable Record instead of Map
+   */
+  applyTableLayers(layers: Map<number, string[]>): Record<number, string[]> {
+    const result: Record<number, string[]> = {};
+    const handledTables = new Set<string>();
+
+    // Copy layers from Map to Record and track which tables we've seen
+    for (const [layerNum, tableNames] of layers) {
+      result[layerNum] = tableNames;
+      for (const tableName of tableNames) {
+        handledTables.add(tableName);
+        // Store layer number on table for inspection
+        if (this.tables[tableName]) {
+          this.tables[tableName].layer = layerNum;
+        }
+      }
+    }
+
+    // Find unhandled tables and add them to layer 0
+    const unhandledTables: string[] = [];
+    for (const tableName of Object.keys(this.tables)) {
+      if (!handledTables.has(tableName)) {
+        unhandledTables.push(tableName);
+        this.tables[tableName].layer = 0;
+      }
+    }
+
+    // Add unhandled tables to layer 0
+    if (unhandledTables.length > 0) {
+      if (result[0]) {
+        result[0] = [...result[0], ...unhandledTables].sort();
+      } else {
+        result[0] = unhandledTables.sort();
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Apply column layers from topological sort result to a specific table
+   * Note: Only formula columns will appear in the edges/layers
+   * Non-formula columns don't need layers (no calculation order needed)
+   * Stores result in table.columnLayers as JSON-dumpable Record
+   */
+  applyColumnLayers(tableName: string, layers: Map<number, string[]>): void {
+    const tableDef = this.tables[tableName];
+    if (!tableDef) return;
+
+    const result: Record<number, string[]> = {};
+
+    // Copy layers from Map to Record
+    for (const [layerNum, columnNames] of layers) {
+      result[layerNum] = columnNames;
+    }
+
+    // Store in table (only if there are layers)
+    if (Object.keys(result).length > 0) {
+      tableDef.columnLayers = result;
     }
   }
 }
