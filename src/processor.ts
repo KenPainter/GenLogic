@@ -157,102 +157,29 @@ export class GenLogicProcessor {
       }
     }
 
-    // YOLO MARKER - above is rock solid, below will crash
+    // New schema is done, write it out and move on to db work
     this.writeNewSchema(schemaPath, newSchema);
+
+
+    console.log('Connecting to database...');
+    await this.database.connect();
+    console.log('Database connection established');
+
+
+    // YOLO MARKER - above is rock solid, below will crash
     console.log('YOLO MARKER: Returning before we get to unrefactored code');
+    await this.database.disconnect();
     return;
 
+    // PHASE 10: Database introspection
+    console.log('Identifying current database elements...');
+    const currentSchema = await this.database.analyzeCurrentSchema();
+    // Dump current schema for examination
+    this.writeCurrentSchema(schemaPath, currentSchema);
+
+  
 
     try {
-
-
-      // PHASE 10.2: Extract constants
-      console.log('Extracting constants...');
-      const extracted = createExtractedSchema(schemaPath);
-      extracted.constants = extractConstants(parsedYaml);
-
-      // PHASE 10.3: Extract tables and columns
-      console.log('Extracting tables and columns...');
-      extracted.tables = extractTables(parsedYaml);
-
-      // PHASE 10.4: Extract foreign keys
-      console.log('Extracting foreign keys...');
-      extracted.foreignKeys = extractForeignKeys(parsedYaml, extracted.tables);
-
-      // PHASE 20.1: Cycle detection and layer assignment in foreign keys
-      console.log('Detecting cycles and assigning layers in foreign keys...');
-      const sortResult = topologicalSortByLayers(
-        extracted.tables.keys(),
-        extracted.foreignKeys.map((fk: any) => [fk.parentTable, fk.childTable]),
-        true  // Skip self-loops
-      );
-      extracted.tableLayers = sortResult.layers;
-      extracted.cycles = sortResult.cycles;
-
-      // Write extracted schema for debugging
-      writeSchemaDebugFile(
-        { schemaPath, dumpDir: this.config.dumpDir },
-        '.extracted.json',
-        extracted,
-        'Extracted schema'
-      );
-
-      if (sortResult.cycles.length > 0) {
-        throw new Error(`Foreign key cycles detected:\n${sortResult.cycles.map(cycle => `  ${cycle.join(' → ')}`).join('\n')}`);
-      }
-
-      // PHASE 30: Populate schema (two-pass processing)
-      console.log('Populating schema (two-pass processing)...');
-
-      // Extract reusable columns from YAML if present
-      const reusableColumns = new Map();
-      if (parsedYaml.content?.columns && typeof parsedYaml.content.columns === 'object') {
-        for (const [colName, colDef] of Object.entries(parsedYaml.content.columns)) {
-          if (colName !== '_yamlLine') {
-            // Recursively unwrap _value wrappers from YAML tracking
-            function unwrapValue(obj: any): any {
-              if (obj && typeof obj === 'object') {
-                if (obj._value !== undefined) {
-                  return unwrapValue(obj._value);
-                }
-                const result: any = {};
-                for (const [key, value] of Object.entries(obj)) {
-                  if (key !== '_yamlLine') {
-                    result[key] = unwrapValue(value);
-                  }
-                }
-                return result;
-              }
-              return obj;
-            }
-
-            reusableColumns.set(colName, unwrapValue(colDef));
-          }
-        }
-      }
-
-      const populated = populateSchema(extracted, reusableColumns);
-
-      // Write populated schema for debugging
-      writePopulatedSchema(populated, this.config.dumpDir);
-
-
-      // PHASE 9: Database connection
-      //
-      //   processedSchema is now COMPLETE AND ENTIRE
-      //   for all downstream processing steps
-      //
-      console.log('Connecting to database...');
-      await this.database.connect();
-      console.log('Database connection established');
-
-
-      // PHASE 10: Database introspection
-      console.log('Identifying current database elements...');
-      const currentSchema = await this.database.analyzeCurrentSchema();
-
-      // Dump current schema for examination
-      this.writeCurrentSchema(schemaPath, currentSchema);
 
       // Phase 11: Generate diff between populated schema and currentSchema
       console.log('Generating schema diff...');
@@ -260,9 +187,6 @@ export class GenLogicProcessor {
 
       // Dump diff for examination
       this.writeDiffToFile(diff, schemaPath);
-
-
-
 
 
       // PHASE 12: SQL generation

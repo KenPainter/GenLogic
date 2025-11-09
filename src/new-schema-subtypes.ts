@@ -44,11 +44,11 @@ export interface TableDef {
   columnLayers?: Record<number, string[]>;  // Layers for formula columns (JSON-dumpable)
   // As we build it out:
   columns?: Record<string, any>;
-  foreignKeys?: ForeignKeyDef[];
+  foreignKeys?: Record<string, ForeignKeyDef>;  // Keyed by FK name for easy diffing
   columnRefs?: Array<{ sourceColumn: string; referencedColumn: string }>;
   columnEdges?: Array<[string, string]>;  // For topological sort of formulas
   seedRows?: any[];
-  constraints?: ConstraintDef[];
-  uniqueConstraints?: UniqueConstraintDef[];
-  indexes?: IndexDef[];
+  constraints?: Record<string, ConstraintDef>;  // Keyed by constraint name for easy diffing
+  uniqueConstraints?: Record<string, UniqueConstraintDef>;  // Keyed by constraint name for easy diffing
+  indexes?: Record<string, IndexDef>;  // Keyed by index name for easy diffing
 }

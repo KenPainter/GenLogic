@@ -368,9 +368,9 @@ export class NewSchema {
     // Generate FK constraint name: fk_tablename_columnname
     const fkName = `fk_${tableName}_${colName}`;
 
-    // Store FK at table level
+    // Store FK at table level (keyed by FK name)
     if (!this.tables[tableName].foreignKeys) {
-      this.tables[tableName].foreignKeys = [];
+      this.tables[tableName].foreignKeys = {};
     }
 
     const fkDef: ForeignKeyDef = {
@@ -382,7 +382,7 @@ export class NewSchema {
       autoCreateParent: autoCreateParent
     };
 
-    this.tables[tableName].foreignKeys!.push(fkDef);
+    this.tables[tableName].foreignKeys![fkName] = fkDef;
 
     // Add edge for cycle detection (topologicalSortByLayers deduplicates for us)
     this.fkEdges.push([tableName, parentTable]);
@@ -682,7 +682,7 @@ export class NewSchema {
 
       // Process constraints (CHECK constraints)
       if (table.constraints && Array.isArray(table.constraints)) {
-        this.tables[tableName].constraints = [];
+        this.tables[tableName].constraints = {};
 
         // Generate names and validate
         for (let i = 0; i < table.constraints.length; i++) {
@@ -690,12 +690,13 @@ export class NewSchema {
           const expression = this.replaceConstants(table.constraints[i], location);
 
           // Generate constraint name: check_tablename_1, check_tablename_2, etc.
+          const constraintName = `check_${tableName}_${i + 1}`;
           const constraintDef: ConstraintDef = {
-            name: `check_${tableName}_${i + 1}`,
+            name: constraintName,
             expression: expression
           };
 
-          this.tables[tableName].constraints.push(constraintDef);
+          this.tables[tableName].constraints![constraintName] = constraintDef;
 
           // Parse as WHERE clause to extract column references
           const deps = this.parseSQLWhereClause(expression, location);
@@ -714,7 +715,7 @@ export class NewSchema {
 
       // Process unique-constraints
       if (table['unique-constraints'] && Array.isArray(table['unique-constraints'])) {
-        this.tables[tableName].uniqueConstraints = [];
+        this.tables[tableName].uniqueConstraints = {};
 
         // Generate names and validate
         for (let i = 0; i < table['unique-constraints'].length; i++) {
@@ -730,12 +731,13 @@ export class NewSchema {
           }
 
           // Generate unique constraint name: unique_tablename_col1_col2
+          const uniqueName = `unique_${tableName}_${uniqueCols.join('_')}`;
           const uniqueDef: UniqueConstraintDef = {
-            name: `unique_${tableName}_${uniqueCols.join('_')}`,
+            name: uniqueName,
             columns: uniqueCols
           };
 
-          this.tables[tableName].uniqueConstraints.push(uniqueDef);
+          this.tables[tableName].uniqueConstraints![uniqueName] = uniqueDef;
 
           // Validate column names exist
           for (const colName of uniqueCols) {
@@ -751,7 +753,7 @@ export class NewSchema {
 
       // Process indexes
       if (table.indexes && Array.isArray(table.indexes)) {
-        this.tables[tableName].indexes = [];
+        this.tables[tableName].indexes = {};
 
         // Generate names and validate
         for (let i = 0; i < table.indexes.length; i++) {
@@ -767,12 +769,13 @@ export class NewSchema {
           }
 
           // Generate index name: idx_tablename_col1_col2
+          const indexName = `idx_${tableName}_${indexCols.join('_')}`;
           const indexDef: IndexDef = {
-            name: `idx_${tableName}_${indexCols.join('_')}`,
+            name: indexName,
             columns: indexCols
           };
 
-          this.tables[tableName].indexes.push(indexDef);
+          this.tables[tableName].indexes![indexName] = indexDef;
 
           // Validate column names exist
           for (const colName of indexCols) {
