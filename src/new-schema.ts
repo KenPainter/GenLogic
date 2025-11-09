@@ -271,12 +271,12 @@ export class NewSchema {
       // Aggregate columns need sensible defaults for initial state before any data exists.
       // We auto-apply defaults here (schema-level) rather than in DDL generation (dumb layer).
 
-      // Validation: User should NOT specify defaults on aggregate automations
+      // Validation: User should NOT specify defaults on automations
       if (resolvedCol.defaultValue !== undefined) {
         this.errors.push({
           location,
-          message: `Aggregate automation columns cannot have user-specified defaults. ` +
-                   `Remove 'default' - the system will set appropriate defaults based on aggregation type.`
+          message: `Automation columns cannot have user-specified defaults. ` +
+                   `Remove 'default' - the system will set appropriate defaults based on automation type.`
         });
       }
 
@@ -469,6 +469,9 @@ export class NewSchema {
     };
 
     this.tables[tableName].foreignKeys![fkName] = fkDef;
+
+    // Add index for FK column (PostgreSQL doesn't auto-index FK columns)
+    this.addIndexForColumn(tableName, colName, 'fk');
 
     // Add edge for cycle detection (topologicalSortByLayers deduplicates for us)
     this.fkEdges.push([tableName, parentTable]);
@@ -1080,6 +1083,26 @@ export class NewSchema {
 
     this.tables[tableName].uniqueConstraints[constraintName] = {
       name: constraintName,
+      columns: [colName]
+    };
+  }
+
+  /**
+   * Add index for a FK column
+   * PostgreSQL doesn't auto-index FK columns, so we create them explicitly
+   * Uses naming pattern: idx_{tablename}_{columnname}
+   */
+  private addIndexForColumn(tableName: string, colName: string, type: 'fk'): void {
+    // Initialize indexes Record if needed
+    if (!this.tables[tableName].indexes) {
+      this.tables[tableName].indexes = {};
+    }
+
+    // Generate index name for FK
+    const indexName = `idx_${tableName}_${colName}`;
+
+    this.tables[tableName].indexes[indexName] = {
+      name: indexName,
       columns: [colName]
     };
   }

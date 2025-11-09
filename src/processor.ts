@@ -399,15 +399,15 @@ export class GenLogicProcessor {
 
   private writeLiveSchema(schemaPath: string, liveSchema: NewSchema): void {
     const path = this.getDebugPath(schemaPath, '.live.json');
-    // Dump the tables structure for comparison
-    writeFileSync(path, JSON.stringify(liveSchema.tables, null, 2));
+    // Dump the full live schema object
+    writeFileSync(path, JSON.stringify(liveSchema, null, 2));
     console.log(`  Wrote ${path}`);
   }
 
   private writeNewSchema(schemaPath: string, desiredSchema: NewSchema): void {
     const path = this.getDebugPath(schemaPath, '.newSchema.json');
-    // Dump the tables structure for comparison
-    writeFileSync(path, JSON.stringify(desiredSchema.tables, null, 2));
+    // Dump the full NewSchema object including errors
+    writeFileSync(path, JSON.stringify(desiredSchema, null, 2));
     console.log(`  Wrote ${path}`);
   }
 
