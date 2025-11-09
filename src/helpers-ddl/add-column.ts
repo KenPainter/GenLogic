@@ -15,8 +15,8 @@ function buildAddColumnDDL(col: ColumnDef): string {
     if (col.character_maximum_length !== undefined) {
       ddl += `(${col.character_maximum_length})`;
     }
-    // For numeric types
-    else if (col.numeric_precision !== undefined) {
+    // For numeric/decimal types only (NOT integer, bigint, smallint, etc.)
+    else if (col.numeric_precision !== undefined && /^(numeric|decimal)$/i.test(col.type)) {
       if (col.numeric_scale !== undefined) {
         ddl += `(${col.numeric_precision},${col.numeric_scale})`;
       } else {

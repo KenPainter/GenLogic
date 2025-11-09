@@ -166,6 +166,15 @@ export class GenLogicProcessor {
     // New schema is done, write it out and move on to db work
     this.writeNewSchema(schemaPath, newSchema);
 
+    // Check for schema errors and abort if any found
+    if (newSchema.errors.length > 0) {
+      console.error('\n❌ Schema validation failed with the following errors:\n');
+      for (const error of newSchema.errors) {
+        console.error(`  ${error.location}: ${error.message}`);
+      }
+      console.error('\nAborting due to schema errors.');
+      process.exit(1);
+    }
 
     console.log('Connecting to database...');
     await this.database.connect();
@@ -261,7 +270,7 @@ export class GenLogicProcessor {
     }
 
     // PHASE 3: Set permissions (global operation after all tables/triggers exist)
-    console.log('Phase 3: Generate permission grants...');
+    //console.log('Phase 3: Generate permission grants...');
 
     // TODO: Generate permission GRANT statements
     const permissionSQL: string[] = [];
@@ -292,10 +301,8 @@ export class GenLogicProcessor {
 
     // TODO: Execute SQL statements in transaction
     if (!this.config.dryRun) {
-       //await this.database.executeInTransaction(filteredStatements);
+       await this.database.executeInTransaction(filteredStatements);
     }
-
-
 
     await this.database.disconnect();
     console.log('✨ GenLogic processing completed successfully!');

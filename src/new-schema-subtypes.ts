@@ -83,7 +83,6 @@ export interface ColumnDef {
   automationSourceTable?: string;
   automationSourceColumn?: string;
   automationFKColumn?: string;
-  automationWhereClause?: string;      // Optional WHERE clause for filtered aggregations
 
   // Metadata
   label?: string;

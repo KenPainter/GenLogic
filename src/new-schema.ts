@@ -474,7 +474,8 @@ export class NewSchema {
     this.addIndexForColumn(tableName, colName, 'fk');
 
     // Add edge for cycle detection (topologicalSortByLayers deduplicates for us)
-    this.fkEdges.push([tableName, parentTable]);
+    // Edge direction: [parent, child] means "child depends on parent" (parent must exist first)
+    this.fkEdges.push([parentTable, tableName]);
   }
 
   /**
@@ -729,9 +730,7 @@ export class NewSchema {
     if (fkColumn) {
       col.automationFKColumn = fkColumn;
     }
-    if (whereClause) {
-      col.automationWhereClause = whereClause;
-    }
+    // WHERE clauses are NOT supported - use formula columns instead
 
     // Determine parent/child relationship based on operation type
     // SUM/COUNT/MAX/MIN/LAST_VALUE: Parent (tableName) aggregates FROM child (sourceTable)
