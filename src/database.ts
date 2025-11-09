@@ -498,21 +498,25 @@ export class DatabaseManager {
   }
 
   /**
-   * Get ALL GenLogic triggers in the database
+   * Get ALL triggers on tables managed by GenLogic
    * Used for unconditional cleanup at start of processing
+   *
+   * @param tableNames - Set of table names from the schema
    */
-  async getAllGenLogicTriggers(): Promise<Array<{ triggerName: string; tableName: string }>> {
+  async getAllTriggersOnTables(tableNames: string[]): Promise<Array<{ triggerName: string; tableName: string }>> {
+    if (tableNames.length === 0) {
+      return [];
+    }
+
     const result = await this.pool.query(`
       SELECT
         t.trigger_name,
         t.event_object_table as table_name
       FROM information_schema.triggers t
       WHERE t.event_object_schema = 'public'
-        AND (t.trigger_name LIKE '%_genlogic'
-             OR t.trigger_name LIKE '%_protect_update'
-             OR t.trigger_name LIKE '%_protect_delete')
+        AND t.event_object_table = ANY($1::text[])
       ORDER BY t.event_object_table, t.trigger_name
-    `);
+    `, [tableNames]);
 
     return result.rows.map(row => ({
       triggerName: row.trigger_name,
@@ -521,11 +525,13 @@ export class DatabaseManager {
   }
 
   /**
-   * Generate SQL to drop all GenLogic triggers
+   * Generate SQL to drop all triggers on managed tables
    * Returns array of DROP TRIGGER statements
+   *
+   * @param tableNames - Set of table names from the schema
    */
-  async generateDropAllGenLogicTriggersSQL(): Promise<string[]> {
-    const triggers = await this.getAllGenLogicTriggers();
+  async generateDropAllTriggersSQL(tableNames: string[]): Promise<string[]> {
+    const triggers = await this.getAllTriggersOnTables(tableNames);
     return triggers.map(({ triggerName, tableName }) =>
       `DROP TRIGGER IF EXISTS ${triggerName} ON "${tableName}";`
     );

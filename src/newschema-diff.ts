@@ -7,14 +7,14 @@
  */
 
 import type { NewSchema } from './new-schema.js';
-import type { TableDef, ForeignKeyDef, ConstraintDef, UniqueConstraintDef, IndexDef } from './new-schema-subtypes.js';
+import type { TableDef, ForeignKeyDef, ConstraintDef, UniqueConstraintDef, IndexDef, ColumnDef } from './new-schema-subtypes.js';
 import { parse, toSql } from 'pgsql-ast-parser';
 
 export interface NewSchemaDiff {
   tablesToCreate: string[];
   tablesToDrop?: string[];  // Optional - deleted after extraction to drops.sql
-  columnsToAdd: Array<{ table: string; column: string; definition: string }>;
-  columnsToModify: Array<{ table: string; column: string; oldDef: string; newDef: string }>;
+  columnsToAdd: Array<{ table: string; column: string; columnDef: ColumnDef }>;
+  columnsToModify: Array<{ table: string; column: string; oldColumnDef: ColumnDef; newColumnDef: ColumnDef }>;
   columnsToDrop?: Array<{ table: string; column: string }>;  // Optional - deleted after extraction to drops.sql
   foreignKeysToAdd: Array<{ table: string; fk: ForeignKeyDef }>;
   foreignKeysToDrop: Array<{ table: string; fkName: string }>;
@@ -28,6 +28,11 @@ export interface NewSchemaDiff {
   indexesToAdd: Array<{ table: string; index: IndexDef }>;
   indexesToDrop: Array<{ table: string; indexName: string }>;
   indexesToModify: Array<{ table: string; indexName: string; oldIndex: IndexDef; newIndex: IndexDef }>;
+  primaryKeyChanges: Array<{ table: string; oldPkColumns: string[]; newPkColumns: string[] }>;
+
+  // Layer information from desired schema (for SQL ordering)
+  tableLayers?: Record<number, string[]>;  // FK dependency layers
+  columnLayers?: Record<string, Record<number, string[]>>;  // Formula column dependency layers per table
 }
 
 /**
@@ -55,7 +60,8 @@ export function diffSchemas(desired: NewSchema, live: NewSchema): NewSchemaDiff 
     uniqueConstraintsToModify: [],
     indexesToAdd: [],
     indexesToDrop: [],
-    indexesToModify: []
+    indexesToModify: [],
+    primaryKeyChanges: []
   };
 
   const desiredTableNames = new Set(Object.keys(desired.tables));
@@ -105,6 +111,7 @@ export function diffSchemas(desired: NewSchema, live: NewSchema): NewSchemaDiff 
 
 /**
  * Compare columns between desired and live table
+ * Also detects PRIMARY KEY changes at table level
  */
 function diffColumns(
   tableName: string,
@@ -118,14 +125,22 @@ function diffColumns(
   const desiredColNames = new Set(Object.keys(desiredColumns));
   const liveColNames = new Set(Object.keys(liveColumns));
 
+  // Track PK columns for table-level PK change detection
+  const oldPkColumns: string[] = [];
+  const newPkColumns: string[] = [];
+
   // Find columns to add
   for (const colName of desiredColNames) {
     if (!liveColNames.has(colName)) {
       diff.columnsToAdd.push({
         table: tableName,
         column: colName,
-        definition: desiredColumns[colName].normalizedDef || desiredColumns[colName].definition
+        columnDef: desiredColumns[colName]  // Full ColumnDef object
       });
+      // Track new PK columns
+      if (desiredColumns[colName].isPrimaryKey) {
+        newPkColumns.push(colName);
+      }
     }
   }
 
@@ -136,26 +151,77 @@ function diffColumns(
         table: tableName,
         column: colName
       });
+      // Track old PK columns
+      if (liveColumns[colName].isPrimaryKey) {
+        oldPkColumns.push(colName);
+      }
     }
   }
 
   // Find columns to modify
   for (const colName of desiredColNames) {
     if (liveColNames.has(colName)) {
+      const oldCol = liveColumns[colName];
+      const newCol = desiredColumns[colName];
+
+      // Track PK columns
+      if (oldCol.isPrimaryKey) {
+        oldPkColumns.push(colName);
+      }
+      if (newCol.isPrimaryKey) {
+        newPkColumns.push(colName);
+      }
+
       // Compare using normalizedDef for apples-to-apples comparison
-      const desiredDef = desiredColumns[colName].normalizedDef || desiredColumns[colName].definition;
-      const liveDef = liveColumns[colName].definition; // Live always uses definition
+      const desiredDef = newCol.normalizedDef || newCol.definition;
+      const liveDef = oldCol.definition; // Live always uses definition
 
       if (desiredDef !== liveDef) {
-        diff.columnsToModify.push({
-          table: tableName,
-          column: colName,
-          oldDef: liveDef,
-          newDef: desiredDef
-        });
+        // Check if this is ONLY a PK change (no other column property changes)
+        const isPkOnlyChange = areColumnsIdenticalExceptPk(oldCol, newCol);
+
+        if (!isPkOnlyChange) {
+          // Only add to columnsToModify if there are non-PK changes
+          diff.columnsToModify.push({
+            table: tableName,
+            column: colName,
+            oldColumnDef: oldCol,    // Full ColumnDef from live
+            newColumnDef: newCol     // Full ColumnDef from desired
+          });
+        }
       }
     }
   }
+
+  // Detect table-level PK changes
+  const oldPkSorted = oldPkColumns.sort();
+  const newPkSorted = newPkColumns.sort();
+
+  // Compare as JSON strings for deep array equality
+  if (JSON.stringify(oldPkSorted) !== JSON.stringify(newPkSorted)) {
+    diff.primaryKeyChanges.push({
+      table: tableName,
+      oldPkColumns: oldPkSorted,
+      newPkColumns: newPkSorted
+    });
+  }
+}
+
+/**
+ * Check if two ColumnDefs are identical except for isPrimaryKey
+ * Used to filter out PK-only changes from columnsToModify
+ */
+function areColumnsIdenticalExceptPk(oldCol: ColumnDef, newCol: ColumnDef): boolean {
+  return (
+    oldCol.type === newCol.type &&
+    oldCol.character_maximum_length === newCol.character_maximum_length &&
+    oldCol.numeric_precision === newCol.numeric_precision &&
+    oldCol.numeric_scale === newCol.numeric_scale &&
+    oldCol.nullable === newCol.nullable &&
+    oldCol.defaultValue === newCol.defaultValue &&
+    oldCol.serial === newCol.serial
+    // Explicitly NOT comparing isPrimaryKey
+  );
 }
 
 /**
