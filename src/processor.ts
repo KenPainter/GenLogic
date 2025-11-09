@@ -21,6 +21,9 @@ import { generateAddColumnDDL } from './helpers-ddl/add-column.js';
 import { generateModifyColumnDDL } from './helpers-ddl/modify-column.js';
 import { generateDropPrimaryKeyDDL, generateAddPrimaryKeyDDL } from './helpers-ddl/primary-key.js';
 import { generateDropForeignKeyDDL, generateAddForeignKeyDDL } from './helpers-ddl/foreign-key.js';
+import { generateCheckConstraintDDL } from './helpers-ddl/check-constraint.js';
+import { generateUniqueConstraintDDL } from './helpers-ddl/unique-constraint.js';
+import { generateIndexDDL } from './helpers-ddl/index.js';
 
 /**
  * GenLogic Core Processor
@@ -234,11 +237,10 @@ export class GenLogicProcessor {
       schemaSQL.push(...generateModifyColumnDDL(diff, tablesInLayer));
       schemaSQL.push(...generateAddPrimaryKeyDDL(diff, tablesInLayer));   // Add PK after column changes
       schemaSQL.push(...generateAddForeignKeyDDL(diff, tablesInLayer));   // Add new/modified FKs
-      // TODO: ADD CHECK CONSTRAINTS (for constraints in constraintsToAdd)
-      // TODO: ADD UNIQUE CONSTRAINTS (for uniqueConstraints in uniqueConstraintsToAdd)
-      // TODO: CREATE INDEXES (for indexes in indexesToAdd)
+      schemaSQL.push(...generateCheckConstraintDDL(diff, tablesInLayer));  // CHECK constraints (drop then add)
+      schemaSQL.push(...generateUniqueConstraintDDL(diff, tablesInLayer));  // UNIQUE constraints (drop then add)
+      schemaSQL.push(...generateIndexDDL(diff, tablesInLayer));  // Indexes (drop then add)
       // TODO: CREATE TRIGGERS (for tables in this layer - automation may reference other layers)
-      // TODO: ADD COMMENTS (for tables/columns with comments)
     }
 
     // PHASE 2.5: Seed data in layer order (after schema + triggers complete)

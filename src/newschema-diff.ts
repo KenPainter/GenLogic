@@ -21,13 +21,10 @@ export interface NewSchemaDiff {
   foreignKeysToModify: Array<{ table: string; fkName: string; oldFk: ForeignKeyDef; newFk: ForeignKeyDef }>;
   constraintsToAdd: Array<{ table: string; constraint: ConstraintDef }>;
   constraintsToDrop: Array<{ table: string; constraint: ConstraintDef }>;
-  constraintsToModify: Array<{ table: string; constraintName: string; oldConstraint: ConstraintDef; newConstraint: ConstraintDef }>;
   uniqueConstraintsToAdd: Array<{ table: string; constraint: UniqueConstraintDef }>;
   uniqueConstraintsToDrop: Array<{ table: string; constraintName: string }>;
-  uniqueConstraintsToModify: Array<{ table: string; constraintName: string; oldConstraint: UniqueConstraintDef; newConstraint: UniqueConstraintDef }>;
   indexesToAdd: Array<{ table: string; index: IndexDef }>;
   indexesToDrop: Array<{ table: string; indexName: string }>;
-  indexesToModify: Array<{ table: string; indexName: string; oldIndex: IndexDef; newIndex: IndexDef }>;
   primaryKeyChanges: Array<{ table: string; oldPkColumns: string[]; newPkColumns: string[] }>;
 
   // Layer information from desired schema (for SQL ordering)
@@ -54,13 +51,10 @@ export function diffSchemas(desired: NewSchema, live: NewSchema): NewSchemaDiff 
     foreignKeysToModify: [],
     constraintsToAdd: [],
     constraintsToDrop: [],
-    constraintsToModify: [],
     uniqueConstraintsToAdd: [],
     uniqueConstraintsToDrop: [],
-    uniqueConstraintsToModify: [],
     indexesToAdd: [],
     indexesToDrop: [],
-    indexesToModify: [],
     primaryKeyChanges: []
   };
 
@@ -394,49 +388,47 @@ function diffUniqueConstraints(
   const desiredConstraints = desiredTable.uniqueConstraints || {};
   const liveConstraints = liveTable.uniqueConstraints || {};
 
-  const desiredNames = new Set(Object.keys(desiredConstraints));
-  const liveNames = new Set(Object.keys(liveConstraints));
+  // Build sets of normalized definitions (sorted column lists)
+  // Names don't matter - we compare by substance (which columns are unique together)
+  const desiredDefs = new Set<string>();
+  const liveDefs = new Set<string>();
+  const desiredByDef = new Map<string, UniqueConstraintDef>();
+  const liveByDef = new Map<string, UniqueConstraintDef>();
 
-  // Find unique constraints to add
-  for (const name of desiredNames) {
-    if (!liveNames.has(name)) {
+  for (const constraint of Object.values(desiredConstraints)) {
+    const normalized = JSON.stringify([...constraint.columns].sort());
+    desiredDefs.add(normalized);
+    desiredByDef.set(normalized, constraint);
+  }
+
+  for (const constraint of Object.values(liveConstraints)) {
+    const normalized = JSON.stringify([...constraint.columns].sort());
+    liveDefs.add(normalized);
+    liveByDef.set(normalized, constraint);
+  }
+
+  // Find unique constraints to add (definition in desired, not in live)
+  for (const def of desiredDefs) {
+    if (!liveDefs.has(def)) {
       diff.uniqueConstraintsToAdd.push({
         table: tableName,
-        constraint: desiredConstraints[name]
+        constraint: desiredByDef.get(def)!
       });
     }
   }
 
-  // Find unique constraints to drop
-  for (const name of liveNames) {
-    if (!desiredNames.has(name)) {
+  // Find unique constraints to drop (definition in live, not in desired)
+  for (const def of liveDefs) {
+    if (!desiredDefs.has(def)) {
       diff.uniqueConstraintsToDrop.push({
         table: tableName,
-        constraintName: name
+        constraintName: liveByDef.get(def)!.name
       });
     }
   }
 
-  // Find unique constraints to modify (column list changed)
-  for (const name of desiredNames) {
-    if (liveNames.has(name)) {
-      const desired = desiredConstraints[name];
-      const live = liveConstraints[name];
-
-      // Compare column arrays
-      const desiredCols = JSON.stringify(desired.columns);
-      const liveCols = JSON.stringify(live.columns);
-
-      if (desiredCols !== liveCols) {
-        diff.uniqueConstraintsToModify.push({
-          table: tableName,
-          constraintName: name,
-          oldConstraint: live,
-          newConstraint: desired
-        });
-      }
-    }
-  }
+  // No need to check for modifications - if column lists match, they're identical
+  // Names don't matter - we compare by substance (column list)
 }
 
 /**
@@ -451,47 +443,45 @@ function diffIndexes(
   const desiredIndexes = desiredTable.indexes || {};
   const liveIndexes = liveTable.indexes || {};
 
-  const desiredNames = new Set(Object.keys(desiredIndexes));
-  const liveNames = new Set(Object.keys(liveIndexes));
+  // Build sets of normalized definitions (sorted column lists)
+  // Names don't matter - we compare by substance (which columns are indexed together)
+  const desiredDefs = new Set<string>();
+  const liveDefs = new Set<string>();
+  const desiredByDef = new Map<string, IndexDef>();
+  const liveByDef = new Map<string, IndexDef>();
 
-  // Find indexes to add
-  for (const name of desiredNames) {
-    if (!liveNames.has(name)) {
+  for (const index of Object.values(desiredIndexes)) {
+    const normalized = JSON.stringify([...index.columns].sort());
+    desiredDefs.add(normalized);
+    desiredByDef.set(normalized, index);
+  }
+
+  for (const index of Object.values(liveIndexes)) {
+    const normalized = JSON.stringify([...index.columns].sort());
+    liveDefs.add(normalized);
+    liveByDef.set(normalized, index);
+  }
+
+  // Find indexes to add (definition in desired, not in live)
+  for (const def of desiredDefs) {
+    if (!liveDefs.has(def)) {
       diff.indexesToAdd.push({
         table: tableName,
-        index: desiredIndexes[name]
+        index: desiredByDef.get(def)!
       });
     }
   }
 
-  // Find indexes to drop
-  for (const name of liveNames) {
-    if (!desiredNames.has(name)) {
+  // Find indexes to drop (definition in live, not in desired)
+  for (const def of liveDefs) {
+    if (!desiredDefs.has(def)) {
       diff.indexesToDrop.push({
         table: tableName,
-        indexName: name
+        indexName: liveByDef.get(def)!.name
       });
     }
   }
 
-  // Find indexes to modify (column list changed)
-  for (const name of desiredNames) {
-    if (liveNames.has(name)) {
-      const desired = desiredIndexes[name];
-      const live = liveIndexes[name];
-
-      // Compare column arrays
-      const desiredCols = JSON.stringify(desired.columns);
-      const liveCols = JSON.stringify(live.columns);
-
-      if (desiredCols !== liveCols) {
-        diff.indexesToModify.push({
-          table: tableName,
-          indexName: name,
-          oldIndex: live,
-          newIndex: desired
-        });
-      }
-    }
-  }
+  // No need to check for modifications - if column lists match, they're identical
+  // Names don't matter - we compare by substance (column list)
 }
