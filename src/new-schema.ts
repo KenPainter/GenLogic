@@ -222,11 +222,12 @@ export class NewSchema {
         }
 
         // Add edges for topological sort of formula columns
+        // Edge goes FROM dependency TO formula column (dependency must be calculated first)
         if (!this.tables[tableName].columnEdges) {
           this.tables[tableName].columnEdges = [];
         }
         for (const depCol of deps) {
-          this.tables[tableName].columnEdges.push([colName, depCol]);
+          this.tables[tableName].columnEdges.push([depCol, colName]);
         }
       }
     }
@@ -278,6 +279,16 @@ export class NewSchema {
     if (/\bnot\s+null\b/i.test(remaining)) {
       notNull = true;
       remaining = remaining.replace(/\bnot\s+null\b/gi, '').trim();
+    }
+
+    // Extract "default <value>" modifier
+    let defaultValue: string | undefined;
+    const defaultMatch = remaining.match(/\bdefault\s+(.+?)(?=\s+\w+\s+|$)/i);
+    if (defaultMatch) {
+      defaultValue = defaultMatch[1].trim();
+      // Replace constants in default value
+      defaultValue = this.replaceConstants(defaultValue, location);
+      remaining = remaining.replace(/\bdefault\s+.+?(?=\s+\w+\s+|$)/gi, '').trim();
     }
 
     // Remove "delete <action>" where action can be: cascade, restrict, set null, set default, no action
@@ -338,11 +349,17 @@ export class NewSchema {
     }
 
     // Start with parent PK definition (without "primary key")
-    let newDefinition = parentPKDef.replace(/\bprimary\s+key\b/gi, '').trim();
+    // Replace constants in parent PK definition before using it
+    let newDefinition = this.replaceConstants(parentPKDef, location);
+    newDefinition = newDefinition.replace(/\bprimary\s+key\b/gi, '').trim();
 
     // Add FK constraint keywords if specified
     if (notNull) {
       newDefinition += ' not null';
+    }
+    // Only add default if it's not already in the parent definition
+    if (defaultValue && !/\bdefault\b/i.test(newDefinition)) {
+      newDefinition += ` default ${defaultValue}`;
     }
 
     // Replace FK definition with parent PK definition
@@ -669,8 +686,8 @@ export class NewSchema {
 
         // Generate names and validate
         for (let i = 0; i < table.constraints.length; i++) {
-          const expression = table.constraints[i];
           const location = `${tableName}.constraints[${i}]`;
+          const expression = this.replaceConstants(table.constraints[i], location);
 
           // Generate constraint name: check_tablename_1, check_tablename_2, etc.
           const constraintDef: ConstraintDef = {
@@ -825,9 +842,16 @@ export class NewSchema {
 
     const result: Record<number, string[]> = {};
 
-    // Copy layers from Map to Record
+    // Copy layers from Map to Record, filtering to only formula columns
     for (const [layerNum, columnNames] of layers) {
-      result[layerNum] = columnNames;
+      const formulaColumns = columnNames.filter(colName => {
+        const col = tableDef.columns?.[colName];
+        return col && col.formula;
+      });
+
+      if (formulaColumns.length > 0) {
+        result[layerNum] = formulaColumns;
+      }
     }
 
     // Store in table (only if there are layers)
