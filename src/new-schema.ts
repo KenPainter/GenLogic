@@ -15,6 +15,19 @@
  *   sense to put long orchestrations in their own file
  * - DUMP-able Javascript, no maps.
  *
+ * ⚠️ CRITICAL: THE STRUCTURE OF THIS CLASS MUST NOT CHANGE! ⚠️
+ *
+ * This class is used for BOTH the desired schema (built from YAML) AND the live schema
+ * (populated from database introspection). The diff engine depends on both schemas having
+ * identical structure for apples-to-apples comparison.
+ *
+ * If you discover limitations or missing fields:
+ * 1. Document the limitation in docs/architecture/newschema-limitations.md
+ * 2. Find a workaround that doesn't change the structure
+ * 3. Only add new optional fields if absolutely necessary
+ * 4. NEVER remove or rename existing fields
+ * 5. NEVER change the type of existing fields (e.g., array to Record)
+ *
  */
 
 // Imported from ./new-schema-subtypes.ts
@@ -230,11 +243,55 @@ export class NewSchema {
           this.tables[tableName].columnEdges.push([depCol, colName]);
         }
       }
+
+      // FORMULA COLUMN VALIDATION:
+      // Formula columns calculate their value from other columns - they should never have defaults.
+      // A default on a calculated column is nonsensical (what would it mean?).
+      if (resolvedCol.defaultValue !== undefined) {
+        this.errors.push({
+          location,
+          message: `Formula columns cannot have defaults - the value is calculated from other columns. ` +
+                   `Remove the 'default' specification.`
+        });
+      }
     }
 
     if (resolvedCol.automation) {
       // Parse automation to extract cross-table dependencies
       this.parseAutomation(tableName, colName, resolvedCol, location);
+
+      // AUTOMATION DEFAULT HANDLING:
+      // Aggregate columns need sensible defaults for initial state before any data exists.
+      // We auto-apply defaults here (schema-level) rather than in DDL generation (dumb layer).
+
+      // Validation: User should NOT specify defaults on aggregate automations
+      if (resolvedCol.defaultValue !== undefined) {
+        this.errors.push({
+          location,
+          message: `Aggregate automation columns cannot have user-specified defaults. ` +
+                   `Remove 'default' - the system will set appropriate defaults based on aggregation type.`
+        });
+      }
+
+      // Validation: SUM/COUNT must be on numeric types
+      if (resolvedCol.automationType === 'SUM' || resolvedCol.automationType === 'COUNT') {
+        const numericTypes = ['integer', 'bigint', 'smallint', 'numeric', 'decimal', 'real', 'double precision'];
+        if (!numericTypes.includes(resolvedCol.type)) {
+          this.errors.push({
+            location,
+            message: `${resolvedCol.automationType} automation requires a numeric type, got: ${resolvedCol.type}`
+          });
+        }
+
+        // Auto-apply: SUM/COUNT get default 0 (prevents NULL on empty aggregations)
+        resolvedCol.defaultValue = '0';
+
+        // Rebuild normalizedDef to include the default we just added
+        resolvedCol.normalizedDef = this.rebuildDefinitionString(resolvedCol);
+      }
+
+      // MIN/MAX/LAST_VALUE: No default (NULL until first value exists)
+      // This is the natural/correct behavior, so we don't set anything
     }
 
     // Step 5: Store in this.tables[tableName].columns
@@ -245,10 +302,17 @@ export class NewSchema {
 
     // Check for unknown column keys
     const knownColumnKeys = [
-      'definition', 'base', 'type', 'size', 'decimal', 'primary_key', 'unique', 'not_null',
-      'sequence', 'default', 'label', 'comment', 'format', 'formula', 'automation',
+      // User-provided
+      'definition', 'base', 'label', 'comment', 'format', 'formula', 'automation',
+      // PostgreSQL-aligned properties
+      'type', 'character_maximum_length', 'numeric_precision', 'numeric_scale',
+      'nullable', 'isPrimaryKey', 'isUnique', 'defaultValue', 'serial',
+      // GenLogic automation properties
       'automationType', 'automationSourceTable', 'automationSourceColumn', 'automationFKColumn',
-      'fkParentTable', 'fkParentColumn', 'fkDeleteAction', 'fkAutoCreateParent'
+      // GenLogic FK properties (for FK columns)
+      'fkParentTable', 'fkParentColumn', 'fkDeleteAction', 'fkAutoCreateParent',
+      // Normalized comparison string
+      'normalizedDef'
     ];
     for (const key of Object.keys(resolvedCol)) {
       if (!knownColumnKeys.includes(key)) {
@@ -353,6 +417,10 @@ export class NewSchema {
     let newDefinition = this.replaceConstants(parentPKDef, location);
     newDefinition = newDefinition.replace(/\bprimary\s+key\b/gi, '').trim();
 
+    // CRITICAL: Replace 'serial' with 'integer' - FK columns don't auto-increment
+    // Parent PK may be "serial" but child FK is just a regular integer reference
+    newDefinition = newDefinition.replace(/\bserial\b/gi, 'integer');
+
     // Add FK constraint keywords if specified
     if (notNull) {
       newDefinition += ' not null';
@@ -395,18 +463,22 @@ export class NewSchema {
   private parseSQLDefinition(col: any, location: string): void {
     let sql = col.definition.trim().replace(/\s+/g, ' ');
 
-    // Handle multi-word types
+    // Handle multi-word types - normalize to what PostgreSQL uses
     if (sql.match(/^double\s+precision/i)) {
       sql = sql.replace(/^double\s+precision/i, 'double_precision');
     }
-    if (sql.match(/^character\s+varying/i)) {
-      sql = sql.replace(/^character\s+varying/i, 'varchar');
+    // Normalize varchar to character varying to match PostgreSQL's information_schema
+    if (sql.match(/^varchar/i)) {
+      sql = sql.replace(/^varchar/i, 'character varying');
+    } else if (sql.match(/^character\s+varying/i)) {
+      // Already in PostgreSQL format, just collapse whitespace
+      sql = sql.replace(/^character\s+varying/i, 'character varying');
     }
 
-    // Parse SERIAL types (shorthand for integer with sequence)
+    // Parse SERIAL types (shorthand for integer with auto-increment)
     const serialMatch = sql.match(/^(big|small)?serial/i);
     if (serialMatch) {
-      col.sequence = true;
+      col.serial = true;
       if (serialMatch[0].toLowerCase() === 'bigserial') {
         col.type = 'bigint';
       } else if (serialMatch[0].toLowerCase() === 'smallserial') {
@@ -417,7 +489,16 @@ export class NewSchema {
       sql = sql.replace(/^(big|small)?serial/i, '').trim();
     } else {
       // Extract base type and size/precision
-      const typeMatch = sql.match(/^(\w+)(?:\((\d+)(?:,\s*(\d+))?\))?/i);
+      // Handle multi-word types first (character varying, double precision)
+      let typeMatch;
+      if (sql.match(/^character varying/i)) {
+        typeMatch = sql.match(/^(character varying)(?:\((\d+)(?:,\s*(\d+))?\))?/i);
+      } else if (sql.match(/^double_precision/i)) {
+        typeMatch = sql.match(/^(double_precision)(?:\((\d+)(?:,\s*(\d+))?\))?/i);
+      } else {
+        typeMatch = sql.match(/^(\w+)(?:\((\d+)(?:,\s*(\d+))?\))?/i);
+      }
+
       if (!typeMatch) {
         this.errors.push({
           location,
@@ -428,30 +509,46 @@ export class NewSchema {
 
       col.type = typeMatch[1].toLowerCase();
 
+      // Map size/precision to PostgreSQL-aligned property names
       if (typeMatch[2]) {
-        col.size = parseInt(typeMatch[2], 10);
+        // For character types, use character_maximum_length
+        if (col.type.includes('char') || col.type === 'text') {
+          col.character_maximum_length = parseInt(typeMatch[2], 10);
+        } else {
+          // For numeric types, use numeric_precision
+          col.numeric_precision = parseInt(typeMatch[2], 10);
+        }
       }
 
       if (typeMatch[3]) {
-        col.decimal = parseInt(typeMatch[3], 10);
+        col.numeric_scale = parseInt(typeMatch[3], 10);
       }
 
-      sql = sql.replace(/^(\w+)(?:\((\d+)(?:,\s*(\d+))?\))?/i, '').trim();
+      // Remove the matched type (including size/precision) from sql
+      sql = sql.substring(typeMatch[0].length).trim();
+    }
+
+    // Normalize integer types: add precision if not specified
+    if (['integer', 'int', 'int4'].includes(col.type) && !col.numeric_precision) {
+      col.numeric_precision = 32;
+      col.numeric_scale = 0;
     }
 
     // Parse modifiers (order-independent)
     if (sql.match(/\bprimary\s+key\b/i)) {
-      col.primary_key = true;
+      col.isPrimaryKey = true;
+      // PRIMARY KEY columns are unconditionally NOT NULL
+      col.nullable = false;
       sql = sql.replace(/\bprimary\s+key\b/i, '').trim();
     }
 
     if (sql.match(/\bunique\b/i)) {
-      col.unique = true;
+      col.isUnique = true;
       sql = sql.replace(/\bunique\b/i, '').trim();
     }
 
     if (sql.match(/\bnot\s+null\b/i)) {
-      col.not_null = true;
+      col.nullable = false;
       sql = sql.replace(/\bnot\s+null\b/i, '').trim();
     }
 
@@ -466,7 +563,7 @@ export class NewSchema {
         defaultValue = defaultValue.slice(1, -1);
       }
 
-      col.default = defaultValue;
+      col.defaultValue = defaultValue;
       sql = sql.replace(/\bdefault\s+.+$/i, '').trim();
     }
 
@@ -477,6 +574,58 @@ export class NewSchema {
         message: `Unrecognized SQL modifiers: "${sql}" in definition: ${col.definition}`
       });
     }
+
+    // Normalize: PK columns are always NOT NULL
+    if (col.isPrimaryKey) {
+      col.nullable = false;
+    }
+
+    // Build normalized comparison string in PostgreSQL's canonical order
+    // This is SEPARATE from the user's original definition string
+    col.normalizedDef = this.rebuildDefinitionString(col);
+  }
+
+  /**
+   * Rebuild definition string from parsed properties in PostgreSQL's canonical order
+   * Format: type(size,decimal) [not null] [default value] [primary key]
+   * PUBLIC so database.ts can use the same logic for live schema normalization
+   */
+  public rebuildDefinitionString(col: any): string {
+    // Use 'serial' for serial columns, otherwise use the base type
+    let def = col.serial ? 'serial' : col.type;
+
+    // Add size/precision (but NOT for serial - serial doesn't have size notation)
+    if (!col.serial) {
+      // For character types
+      if (col.character_maximum_length !== undefined) {
+        def += `(${col.character_maximum_length})`;
+      }
+      // For numeric types
+      else if (col.numeric_precision !== undefined) {
+        if (col.numeric_scale !== undefined) {
+          def += `(${col.numeric_precision},${col.numeric_scale})`;
+        } else {
+          def += `(${col.numeric_precision})`;
+        }
+      }
+    }
+
+    // Add NOT NULL (nullable: false means NOT NULL)
+    if (col.nullable === false) {
+      def += ' not null';
+    }
+
+    // Add DEFAULT (but NOT for serial - the nextval is implicit)
+    if (!col.serial && col.defaultValue !== undefined) {
+      def += ` default ${col.defaultValue}`;
+    }
+
+    // Add PRIMARY KEY
+    if (col.isPrimaryKey) {
+      def += ' primary key';
+    }
+
+    return def;
   }
 
   /**
@@ -719,7 +868,7 @@ export class NewSchema {
 
         // Generate names and validate
         for (let i = 0; i < table['unique-constraints'].length; i++) {
-          const uniqueCols = table['unique-constraints'][i];
+          const uniqueCols:any = table['unique-constraints'][i];
           const location = `${tableName}.unique-constraints[${i}]`;
 
           if (!Array.isArray(uniqueCols)) {

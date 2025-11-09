@@ -116,6 +116,148 @@ export class DatabaseManager {
   }
 
   /**
+   * Populate a NewSchema instance from live database introspection
+   * This creates the same structure as the desired schema for apples-to-apples comparison
+   */
+  async populateLiveSchema(liveSchema: NewSchema): Promise<void> {
+    // Get all tables
+    const tableNames = await this.getTables();
+
+    // For each table, populate the NewSchema structure
+    for (const tableName of tableNames) {
+      // Create table entry with empty structure
+      liveSchema.tables[tableName] = {
+        columns: {}
+      };
+
+      // Populate columns
+      const columns = await this.getColumns(tableName);
+      for (const col of columns) {
+        // Build column object directly from PostgreSQL information_schema
+        // Using PostgreSQL-aligned property names from ColumnDef interface
+
+        // Normalize type names to match user YAML conventions
+        let normalizedType = col.type.replace(/\(\d+(?:,\d+)?\)$/, ''); // Remove size from type string
+        // "timestamp without time zone" is the same as "timestamp" (user writes "timestamp")
+        normalizedType = normalizedType.replace(/^timestamp without time zone$/i, 'timestamp');
+
+        const colObj: any = {
+          type: normalizedType,
+        };
+
+        // Map character_maximum_length (for varchar, char, text)
+        if (col.type.includes('char') || col.type === 'text') {
+          const sizeMatch = col.type.match(/\((\d+)\)/);
+          if (sizeMatch) {
+            colObj.character_maximum_length = parseInt(sizeMatch[1], 10);
+          }
+        }
+        // Map numeric_precision and numeric_scale (for numeric, integer, etc.)
+        else {
+          const precisionMatch = col.type.match(/\((\d+)(?:,(\d+))?\)/);
+          if (precisionMatch) {
+            colObj.numeric_precision = parseInt(precisionMatch[1], 10);
+            if (precisionMatch[2]) {
+              colObj.numeric_scale = parseInt(precisionMatch[2], 10);
+            }
+          }
+        }
+
+        // Map nullable (direct from PostgreSQL)
+        colObj.nullable = col.nullable;
+
+        // Map isPrimaryKey (direct from PostgreSQL)
+        if (col.isPrimaryKey) {
+          colObj.isPrimaryKey = true;
+        }
+
+        // Map isUnique (direct from PostgreSQL)
+        if (col.isUnique) {
+          colObj.isUnique = true;
+        }
+
+        // Detect serial columns: default nextval(...) -> set serial flag
+        if (col.defaultValue && col.defaultValue.match(/^nextval\(/i)) {
+          colObj.serial = true;
+        }
+        // Otherwise map defaultValue (direct from PostgreSQL)
+        else if (col.defaultValue) {
+          colObj.defaultValue = col.defaultValue;
+        }
+
+        // Use shared rebuildDefinitionString for consistency
+        colObj.definition = liveSchema.rebuildDefinitionString(colObj);
+
+        if (col.isPrimaryKey) {
+          // Store PK info at table level
+          liveSchema.tables[tableName].pkColumn = col.name;
+          liveSchema.tables[tableName].pkDefinition = colObj.definition;
+        }
+
+        // Store entire column object (for debugging and comparison)
+        liveSchema.tables[tableName].columns![col.name] = colObj;
+      }
+
+      // Populate foreign keys as Record keyed by FK name
+      const fks = await this.getForeignKeys(tableName);
+      if (fks.length > 0) {
+        liveSchema.tables[tableName].foreignKeys = {};
+        for (const fk of fks) {
+          liveSchema.tables[tableName].foreignKeys![fk.name] = {
+            name: fk.name,
+            childColumn: fk.column,
+            parentTable: fk.referencedTable,
+            parentColumn: fk.referencedColumn,
+            deleteAction: fk.onDelete?.toLowerCase()
+          };
+        }
+      }
+
+      // Populate CHECK constraints as Record keyed by constraint name
+      const checks = await this.getCheckConstraints(tableName);
+      if (checks.length > 0) {
+        liveSchema.tables[tableName].constraints = {};
+        for (const check of checks) {
+          // Extract expression from "CHECK (expression)" format
+          let expression = check.definition;
+          const match = expression.match(/^CHECK\s*\((.+)\)$/i);
+          if (match) {
+            expression = match[1];
+          }
+          liveSchema.tables[tableName].constraints![check.name] = {
+            name: check.name,
+            expression: expression
+          };
+        }
+      }
+
+      // Populate UNIQUE constraints as Record keyed by constraint name
+      const uniques = await this.getUniqueConstraints(tableName);
+      if (uniques.length > 0) {
+        liveSchema.tables[tableName].uniqueConstraints = {};
+        for (const unique of uniques) {
+          liveSchema.tables[tableName].uniqueConstraints![unique.name] = {
+            name: unique.name,
+            columns: unique.columns
+          };
+        }
+      }
+
+      // Populate indexes as Record keyed by index name
+      const indexes = await this.getIndexes(tableName);
+      if (indexes.length > 0) {
+        liveSchema.tables[tableName].indexes = {};
+        for (const index of indexes) {
+          liveSchema.tables[tableName].indexes![index.name] = {
+            name: index.name,
+            columns: index.columns
+          };
+        }
+      }
+    }
+  }
+
+  /**
    * Get list of user tables (excluding system tables)
    */
   private async getTables(): Promise<string[]> {
@@ -323,6 +465,42 @@ export class DatabaseManager {
       columnName: row.column_name,
       definition: row.constraint_definition
     }));
+  }
+
+  /**
+   * Get UNIQUE constraints for a table
+   * Returns constraint name and columns covered by the constraint
+   */
+  private async getUniqueConstraints(tableName: string): Promise<Array<{ name: string; columns: string[] }>> {
+    const result = await this.pool.query(`
+      SELECT
+        con.conname as constraint_name,
+        array_agg(att.attname ORDER BY u.pos) as column_names
+      FROM pg_constraint con
+      JOIN pg_class rel ON rel.oid = con.conrelid
+      JOIN pg_namespace nsp ON nsp.oid = rel.relnamespace
+      JOIN unnest(con.conkey) WITH ORDINALITY AS u(attnum, pos) ON true
+      JOIN pg_attribute att ON att.attrelid = con.conrelid AND att.attnum = u.attnum
+      WHERE con.contype = 'u'
+        AND rel.relname = $1
+        AND nsp.nspname = 'public'
+      GROUP BY con.conname
+      ORDER BY con.conname
+    `, [tableName]);
+
+    return result.rows.map(row => {
+      // Parse PostgreSQL array format "{col1,col2}" to JavaScript array
+      let columns: string[] = row.column_names;
+      if (typeof row.column_names === 'string') {
+        // Remove braces and split by comma
+        columns = row.column_names.replace(/^\{|\}$/g, '').split(',');
+      }
+
+      return {
+        name: row.constraint_name,
+        columns
+      };
+    });
   }
 
   /**

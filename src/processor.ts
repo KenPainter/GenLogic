@@ -14,6 +14,7 @@ import { PermissionsGenerator } from './permissions-generator.js';
 import { SchemaFlattener } from './schema-flattener.js';
 import { loadYamlSchema } from './helpers-processor/yaml-loader.js';
 import { NewSchema } from './new-schema.js';
+import { diffSchemas } from './newschema-diff.js';
 import {
   extractConstants,
   extractTables,
@@ -169,13 +170,14 @@ export class GenLogicProcessor {
 
     // PHASE 10: Database introspection
     console.log('Identifying live database elements...');
-    const liveSchema = await this.database.analyzeCurrentSchema();
+    const liveSchema = new NewSchema();
+    await this.database.populateLiveSchema(liveSchema);
     // Dump live schema for examination
     this.writeLiveSchema(schemaPath, liveSchema);
 
-    // Phase 11: Generate diff between populated schema and liveSchema
+    // Phase 11: Generate diff between NewSchema instances (apples-to-apples)
     console.log('Generating schema diff...');
-    const diff = this.diffEngine.generateDiff(populated, liveSchema);
+    const diff = diffSchemas(newSchema, liveSchema);
 
     // Dump diff for examination
     this.writeDiffToFile(diff, schemaPath);
@@ -395,15 +397,17 @@ export class GenLogicProcessor {
     console.log(`  Wrote ${path}`);
   }
 
-  private writeLiveSchema(schemaPath: string, data: any): void {
+  private writeLiveSchema(schemaPath: string, liveSchema: NewSchema): void {
     const path = this.getDebugPath(schemaPath, '.live.json');
-    writeFileSync(path, JSON.stringify(data, null, 2));
+    // Dump the tables structure for comparison
+    writeFileSync(path, JSON.stringify(liveSchema.tables, null, 2));
     console.log(`  Wrote ${path}`);
   }
 
-  private writeNewSchema(schemaPath: string, data: any): void {
+  private writeNewSchema(schemaPath: string, desiredSchema: NewSchema): void {
     const path = this.getDebugPath(schemaPath, '.newSchema.json');
-    writeFileSync(path, JSON.stringify(data, null, 2));
+    // Dump the tables structure for comparison
+    writeFileSync(path, JSON.stringify(desiredSchema.tables, null, 2));
     console.log(`  Wrote ${path}`);
   }
 
