@@ -166,22 +166,36 @@ export class GenLogicProcessor {
     await this.database.connect();
     console.log('Database connection established');
 
-
-
-    // PHASE 10: Database introspection
+    // Database introspection.  Use the same class
+    // that we used for the yaml schema, to get
+    // easier apples-to-apples comparisons
     console.log('Identifying live database elements...');
     const liveSchema = new NewSchema();
     await this.database.populateLiveSchema(liveSchema);
     // Dump live schema for examination
     this.writeLiveSchema(schemaPath, liveSchema);
 
-    // Phase 11: Generate diff between NewSchema instances (apples-to-apples)
+    // Generate diff between NewSchema instances (apples-to-apples)
     console.log('Generating schema diff...');
     const diff = diffSchemas(newSchema, liveSchema);
 
+    // Phase 12: Extract DROP operations (GenLogic NEVER auto-executes destructive operations)
+    console.log('Extracting DROP operations...');
+    const diffDrops = {
+      tablesToDrop: diff.tablesToDrop,
+      columnsToDrop: diff.columnsToDrop
+    };
+
+    // Remove DROP operations from diff, making it safe for automated DDL execution
+    delete diff.tablesToDrop;
+    delete diff.columnsToDrop;
+
+    // Generate DROP SQL script for manual execution
+    this.writeDropScript(diffDrops, schemaPath);
+    this.writeDropsToFile(diffDrops, schemaPath);
+
     // Dump diff for examination
     this.writeDiffToFile(diff, schemaPath);
-
 
     // YOLO MARKER - above is rock solid, below will crash
     console.log('YOLO MARKER: Returning before we get to unrefactored code');
@@ -408,6 +422,63 @@ export class GenLogicProcessor {
     const path = this.getDebugPath(schemaPath, '.newSchema.json');
     // Dump the full NewSchema object including errors
     writeFileSync(path, JSON.stringify(desiredSchema, null, 2));
+    console.log(`  Wrote ${path}`);
+  }
+
+  private writeDropsToFile(diffDrops: any, schemaPath: string): void {
+    const path = this.getDebugPath(schemaPath, '.drops.json');
+    writeFileSync(path, JSON.stringify(diffDrops, null, 2));
+    console.log(`  Wrote ${path}`);
+  }
+
+  private writeDropScript(diffDrops: any, schemaPath: string): void {
+    const path = this.getDebugPath(schemaPath, '.drops.sql');
+
+    const lines: string[] = [];
+
+    // Header comment
+    lines.push('-- GenLogic DROP Script');
+    lines.push('--');
+    lines.push('-- These are tables and columns in the live database that are not referenced');
+    lines.push('-- in the YAML schema. GenLogic NEVER issues DROP TABLE or DROP COLUMN DDL.');
+    lines.push('--');
+    lines.push('-- ⚠️  WARNING: This script will DELETE DATA permanently!');
+    lines.push('--');
+    lines.push('-- If it is desired to drop these database tables and columns, somebody must');
+    lines.push('-- manually review and execute this script.');
+    lines.push('--');
+    lines.push('');
+    lines.push('BEGIN;');
+    lines.push('');
+
+    // Generate DROP TABLE statements
+    if (diffDrops.tablesToDrop && diffDrops.tablesToDrop.length > 0) {
+      lines.push('-- Drop tables');
+      for (const tableName of diffDrops.tablesToDrop) {
+        lines.push(`DROP TABLE IF EXISTS "${tableName}" CASCADE;`);
+      }
+      lines.push('');
+    }
+
+    // Generate DROP COLUMN statements
+    if (diffDrops.columnsToDrop && diffDrops.columnsToDrop.length > 0) {
+      lines.push('-- Drop columns');
+      for (const col of diffDrops.columnsToDrop) {
+        lines.push(`ALTER TABLE "${col.table}" DROP COLUMN IF EXISTS "${col.column}";`);
+      }
+      lines.push('');
+    }
+
+    // If nothing to drop, add a comment
+    if ((!diffDrops.tablesToDrop || diffDrops.tablesToDrop.length === 0) &&
+        (!diffDrops.columnsToDrop || diffDrops.columnsToDrop.length === 0)) {
+      lines.push('-- No tables or columns to drop');
+      lines.push('');
+    }
+
+    lines.push('COMMIT;');
+
+    writeFileSync(path, lines.join('\n'));
     console.log(`  Wrote ${path}`);
   }
 

@@ -8,13 +8,14 @@
 
 import type { NewSchema } from './new-schema.js';
 import type { TableDef, ForeignKeyDef, ConstraintDef, UniqueConstraintDef, IndexDef } from './new-schema-subtypes.js';
+import { parse, toSql } from 'pgsql-ast-parser';
 
 export interface NewSchemaDiff {
   tablesToCreate: string[];
-  tablesToDrop: string[];
+  tablesToDrop?: string[];  // Optional - deleted after extraction to drops.sql
   columnsToAdd: Array<{ table: string; column: string; definition: string }>;
   columnsToModify: Array<{ table: string; column: string; oldDef: string; newDef: string }>;
-  columnsToDrop: Array<{ table: string; column: string }>;
+  columnsToDrop?: Array<{ table: string; column: string }>;  // Optional - deleted after extraction to drops.sql
   foreignKeysToAdd: Array<{ table: string; fk: ForeignKeyDef }>;
   foreignKeysToDrop: Array<{ table: string; fkName: string }>;
   foreignKeysToModify: Array<{ table: string; fkName: string; oldFk: ForeignKeyDef; newFk: ForeignKeyDef }>;
@@ -217,8 +218,52 @@ function diffForeignKeys(
 }
 
 /**
+ * Normalize CHECK constraint definition for structural comparison
+ * PostgreSQL adds extra parentheses during normalization - we parse and re-serialize
+ * to compare the AST structure rather than string formatting
+ *
+ * Example:
+ *   Input:  "CHECK ((NOT (batch_type_id = 1 AND batch_count > 1)))"
+ *   Input:  "CHECK ((NOT ((batch_type_id = 1) AND (batch_count > 1))))"
+ *   Output: Both normalize to same canonical form
+ */
+function normalizeConstraintDefinition(def: string): string {
+  try {
+    // Extract expression from CHECK (...) wrapper
+    // PostgreSQL format: "CHECK ((expression))" with double parens
+    const match = def.match(/^CHECK\s+\(\((.+)\)\)$/is);
+    if (!match) {
+      // Fall back to simpler match if format is different
+      const simpleMatch = def.match(/^CHECK\s+\((.+)\)$/is);
+      if (!simpleMatch) return def;
+    }
+
+    const expr = match ? match[1] : def.match(/^CHECK\s+\((.+)\)$/is)![1];
+
+    // Parse as WHERE clause to get AST and normalize
+    const sql = `SELECT * FROM dummy WHERE ${expr}`;
+    const ast = parse(sql);
+
+    // Re-serialize AST to canonical form (removes redundant parens, normalizes spacing)
+    const normalized = toSql.statement(ast[0]);
+
+    // Extract just the WHERE clause part
+    const whereMatch = normalized.match(/WHERE\s+(.+)$/is);
+    if (!whereMatch) return def;
+
+    // Rebuild in PostgreSQL's canonical CHECK format
+    return `CHECK ((${whereMatch[1]}))`;
+  } catch (error) {
+    // If parsing fails, fall back to original definition
+    // This ensures we don't break on edge cases
+    return def;
+  }
+}
+
+/**
  * Compare CHECK constraints between desired and live table
  * Compares by constraint_definition (substance), not by name
+ * Uses AST-based normalization to avoid spurious diffs from PostgreSQL's extra parentheses
  */
 function diffConstraints(
   tableName: string,
@@ -229,20 +274,22 @@ function diffConstraints(
   const desiredConstraints = desiredTable.constraints || {};
   const liveConstraints = liveTable.constraints || {};
 
-  // Build sets of constraint definitions (substance, not names)
+  // Build sets of NORMALIZED constraint definitions (substance, not names or formatting)
   const desiredDefs = new Set<string>();
   const liveDefs = new Set<string>();
-  const desiredByDef = new Map<string, ConstraintDef>();
-  const liveByDef = new Map<string, ConstraintDef>();
+  const desiredByNormalizedDef = new Map<string, ConstraintDef>();
+  const liveByNormalizedDef = new Map<string, ConstraintDef>();
 
   for (const constraint of Object.values(desiredConstraints)) {
-    desiredDefs.add(constraint.constraint_definition);
-    desiredByDef.set(constraint.constraint_definition, constraint);
+    const normalized = normalizeConstraintDefinition(constraint.constraint_definition);
+    desiredDefs.add(normalized);
+    desiredByNormalizedDef.set(normalized, constraint);
   }
 
   for (const constraint of Object.values(liveConstraints)) {
-    liveDefs.add(constraint.constraint_definition);
-    liveByDef.set(constraint.constraint_definition, constraint);
+    const normalized = normalizeConstraintDefinition(constraint.constraint_definition);
+    liveDefs.add(normalized);
+    liveByNormalizedDef.set(normalized, constraint);
   }
 
   // Find constraints to add (definition in desired, not in live)
@@ -250,7 +297,7 @@ function diffConstraints(
     if (!liveDefs.has(def)) {
       diff.constraintsToAdd.push({
         table: tableName,
-        constraint: desiredByDef.get(def)!
+        constraint: desiredByNormalizedDef.get(def)!
       });
     }
   }
@@ -260,13 +307,13 @@ function diffConstraints(
     if (!desiredDefs.has(def)) {
       diff.constraintsToDrop.push({
         table: tableName,
-        constraint: liveByDef.get(def)!
+        constraint: liveByNormalizedDef.get(def)!
       });
     }
   }
 
-  // No need to check for modifications - if definitions match, they're identical
-  // Names don't matter - we compare by substance
+  // No need to check for modifications - if normalized definitions match, they're identical
+  // Names don't matter - we compare by substance (AST structure)
 }
 
 /**
