@@ -924,7 +924,10 @@ export class NewSchema {
 
       // Process indexes
       if (table.indexes && Array.isArray(table.indexes)) {
-        this.tables[tableName].indexes = {};
+        // Initialize indexes Record if needed (preserve any FK indexes already added)
+        if (!this.tables[tableName].indexes) {
+          this.tables[tableName].indexes = {};
+        }
 
         // Generate names and validate
         for (let i = 0; i < table.indexes.length; i++) {
