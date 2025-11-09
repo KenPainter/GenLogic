@@ -166,27 +166,30 @@ export class GenLogicProcessor {
     console.log('Database connection established');
 
 
+
+    // PHASE 10: Database introspection
+    console.log('Identifying live database elements...');
+    const liveSchema = await this.database.analyzeCurrentSchema();
+    // Dump live schema for examination
+    this.writeLiveSchema(schemaPath, liveSchema);
+
+    // Phase 11: Generate diff between populated schema and liveSchema
+    console.log('Generating schema diff...');
+    const diff = this.diffEngine.generateDiff(populated, liveSchema);
+
+    // Dump diff for examination
+    this.writeDiffToFile(diff, schemaPath);
+
+
     // YOLO MARKER - above is rock solid, below will crash
     console.log('YOLO MARKER: Returning before we get to unrefactored code');
     await this.database.disconnect();
     return;
 
-    // PHASE 10: Database introspection
-    console.log('Identifying current database elements...');
-    const currentSchema = await this.database.analyzeCurrentSchema();
-    // Dump current schema for examination
-    this.writeCurrentSchema(schemaPath, currentSchema);
-
   
 
     try {
 
-      // Phase 11: Generate diff between populated schema and currentSchema
-      console.log('Generating schema diff...');
-      const diff = this.diffEngine.generateDiff(populated, currentSchema);
-
-      // Dump diff for examination
-      this.writeDiffToFile(diff, schemaPath);
 
 
       // PHASE 12: SQL generation
@@ -392,8 +395,8 @@ export class GenLogicProcessor {
     console.log(`  Wrote ${path}`);
   }
 
-  private writeCurrentSchema(schemaPath: string, data: any): void {
-    const path = this.getDebugPath(schemaPath, '.current.json');
+  private writeLiveSchema(schemaPath: string, data: any): void {
+    const path = this.getDebugPath(schemaPath, '.live.json');
     writeFileSync(path, JSON.stringify(data, null, 2));
     console.log(`  Wrote ${path}`);
   }

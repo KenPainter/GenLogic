@@ -10,6 +10,7 @@ import type {
   DatabaseTrigger,
   DatabaseCheckConstraint
 } from './types.js';
+import { NewSchema } from './new-schema.js';
 
 /**
  * Database Introspection and Connection Management
