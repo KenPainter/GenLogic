@@ -27,6 +27,8 @@ export interface TableDef {
   // As we build it out:
   columns?: Record<string, any>;
   foreignKeys?: ForeignKeyDef[];
+  columnRefs?: Array<{ sourceColumn: string; referencedColumn: string }>;
+  columnEdges?: Array<[string, string]>;  // For topological sort of formulas
   constraints?: any[];
   indexes?: any[];
 }
