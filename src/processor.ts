@@ -18,6 +18,8 @@ import { diffSchemas } from './newschema-diff.js';
 import { topologicalSortByLayers } from './helpers-processor/topological-sort.js';
 import { generateCreateTableDDL } from './helpers-ddl/create-table.js';
 import { generateAddColumnDDL } from './helpers-ddl/add-column.js';
+import { generateAggregationRepair } from './helpers-ddl/repair-aggregations.js';
+import { generateResolvedSchema } from './helpers-ddl/resolved-schema.js';
 import { generateModifyColumnDDL } from './helpers-ddl/modify-column.js';
 import { generateDropPrimaryKeyDDL, generateAddPrimaryKeyDDL } from './helpers-ddl/primary-key.js';
 import { generateDropForeignKeyDDL, generateAddForeignKeyDDL } from './helpers-ddl/foreign-key.js';
@@ -280,10 +282,20 @@ export class GenLogicProcessor {
     // Dump SQL for inspection
     this.writeSQLToFile(filteredStatements, schemaPath);
 
+    // Generate aggregation repair script
+    const repairSQL = generateAggregationRepair(newSchema);
+    this.writeRepairScriptToFile(repairSQL, schemaPath);
+
+    // Generate resolved schema documentation
+    const resolvedSchema = generateResolvedSchema(newSchema, schemaPath, this.config.database || 'unknown');
+    this.writeResolvedSchemaToFile(resolvedSchema, schemaPath);
+
     // TODO: Execute SQL statements in transaction
     if (!this.config.dryRun) {
        //await this.database.executeInTransaction(filteredStatements);
     }
+
+
 
     await this.database.disconnect();
     console.log('✨ GenLogic processing completed successfully!');
@@ -358,6 +370,22 @@ export class GenLogicProcessor {
 
     writeFileSync(sqlPath, lines.join('\n'));
     console.log(`  Wrote ${sqlPath}`);
+  }
+
+  private writeRepairScriptToFile(repairStatements: string[], schemaPath: string): void {
+    // Write repair SQL script for manual execution or verification
+    const repairPath = this.getDebugPath(schemaPath, '.repair.sql');
+
+    writeFileSync(repairPath, repairStatements.join('\n'));
+    console.log(`  Wrote ${repairPath}`);
+  }
+
+  private writeResolvedSchemaToFile(resolvedSchema: string, schemaPath: string): void {
+    // Write resolved schema documentation as TypeScript
+    const resolvedPath = this.getDebugPath(schemaPath, '.resolved.ts');
+
+    writeFileSync(resolvedPath, resolvedSchema);
+    console.log(`  Wrote ${resolvedPath}`);
   }
 
   private writeDropScript(diffDrops: any, schemaPath: string): void {

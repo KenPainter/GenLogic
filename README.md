@@ -76,22 +76,22 @@ to do so.
 
 ## Potential TO-DO List
 
-Before Release 1.0:
+Current: 0.97
 
-- tests - a series of steps in a markdown
-- docs - simpler
+Release plan:
+- Tests: 0.98
+- Docs: 0.99
+- Everything else: 0.99.x
 
+
+Some thoughts and to-do items
 - consider preventing SQL keywords as column names
-
 - Drop LATEST or LAST_VALUE, SYNC table-to-table, SPREAD
   from any remaining code or docs
+- document or prevent corruption of automation columns
 - Replace add-navigation.mjs with a general reconciler
   that looks for widows and orphans in both docs and
   tests/
 
-Anytime sorta-kinda maybe someday:
-- Support views
-- Separate project: genlogic-db, convenient client app
-  that does all of the SQL generation.
 
 
