@@ -113,9 +113,16 @@ export class NewSchema {
   /**
    * Normalize a column definition to object form
    * Converts string definitions to { definition: string }
+   * Special case: if string matches a reusable column name, convert to { base: string }
    */
   private normalizeColumnDef(colDef: any): any {
     if (typeof colDef === 'string') {
+      // Check if this string matches a reusable column name (old-fashioned syntax)
+      // Examples: "amount: amount", "date: date"
+      if (colDef in this.reusableColumns) {
+        return { base: colDef };
+      }
+      // Regular SQL definition string
       return { definition: colDef };
     }
     return colDef;
@@ -300,6 +307,17 @@ export class NewSchema {
     }
     this.tables[tableName].columns[colName] = resolvedCol;
 
+    // Step 6: Add NaN/Infinity protection constraint for floating-point numeric types
+    // INTEGRITY: NaN and Infinity are NEVER valid in business applications
+    if (this.isFloatingPointNumeric(resolvedCol.type)) {
+      this.addNaNProtectionConstraint(tableName, colName);
+    }
+
+    // Step 7: Add UNIQUE constraint if column has unique modifier
+    if (resolvedCol.isUnique) {
+      this.addUniqueConstraintForColumn(tableName, colName);
+    }
+
     // Check for unknown column keys
     const knownColumnKeys = [
       // User-provided
@@ -446,7 +464,7 @@ export class NewSchema {
       childColumn: colName,
       parentTable: parentTable,
       parentColumn: parentPK,
-      deleteAction: deleteAction,
+      deleteAction: deleteAction || 'restrict',  // Default to 'restrict' (PostgreSQL's implicit default)
       autoCreateParent: autoCreateParent
     };
 
@@ -842,7 +860,8 @@ export class NewSchema {
           const constraintName = `check_${tableName}_${i + 1}`;
           const constraintDef: ConstraintDef = {
             name: constraintName,
-            expression: expression
+            expression: expression,
+            constraint_definition: `CHECK ((${expression}))`  // PostgreSQL canonical format (always double parens)
           };
 
           this.tables[tableName].constraints![constraintName] = constraintDef;
@@ -1010,5 +1029,58 @@ export class NewSchema {
     if (Object.keys(result).length > 0) {
       tableDef.columnLayers = result;
     }
+  }
+
+  /**
+   * Check if a type is a floating-point numeric type that can have NaN/Infinity
+   * Integer types (integer, bigint, smallint) cannot have NaN/Infinity
+   */
+  private isFloatingPointNumeric(type: string): boolean {
+    const baseType = type.toLowerCase().split('(')[0];
+    const floatingPointTypes = ['numeric', 'decimal', 'real', 'double precision', 'double_precision', 'float'];
+    return floatingPointTypes.includes(baseType);
+  }
+
+  /**
+   * Add NaN/Infinity protection constraint for a numeric column
+   * Uses PostgreSQL's exact format to match what pg_get_constraintdef() returns
+   */
+  private addNaNProtectionConstraint(tableName: string, colName: string): void {
+    // Initialize constraints Record if needed
+    if (!this.tables[tableName].constraints) {
+      this.tables[tableName].constraints = {};
+    }
+
+    // Generate constraint name matching PostgreSQL's auto-generated pattern
+    const constraintName = `${tableName}_${colName}_check`;
+
+    // Use PostgreSQL's exact format: <> ALL (ARRAY[...])
+    // This matches what pg_get_constraintdef() returns, avoiding spurious diffs
+    const expression = `((${colName} IS NULL) OR ((${colName})::text <> ALL (ARRAY['NaN'::text, 'Infinity'::text, '-Infinity'::text])))`;
+
+    this.tables[tableName].constraints[constraintName] = {
+      name: constraintName,
+      expression: expression,
+      constraint_definition: `CHECK (${expression})`
+    };
+  }
+
+  /**
+   * Add UNIQUE constraint for a column marked with unique modifier
+   * Uses PostgreSQL's naming pattern: {tablename}_{columnname}_key
+   */
+  private addUniqueConstraintForColumn(tableName: string, colName: string): void {
+    // Initialize uniqueConstraints Record if needed
+    if (!this.tables[tableName].uniqueConstraints) {
+      this.tables[tableName].uniqueConstraints = {};
+    }
+
+    // Generate constraint name matching PostgreSQL's auto-generated pattern
+    const constraintName = `${tableName}_${colName}_key`;
+
+    this.tables[tableName].uniqueConstraints[constraintName] = {
+      name: constraintName,
+      columns: [colName]
+    };
   }
 }

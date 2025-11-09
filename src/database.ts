@@ -218,15 +218,9 @@ export class DatabaseManager {
       if (checks.length > 0) {
         liveSchema.tables[tableName].constraints = {};
         for (const check of checks) {
-          // Extract expression from "CHECK (expression)" format
-          let expression = check.definition;
-          const match = expression.match(/^CHECK\s*\((.+)\)$/i);
-          if (match) {
-            expression = match[1];
-          }
           liveSchema.tables[tableName].constraints![check.name] = {
             name: check.name,
-            expression: expression
+            constraint_definition: check.definition  // Raw PostgreSQL definition from pg_get_constraintdef()
           };
         }
       }

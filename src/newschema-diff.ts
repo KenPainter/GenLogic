@@ -19,7 +19,7 @@ export interface NewSchemaDiff {
   foreignKeysToDrop: Array<{ table: string; fkName: string }>;
   foreignKeysToModify: Array<{ table: string; fkName: string; oldFk: ForeignKeyDef; newFk: ForeignKeyDef }>;
   constraintsToAdd: Array<{ table: string; constraint: ConstraintDef }>;
-  constraintsToDrop: Array<{ table: string; constraintName: string }>;
+  constraintsToDrop: Array<{ table: string; constraint: ConstraintDef }>;
   constraintsToModify: Array<{ table: string; constraintName: string; oldConstraint: ConstraintDef; newConstraint: ConstraintDef }>;
   uniqueConstraintsToAdd: Array<{ table: string; constraint: UniqueConstraintDef }>;
   uniqueConstraintsToDrop: Array<{ table: string; constraintName: string }>;
@@ -218,6 +218,7 @@ function diffForeignKeys(
 
 /**
  * Compare CHECK constraints between desired and live table
+ * Compares by constraint_definition (substance), not by name
  */
 function diffConstraints(
   tableName: string,
@@ -228,45 +229,44 @@ function diffConstraints(
   const desiredConstraints = desiredTable.constraints || {};
   const liveConstraints = liveTable.constraints || {};
 
-  const desiredNames = new Set(Object.keys(desiredConstraints));
-  const liveNames = new Set(Object.keys(liveConstraints));
+  // Build sets of constraint definitions (substance, not names)
+  const desiredDefs = new Set<string>();
+  const liveDefs = new Set<string>();
+  const desiredByDef = new Map<string, ConstraintDef>();
+  const liveByDef = new Map<string, ConstraintDef>();
 
-  // Find constraints to add
-  for (const name of desiredNames) {
-    if (!liveNames.has(name)) {
+  for (const constraint of Object.values(desiredConstraints)) {
+    desiredDefs.add(constraint.constraint_definition);
+    desiredByDef.set(constraint.constraint_definition, constraint);
+  }
+
+  for (const constraint of Object.values(liveConstraints)) {
+    liveDefs.add(constraint.constraint_definition);
+    liveByDef.set(constraint.constraint_definition, constraint);
+  }
+
+  // Find constraints to add (definition in desired, not in live)
+  for (const def of desiredDefs) {
+    if (!liveDefs.has(def)) {
       diff.constraintsToAdd.push({
         table: tableName,
-        constraint: desiredConstraints[name]
+        constraint: desiredByDef.get(def)!
       });
     }
   }
 
-  // Find constraints to drop
-  for (const name of liveNames) {
-    if (!desiredNames.has(name)) {
+  // Find constraints to drop (definition in live, not in desired)
+  for (const def of liveDefs) {
+    if (!desiredDefs.has(def)) {
       diff.constraintsToDrop.push({
         table: tableName,
-        constraintName: name
+        constraint: liveByDef.get(def)!
       });
     }
   }
 
-  // Find constraints to modify
-  for (const name of desiredNames) {
-    if (liveNames.has(name)) {
-      const desired = desiredConstraints[name];
-      const live = liveConstraints[name];
-
-      if (desired.expression !== live.expression) {
-        diff.constraintsToModify.push({
-          table: tableName,
-          constraintName: name,
-          oldConstraint: live,
-          newConstraint: desired
-        });
-      }
-    }
-  }
+  // No need to check for modifications - if definitions match, they're identical
+  // Names don't matter - we compare by substance
 }
 
 /**

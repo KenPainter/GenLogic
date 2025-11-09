@@ -34,7 +34,8 @@ export interface ForeignKeyDef {
 
 export interface ConstraintDef {
   name: string;
-  expression: string;
+  expression?: string;  // Optional: inner expression (for backward compatibility)
+  constraint_definition: string;  // Required: PostgreSQL format CHECK (...) for apples-to-apples comparison
 }
 
 export interface UniqueConstraintDef {
