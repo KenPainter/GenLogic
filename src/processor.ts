@@ -20,6 +20,7 @@ import { generateCreateTableDDL } from './helpers-ddl/create-table.js';
 import { generateAddColumnDDL } from './helpers-ddl/add-column.js';
 import { generateModifyColumnDDL } from './helpers-ddl/modify-column.js';
 import { generateDropPrimaryKeyDDL, generateAddPrimaryKeyDDL } from './helpers-ddl/primary-key.js';
+import { generateDropForeignKeyDDL, generateAddForeignKeyDDL } from './helpers-ddl/foreign-key.js';
 
 /**
  * GenLogic Core Processor
@@ -228,11 +229,11 @@ export class GenLogicProcessor {
       // Generate DDL for this layer (order matters!)
       schemaSQL.push(...generateCreateTableDDL(diff, newSchema, tablesInLayer));
       schemaSQL.push(...generateDropPrimaryKeyDDL(diff, tablesInLayer));  // Drop PK before column changes
+      schemaSQL.push(...generateDropForeignKeyDDL(diff, tablesInLayer));  // Drop old/removed FKs
       schemaSQL.push(...generateAddColumnDDL(diff, tablesInLayer));
       schemaSQL.push(...generateModifyColumnDDL(diff, tablesInLayer));
       schemaSQL.push(...generateAddPrimaryKeyDDL(diff, tablesInLayer));   // Add PK after column changes
-      // TODO: ADD FK CONSTRAINTS (for FKs in foreignKeysToAdd)
-      // TODO: MODIFY FK CONSTRAINTS (for FKs in foreignKeysToModify)
+      schemaSQL.push(...generateAddForeignKeyDDL(diff, tablesInLayer));   // Add new/modified FKs
       // TODO: ADD CHECK CONSTRAINTS (for constraints in constraintsToAdd)
       // TODO: ADD UNIQUE CONSTRAINTS (for uniqueConstraints in uniqueConstraintsToAdd)
       // TODO: CREATE INDEXES (for indexes in indexesToAdd)
