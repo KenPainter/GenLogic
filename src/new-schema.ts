@@ -729,6 +729,9 @@ export class NewSchema {
     if (fkColumn) {
       col.automationFKColumn = fkColumn;
     }
+    if (whereClause) {
+      col.automationWhereClause = whereClause;
+    }
 
     // Determine parent/child relationship based on operation type
     // SUM/COUNT/MAX/MIN/LAST_VALUE: Parent (tableName) aggregates FROM child (sourceTable)

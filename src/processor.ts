@@ -25,6 +25,7 @@ import { generateCheckConstraintDDL } from './helpers-ddl/check-constraint.js';
 import { generateUniqueConstraintDDL } from './helpers-ddl/unique-constraint.js';
 import { generateIndexDDL } from './helpers-ddl/indexes.js';
 import { generateSeedDataDML } from './helpers-ddl/seed-data.js';
+import { generateTriggersDDL } from './helpers-ddl/triggers.js';
 
 /**
  * GenLogic Core Processor
@@ -241,7 +242,7 @@ export class GenLogicProcessor {
       schemaSQL.push(...generateCheckConstraintDDL(diff, tablesInLayer));  // CHECK constraints (drop then add)
       schemaSQL.push(...generateUniqueConstraintDDL(diff, tablesInLayer));  // UNIQUE constraints (drop then add)
       schemaSQL.push(...generateIndexDDL(diff, tablesInLayer));  // Indexes (drop then add)
-      // TODO: CREATE TRIGGERS (for tables in this layer - automation may reference other layers)
+      schemaSQL.push(...generateTriggersDDL(newSchema, tablesInLayer));  // Triggers (CREATE OR REPLACE for automation)
     }
 
     // PHASE 2.5: Seed data in layer order (after schema + triggers complete)
@@ -281,7 +282,7 @@ export class GenLogicProcessor {
 
     // TODO: Execute SQL statements in transaction
     if (!this.config.dryRun) {
-       await this.database.executeInTransaction(filteredStatements);
+       //await this.database.executeInTransaction(filteredStatements);
     }
 
     await this.database.disconnect();

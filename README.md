@@ -77,31 +77,21 @@ to do so.
 ## Potential TO-DO List
 
 Before Release 1.0:
-- table check constraints keep getting rebuilt because
-  postgres is adding parens even in the nested portions
-  of the constraint definition.  Can probably use the ast
-  parser which seems to do most of this for free, and then
-  do a string compare of stringified output.
-- MAJOR: Reduce child->parent updates to a single update,
-  right now it is update-per-column, very in-elegant
-  and bad for performance.
+
+- tests - a series of steps in a markdown
+- docs - simpler
+
+- consider preventing SQL keywords as column names
+
+- Drop LATEST or LAST_VALUE, SYNC table-to-table, SPREAD
+  from any remaining code or docs
 - Replace add-navigation.mjs with a general reconciler
   that looks for widows and orphans in both docs and
   tests/
-- re-run risks analysis, like bad data in a spread
-  creating an infinite loop.  Resolve and block
-  all corrupt data paths.
-- Determine if the LAST_VALUE can be discerned if a
-  column is added to a database that already has
-  data in it.
 
 Anytime sorta-kinda maybe someday:
 - Support views
-- Write a "drop script" (but do not execute) that will
-  drop unused tables and columns.
 - Separate project: genlogic-db, convenient client app
   that does all of the SQL generation.
-- Separate project: genlogic-routes, dynamically creates
-  routes for all tables and actions.
 
 
