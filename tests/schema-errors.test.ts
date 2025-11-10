@@ -11,8 +11,8 @@ import { readdirSync, readFileSync, existsSync, mkdirSync, writeFileSync, rmSync
 import { join } from 'path';
 import { GenLogicProcessor } from '../src/processor.js';
 
-const SCHEMAS_DIR = join(import.meta.dir, 'errors-schema');
-const DUMP_DIR = join(import.meta.dir, 'errors-schema-out');
+const SCHEMAS_DIR = join(import.meta.dir, 'schema-errors');
+const DUMP_DIR = join(import.meta.dir, 'schema-errors-out');
 
 // Clear and recreate dump directory before test run
 if (existsSync(DUMP_DIR)) {
