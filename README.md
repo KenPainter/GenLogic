@@ -79,8 +79,8 @@ to do so.
 Current: 0.97
 
 Release plan:
-- Tests: 0.98
-- Docs: 0.99
+- Tests: 0.98.x
+- Docs: 0.99.x
 - Everything else: 0.99.x
 
 

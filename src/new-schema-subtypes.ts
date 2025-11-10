@@ -102,7 +102,6 @@ export interface TableDef {
   columns?: Record<string, ColumnDef>;
   foreignKeys?: Record<string, ForeignKeyDef>;  // Keyed by FK name for easy diffing
   columnRefs?: Array<{ sourceColumn: string; referencedColumn: string }>;
-  columnEdges?: Array<[string, string]>;  // For topological sort of formulas
   seedRows?: any[];
   constraints?: Record<string, ConstraintDef>;  // Keyed by constraint name for easy diffing
   uniqueConstraints?: Record<string, UniqueConstraintDef>;  // Keyed by constraint name for easy diffing

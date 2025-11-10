@@ -1,6 +1,6 @@
-import { writeFileSync, existsSync, mkdirSync } from 'fs';
+import { writeFileSync } from 'fs';
 import { dirname, basename, extname, join } from 'path';
-import type { DatabaseConfig, GenLogicSchema } from './types.js';
+import type { DatabaseConfig } from './types.js';
 import { DataFlowGraphValidator } from './graph.js';
 import { SchemaProcessor } from './schema-processor.js';
 import { DatabaseManager } from './database.js';
@@ -129,30 +129,10 @@ export class GenLogicProcessor {
     console.log('  Applying table layers...');
     newSchema.tableLayers = newSchema.applyTableLayers(fkResult.layers);
 
-    console.log('  Detecting cycles and layers in formula column dependencies...');
-    for (const [tableName, tableDef] of Object.entries(newSchema.tables)) {
-      if (tableDef.columnEdges && tableDef.columnEdges.length > 0) {
-        const formulaResult = topologicalSortByLayers(
-          tableDef.columnEdges,
-          false  // skipSelfLoops: false for formulas (self-referential formulas are cycles)
-        );
-        if (formulaResult.cycles.length > 0) {
-          for (const cycle of formulaResult.cycles) {
-            newSchema.errors.push({
-              location: `${tableName} formula columns`,
-              message: `Cycle detected: ${cycle.join(' -> ')}`
-            });
-          }
-        }
-        // Apply column layers to table (only formula columns will be in layers)
-        newSchema.applyColumnLayers(tableName, formulaResult.layers);
-      }
-    }
-
-    console.log('  Detecting cycles in automation dependencies...');
+    console.log('  Detecting cycles and layers in formula and automation dependencies...');
     const automationResult = topologicalSortByLayers(
       newSchema.automationEdges,
-      false  // skipSelfLoops: false for automations (self-referential automations are cycles)
+      false  // skipSelfLoops: false for formulas and automations (self-referential dependencies are cycles)
     );
     if (automationResult.cycles.length > 0) {
       for (const cycle of automationResult.cycles) {
@@ -163,17 +143,28 @@ export class GenLogicProcessor {
       }
     }
 
+    // Extract per-table column layers from unified automation result
+    for (const tableName of Object.keys(newSchema.tables)) {
+      newSchema.applyColumnLayers(tableName, automationResult.layers);
+    }
+
     // New schema is done, write it out and move on to db work
     this.writeNewSchema(schemaPath, newSchema);
 
     // Check for schema errors and abort if any found
+    console.log(`Schema validation: ${newSchema.errors.length} error(s)`);
     if (newSchema.errors.length > 0) {
       console.error('\n❌ Schema validation failed with the following errors:\n');
       for (const error of newSchema.errors) {
         console.error(`  ${error.location}: ${error.message}`);
       }
       console.error('\nAborting due to schema errors.');
-      process.exit(1);
+
+      // Throw error instead of process.exit for testability
+      const errorSummary = newSchema.errors
+        .map(e => `${e.location}: ${e.message}`)
+        .join('\n');
+      throw new Error(`Schema validation failed:\n${errorSummary}`);
     }
 
     console.log('Connecting to database...');

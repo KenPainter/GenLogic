@@ -41,6 +41,63 @@ import type {
 } from './new-schema-subtypes.js';
 import { parse, astVisitor } from 'pgsql-ast-parser';
 
+/**
+ * Valid PostgreSQL base types
+ * Reference: https://www.postgresql.org/docs/current/datatype.html
+ */
+const VALID_POSTGRES_TYPES = new Set([
+  // Numeric types
+  'smallint', 'integer', 'bigint', 'int', 'int2', 'int4', 'int8',
+  'decimal', 'numeric', 'real', 'double precision', 'double_precision',
+  'smallserial', 'serial', 'bigserial',
+  'money',
+
+  // Character types
+  'character varying', 'varchar', 'character', 'char', 'text',
+
+  // Binary types
+  'bytea',
+
+  // Date/time types
+  'timestamp', 'timestamp without time zone', 'timestamp with time zone',
+  'timestamptz', 'date', 'time', 'time without time zone',
+  'time with time zone', 'timetz', 'interval',
+
+  // Boolean
+  'boolean', 'bool',
+
+  // Geometric types
+  'point', 'line', 'lseg', 'box', 'path', 'polygon', 'circle',
+
+  // Network types
+  'cidr', 'inet', 'macaddr', 'macaddr8',
+
+  // Bit string types
+  'bit', 'bit varying', 'varbit',
+
+  // Text search types
+  'tsvector', 'tsquery',
+
+  // UUID
+  'uuid',
+
+  // XML
+  'xml',
+
+  // JSON
+  'json', 'jsonb',
+
+  // Arrays (base type, array notation handled separately)
+  'array',
+
+  // Range types
+  'int4range', 'int8range', 'numrange', 'tsrange', 'tstzrange', 'daterange',
+
+  // Domain types and other
+  'oid', 'regproc', 'regprocedure', 'regoper', 'regoperator',
+  'regclass', 'regtype', 'regrole', 'regnamespace', 'regconfig', 'regdictionary'
+]);
+
 export class NewSchema {
   public constants: Record<string, any> = {};
   public reusableColumns: Record<string, any> = {};
@@ -54,7 +111,8 @@ export class NewSchema {
   // FK edges for cycle detection (childTable, parentTable)
   public fkEdges: Array<[string, string]> = [];
 
-  // Automation edges for cross-table dependencies (parentTable, childTable)
+  // Unified column dependency edges for cycle detection and layer assignment
+  // Includes both automation and formula dependencies (table.column -> table.column)
   public automationEdges: Array<[string, string]> = [];
 
   // Cross-table column dependencies: "table X depends on tableY.columnName"
@@ -208,7 +266,7 @@ export class NewSchema {
     }
 
     // If this is a foreign key, parse it and replace with parent PK definition
-    if (resolvedCol.definition.startsWith('FK ')) {
+    if (resolvedCol.definition.startsWith('FK')) {
       this.parseFKDefinition(tableName, colName, resolvedCol, location);
       // parseFKDefinition replaces resolvedCol.definition with parent PK definition
     }
@@ -241,13 +299,10 @@ export class NewSchema {
           });
         }
 
-        // Add edges for topological sort of formula columns
+        // Add edges for unified cycle detection and layer assignment
         // Edge goes FROM dependency TO formula column (dependency must be calculated first)
-        if (!this.tables[tableName].columnEdges) {
-          this.tables[tableName].columnEdges = [];
-        }
         for (const depCol of deps) {
-          this.tables[tableName].columnEdges.push([depCol, colName]);
+          this.automationEdges.push([`${tableName}.${depCol}`, `${tableName}.${colName}`]);
         }
       }
 
@@ -350,7 +405,8 @@ export class NewSchema {
    * Supported delete actions: cascade, restrict, set null, set default, no action
    */
   private parseFKDefinition(tableName: string, colName: string, col: any, location: string): void {
-    let remaining = col.definition.substring(3).trim(); // Remove "FK "
+    // Remove "FK" prefix and trim
+    let remaining = col.definition.substring(2).trim(); // Remove "FK"
 
     // Parse modifiers by removing them from the string
     let notNull = false;
@@ -396,6 +452,8 @@ export class NewSchema {
         location,
         message: 'FK definition missing parent table name'
       });
+      // Set an obviously invalid definition so the subsequent SQL parsing error is clear
+      col.definition = `ERROR FK definition missing parent table name`;
       return;
     }
 
@@ -404,6 +462,8 @@ export class NewSchema {
         location,
         message: `Invalid FK definition. After removing modifiers, unrecognized content remains: "${remaining}"`
       });
+      // Set an obviously invalid definition so the subsequent SQL parsing error is clear
+      col.definition = `ERROR invalid FK syntax, unrecognized content: "${remaining}"`;
       return;
     }
 
@@ -415,6 +475,8 @@ export class NewSchema {
         location,
         message: `FK references non-existent table: ${parentTable}`
       });
+      // Set an obviously invalid definition so the subsequent SQL parsing error is clear
+      col.definition = `ERROR FK references non-existent table ${parentTable}`;
       return;
     }
 
@@ -427,6 +489,8 @@ export class NewSchema {
         location,
         message: `FK references table ${parentTable} which has no primary key`
       });
+      // Set an obviously invalid definition so the subsequent SQL parsing error is clear
+      col.definition = `ERROR due to no primary key in ${parentTable}, this definition could not be inferred`;
       return;
     }
 
@@ -530,6 +594,15 @@ export class NewSchema {
       }
 
       col.type = typeMatch[1].toLowerCase();
+
+      // Validate that the type is a known PostgreSQL type
+      if (!VALID_POSTGRES_TYPES.has(col.type)) {
+        this.errors.push({
+          location,
+          message: `Invalid SQL definition: ${col.definition}`
+        });
+        return;
+      }
 
       // Map size/precision to PostgreSQL-aligned property names
       if (typeMatch[2]) {
@@ -680,7 +753,7 @@ export class NewSchema {
     } catch (error) {
       this.errors.push({
         location,
-        message: `Invalid SQL expression: ${error instanceof Error ? error.message : String(error)}`
+        message: `Invalid SQL expression`
       });
       return null;
     }
@@ -689,16 +762,16 @@ export class NewSchema {
   /**
    * Parse automation string and extract cross-table dependencies
    * Formats:
-   *   - SUM/COUNT/MAX/MIN/LAST_VALUE table.column [WHERE ...]
-   *   - SUM/COUNT/MAX/MIN(fk_column) table.column [WHERE ...]
+   *   - SUM/COUNT/MAX/MIN/LAST_VALUE table.column
+   *   - SUM/COUNT/MAX/MIN(fk_column) table.column
    *   - SYNC table.column
    *   - SNAPSHOT table.column
    */
   private parseAutomation(tableName: string, colName: string, col: any, location: string): void {
     const automation = col.automation.trim();
 
-    // Match: OPERATION[(FK_COLUMN)] TABLE.COLUMN [WHERE ...]
-    const match = automation.match(/^(SUM|COUNT|MAX|MIN|LAST_VALUE|SYNC|SNAPSHOT)(?:\(([a-z_][a-z0-9_]*)\))?\s+([a-z_][a-z0-9_]*)\.([a-z_][a-z0-9_]*)(?:\s+WHERE\s+(.+))?$/i);
+    // Match: OPERATION[(FK_COLUMN)] TABLE.COLUMN
+    const match = automation.match(/^(SUM|COUNT|MAX|MIN|LAST_VALUE|SYNC|SNAPSHOT)(?:\(([a-z_][a-z0-9_]*)\))?\s+([a-z_][a-z0-9_]*)\.([a-z_][a-z0-9_]*)$/i);
 
     if (!match) {
       this.errors.push({
@@ -712,7 +785,6 @@ export class NewSchema {
     const fkColumn = match[2];  // Optional FK column for multi-FK scenarios
     const sourceTable = match[3];
     const sourceColumn = match[4];
-    const whereClause = match[5];
 
     // Validate source table exists
     if (!(sourceTable in this.tables)) {
@@ -730,7 +802,6 @@ export class NewSchema {
     if (fkColumn) {
       col.automationFKColumn = fkColumn;
     }
-    // WHERE clauses are NOT supported - use formula columns instead
 
     // Determine parent/child relationship based on operation type
     // SUM/COUNT/MAX/MIN/LAST_VALUE: Parent (tableName) aggregates FROM child (sourceTable)
@@ -747,8 +818,8 @@ export class NewSchema {
       childTable = sourceTable;
     }
 
-    // Add automation edge (topologicalSortByLayers deduplicates for us)
-    this.automationEdges.push([parentTable, childTable]);
+    // Add automation edge: referenced column (layer N) -> dependent column (layer N+1)
+    this.automationEdges.push([`${sourceTable}.${sourceColumn}`, `${tableName}.${colName}`]);
 
     // Store the automation's source column dependency
     this.crossTableColumnDeps.push({
@@ -757,22 +828,6 @@ export class NewSchema {
       referencedTable: sourceTable,
       referencedColumn: sourceColumn
     });
-
-    // Parse WHERE clause if present to extract column dependencies
-    if (whereClause) {
-      const whereDeps = this.parseSQLWhereClause(whereClause, `${location}.WHERE`);
-      if (whereDeps) {
-        // Add WHERE clause column dependencies
-        for (const depCol of whereDeps) {
-          this.crossTableColumnDeps.push({
-            dependentTable: tableName,
-            dependentColumn: colName,
-            referencedTable: sourceTable,
-            referencedColumn: depCol
-          });
-        }
-      }
-    }
   }
 
   /**
@@ -834,134 +889,196 @@ export class NewSchema {
         this.tables[tableName].comment = table.comment;
       }
 
-      // Process seed-rows
-      if (table['seed-rows'] && Array.isArray(table['seed-rows'])) {
-        this.tables[tableName].seedRows = table['seed-rows'];
+      // Process each table property type
+      this.processSeedRows(tableName, table, tableColumns);
+      this.processCheckConstraints(tableName, table, tableColumns);
+      this.processUniqueConstraints(tableName, table, tableColumns);
+      this.processIndexes(tableName, table, tableColumns);
+    }
+  }
 
-        // Validate: all column names in seed rows exist
-        for (let i = 0; i < table['seed-rows'].length; i++) {
-          const row = table['seed-rows'][i];
-          for (const colName of Object.keys(row)) {
-            if (!(colName in tableColumns)) {
-              this.errors.push({
-                location: `${tableName}.seed-rows[${i}]`,
-                message: `Seed row references non-existent column: ${colName}`
-              });
-            }
-          }
+  /**
+   * Process seed-rows for a table
+   */
+  private processSeedRows(tableName: string, table: any, tableColumns: Record<string, any>): void {
+    if (!table['seed-rows']) {
+      return;
+    }
+
+    if (!Array.isArray(table['seed-rows'])) {
+      this.errors.push({
+        location: tableName,
+        message: `seed-rows must be an array`
+      });
+      return;
+    }
+
+    this.tables[tableName].seedRows = table['seed-rows'];
+
+    // Validate: all column names in seed rows exist
+    for (let i = 0; i < table['seed-rows'].length; i++) {
+      const row = table['seed-rows'][i];
+      for (const colName of Object.keys(row)) {
+        if (!(colName in tableColumns)) {
+          this.errors.push({
+            location: `${tableName}.seed-rows[${i}]`,
+            message: `Seed row references non-existent column: ${colName}`
+          });
         }
       }
+    }
+  }
 
-      // Process constraints (CHECK constraints)
-      if (table.constraints && Array.isArray(table.constraints)) {
-        this.tables[tableName].constraints = {};
+  /**
+   * Process CHECK constraints for a table
+   */
+  private processCheckConstraints(tableName: string, table: any, tableColumns: Record<string, any>): void {
+    if (!table.constraints) {
+      return;
+    }
 
-        // Generate names and validate
-        for (let i = 0; i < table.constraints.length; i++) {
-          const location = `${tableName}.constraints[${i}]`;
-          const expression = this.replaceConstants(table.constraints[i], location);
+    if (!Array.isArray(table.constraints)) {
+      this.errors.push({
+        location: tableName,
+        message: `constraints must be an array`
+      });
+      return;
+    }
 
-          // Generate constraint name: check_tablename_1, check_tablename_2, etc.
-          const constraintName = `check_${tableName}_${i + 1}`;
-          const constraintDef: ConstraintDef = {
-            name: constraintName,
-            expression: expression,
-            constraint_definition: `CHECK ((${expression}))`  // PostgreSQL canonical format (always double parens)
-          };
+    this.tables[tableName].constraints = {};
 
-          this.tables[tableName].constraints![constraintName] = constraintDef;
+    // Generate names and validate
+    for (let i = 0; i < table.constraints.length; i++) {
+      const location = `${tableName}.constraints[${i}]`;
+      const expression = this.replaceConstants(table.constraints[i], location);
 
-          // Parse as WHERE clause to extract column references
-          const deps = this.parseSQLWhereClause(expression, location);
-          if (deps) {
-            for (const colName of deps) {
-              if (!(colName in tableColumns)) {
-                this.errors.push({
-                  location,
-                  message: `Constraint references non-existent column: ${colName}`
-                });
-              }
-            }
-          }
-        }
-      }
+      // Generate constraint name: check_tablename_1, check_tablename_2, etc.
+      const constraintName = `check_${tableName}_${i + 1}`;
+      const constraintDef: ConstraintDef = {
+        name: constraintName,
+        expression: expression,
+        constraint_definition: `CHECK ((${expression}))`  // PostgreSQL canonical format (always double parens)
+      };
 
-      // Process unique-constraints
-      if (table['unique-constraints'] && Array.isArray(table['unique-constraints'])) {
-        this.tables[tableName].uniqueConstraints = {};
+      this.tables[tableName].constraints![constraintName] = constraintDef;
 
-        // Generate names and validate
-        for (let i = 0; i < table['unique-constraints'].length; i++) {
-          const uniqueCols:any = table['unique-constraints'][i];
-          const location = `${tableName}.unique-constraints[${i}]`;
-
-          if (!Array.isArray(uniqueCols)) {
+      // Parse as WHERE clause to extract column references
+      const deps = this.parseSQLWhereClause(expression, location);
+      if (deps) {
+        for (const colName of deps) {
+          if (!(colName in tableColumns)) {
             this.errors.push({
               location,
-              message: `Unique constraint must be an array of column names`
+              message: `Constraint references non-existent column: ${colName}`
             });
-            continue;
-          }
-
-          // Generate unique constraint name: unique_tablename_col1_col2
-          const uniqueName = `unique_${tableName}_${uniqueCols.join('_')}`;
-          const uniqueDef: UniqueConstraintDef = {
-            name: uniqueName,
-            columns: uniqueCols
-          };
-
-          this.tables[tableName].uniqueConstraints![uniqueName] = uniqueDef;
-
-          // Validate column names exist
-          for (const colName of uniqueCols) {
-            if (!(colName in tableColumns)) {
-              this.errors.push({
-                location,
-                message: `Unique constraint references non-existent column: ${colName}`
-              });
-            }
           }
         }
       }
+    }
+  }
 
-      // Process indexes
-      if (table.indexes && Array.isArray(table.indexes)) {
-        // Initialize indexes Record if needed (preserve any FK indexes already added)
-        if (!this.tables[tableName].indexes) {
-          this.tables[tableName].indexes = {};
+  /**
+   * Process unique-constraints for a table
+   */
+  private processUniqueConstraints(tableName: string, table: any, tableColumns: Record<string, any>): void {
+    if (!table['unique-constraints']) {
+      return;
+    }
+
+    if (!Array.isArray(table['unique-constraints'])) {
+      this.errors.push({
+        location: tableName,
+        message: `unique-constraints must be an array`
+      });
+      return;
+    }
+
+    this.tables[tableName].uniqueConstraints = {};
+
+    // Generate names and validate
+    for (let i = 0; i < table['unique-constraints'].length; i++) {
+      const uniqueCols: any = table['unique-constraints'][i];
+      const location = `${tableName}.unique-constraints[${i}]`;
+
+      if (!Array.isArray(uniqueCols)) {
+        this.errors.push({
+          location,
+          message: `Unique constraint must be an array of column names`
+        });
+        continue;
+      }
+
+      // Generate unique constraint name: unique_tablename_col1_col2
+      const uniqueName = `unique_${tableName}_${uniqueCols.join('_')}`;
+      const uniqueDef: UniqueConstraintDef = {
+        name: uniqueName,
+        columns: uniqueCols
+      };
+
+      this.tables[tableName].uniqueConstraints![uniqueName] = uniqueDef;
+
+      // Validate column names exist
+      for (const colName of uniqueCols) {
+        if (!(colName in tableColumns)) {
+          this.errors.push({
+            location,
+            message: `Unique constraint references non-existent column: ${colName}`
+          });
         }
+      }
+    }
+  }
 
-        // Generate names and validate
-        for (let i = 0; i < table.indexes.length; i++) {
-          const indexCols = table.indexes[i];
-          const location = `${tableName}.indexes[${i}]`;
+  /**
+   * Process indexes for a table
+   */
+  private processIndexes(tableName: string, table: any, tableColumns: Record<string, any>): void {
+    if (!table.indexes) {
+      return;
+    }
 
-          if (!Array.isArray(indexCols)) {
-            this.errors.push({
-              location,
-              message: `Index must be an array of column names`
+    if (!Array.isArray(table.indexes)) {
+      this.errors.push({
+        location: tableName,
+        message: `indexes must be an array`
+      });
+      return;
+    }
+
+    // Initialize indexes Record if needed (preserve any FK indexes already added)
+    if (!this.tables[tableName].indexes) {
+      this.tables[tableName].indexes = {};
+    }
+
+    // Generate names and validate
+    for (let i = 0; i < table.indexes.length; i++) {
+      const indexCols = table.indexes[i];
+      const location = `${tableName}.indexes[${i}]`;
+
+      if (!Array.isArray(indexCols)) {
+        this.errors.push({
+          location,
+          message: `Index must be an array of column names`
+        });
+        continue;
+      }
+
+      // Generate index name: idx_tablename_col1_col2
+      const indexName = `idx_${tableName}_${indexCols.join('_')}`;
+      const indexDef: IndexDef = {
+        name: indexName,
+        columns: indexCols
+      };
+
+      this.tables[tableName].indexes![indexName] = indexDef;
+
+      // Validate column names exist
+      for (const colName of indexCols) {
+        if (!(colName in tableColumns)) {
+          this.errors.push({
+            location,
+              message: `Index references non-existent column: ${colName}`
             });
-            continue;
-          }
-
-          // Generate index name: idx_tablename_col1_col2
-          const indexName = `idx_${tableName}_${indexCols.join('_')}`;
-          const indexDef: IndexDef = {
-            name: indexName,
-            columns: indexCols
-          };
-
-          this.tables[tableName].indexes![indexName] = indexDef;
-
-          // Validate column names exist
-          for (const colName of indexCols) {
-            if (!(colName in tableColumns)) {
-              this.errors.push({
-                location,
-                message: `Index references non-existent column: ${colName}`
-              });
-            }
-          }
         }
       }
     }
@@ -1011,8 +1128,8 @@ export class NewSchema {
 
   /**
    * Apply column layers from topological sort result to a specific table
-   * Note: Only formula columns will appear in the edges/layers
-   * Non-formula columns don't need layers (no calculation order needed)
+   * Extracts columns for this table from the unified automation+formula layer map
+   * Column identifiers in layers are in the format "table.column"
    * Stores result in table.columnLayers as JSON-dumpable Record
    */
   applyColumnLayers(tableName: string, layers: Map<number, string[]>): void {
@@ -1021,12 +1138,24 @@ export class NewSchema {
 
     const result: Record<number, string[]> = {};
 
-    // Copy layers from Map to Record, filtering to only formula columns
-    for (const [layerNum, columnNames] of layers) {
-      const formulaColumns = columnNames.filter(colName => {
-        const col = tableDef.columns?.[colName];
-        return col && col.formula;
-      });
+    // Extract columns for this table from unified layers, filtering to only formula columns
+    for (const [layerNum, qualifiedColumnNames] of layers) {
+      const formulaColumns: string[] = [];
+
+      for (const qualifiedName of qualifiedColumnNames) {
+        // Parse table.column format
+        const dotIndex = qualifiedName.indexOf('.');
+        const table = qualifiedName.substring(0, dotIndex);
+        const colName = qualifiedName.substring(dotIndex + 1);
+
+        // Only include columns for this table that are formula columns
+        if (table === tableName) {
+          const col = tableDef.columns?.[colName];
+          if (col && col.formula) {
+            formulaColumns.push(colName);
+          }
+        }
+      }
 
       if (formulaColumns.length > 0) {
         result[layerNum] = formulaColumns;
