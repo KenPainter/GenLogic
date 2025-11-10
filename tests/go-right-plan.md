@@ -4,7 +4,7 @@ Comprehensive test coverage for GenLogic features when schemas are valid and pro
 
 ## Test Organization
 
-### **Group 1: Core-Relational** (tests/core-relational/)
+### **Group 1: Core-Relational** (tests/core-relational/)[COMPLETE - PASSING]
 *Standard SQL DDL - tables, columns, keys, constraints, indexes, and idempotency*
 
 All database build functions necessary for GenLogic value-add, but without the value-add itself. Proves GenLogic can handle standard SQL correctly, efficiently, and idempotently.
@@ -106,11 +106,6 @@ All database build functions necessary for GenLogic value-add, but without the v
 - Value does NOT change when FK changes
 - Value does NOT change when parent changes
 - Historical point-in-time capture
-
-#### 2C. MATCH Automation
-- Child pulls value based on matching parent column (not FK)
-- Lookup table pattern
-- Verify correct row matched
 
 ---
 

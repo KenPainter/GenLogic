@@ -6,11 +6,34 @@ import { generatePushToParents } from './triggers/push-to-parents.js';
 import { generatePushToChildren } from './triggers/push-to-children.js';
 
 /**
+ * Trigger Generation for GenLogic Automation
+ *
+ * SYNC vs SNAPSHOT Implementation:
+ * ================================
+ * Both automation types are nearly identical - the ONLY difference is in parent UPDATE behavior:
+ *
+ * SYNC:
+ *   - INSERT: Pull from parent ✓ (pull-from-parents.ts)
+ *   - UPDATE (FK changes): Pull from new parent ✓ (pull-from-parents.ts)
+ *   - UPDATE (parent value changes): Push to children ✓ (push-to-children.ts)
+ *
+ * SNAPSHOT:
+ *   - INSERT: Pull from parent ✓ (pull-from-parents.ts)
+ *   - UPDATE (FK changes): Pull from new parent ✓ (pull-from-parents.ts)
+ *   - UPDATE (parent value changes): Do nothing ✗ (excluded from push-to-children.ts)
+ *
+ * Implementation:
+ * - pull-from-parents.ts: Handles BOTH SYNC and SNAPSHOT (line 59)
+ * - push-to-children.ts: Handles ONLY SYNC (line 58 excludes SNAPSHOT)
+ */
+
+/**
  * Generate BEFORE INSERT trigger for a table
  *
  * Sequence:
  * 2. Auto-create parents - If FK references non-existent parent, create parent row
  * 3. Pull from parents - Fetch SYNC/SNAPSHOT values from parent tables via FK
+ *                        (SYNC and SNAPSHOT have identical behavior on INSERT)
  * 4. Calculate formulas - Evaluate formula expressions in dependency order
  * 6. Push to parents - Update aggregation columns (SUM/COUNT/MAX/MIN) in parent tables
  */
@@ -82,8 +105,10 @@ CREATE TRIGGER ${triggerName}
  * Sequence:
  * 2. Auto-create parents - If FK changed to reference non-existent parent, create parent row
  * 3. Pull from parents - Re-fetch SYNC/SNAPSHOT values if FK changed
+ *                        (SYNC and SNAPSHOT have identical behavior on FK changes)
  * 4. Recalculate formulas - Evaluate formula expressions based on changed input columns
  * 5. Push to children - Update SYNC columns in child tables if parent columns changed
+ *                       (SNAPSHOT is intentionally excluded - values frozen at capture time)
  * 6. Push to parents - Recalculate aggregation columns in parent tables
  */
 function generateBeforeUpdateTrigger(

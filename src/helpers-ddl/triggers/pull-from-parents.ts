@@ -13,16 +13,24 @@ interface SyncGroup {
 }
 
 /**
- * Generate PL/pgSQL code to pull SYNC values from parent tables
+ * Generate PL/pgSQL code to pull SYNC/SNAPSHOT values from parent tables
  *
- * OPTIMIZATION: Groups multiple SYNC columns from the same parent table into a single SELECT.
+ * SYNC vs SNAPSHOT:
+ * - Both automation types get identical treatment in this function
+ * - Both pull values on INSERT
+ * - Both pull values on UPDATE when FK changes
+ * - The ONLY difference is in push-to-children.ts:
+ *   * SYNC: Parent updates push to children (see push-to-children.ts)
+ *   * SNAPSHOT: Parent updates do NOT push to children (frozen at capture time)
+ *
+ * OPTIMIZATION: Groups multiple SYNC/SNAPSHOT columns from the same parent table into a single SELECT.
  * Instead of 5 separate SELECTs hitting the same parent row, we fetch all columns at once.
  *
- * For BEFORE INSERT: Pull all SYNC columns
- * For BEFORE UPDATE: Only pull SYNC columns where FK changed
+ * For BEFORE INSERT: Pull all SYNC/SNAPSHOT columns
+ * For BEFORE UPDATE: Only pull SYNC/SNAPSHOT columns where FK changed
  *
  * Example output:
- *   -- SYNC from batches (5 columns)
+ *   -- SYNC/SNAPSHOT from batches (5 columns)
  *   IF NEW."batch_id" IS DISTINCT FROM OLD."batch_id" THEN
  *     SELECT "description", "account_id_base", "category_base", "date", "sign_flip"
  *     INTO NEW."description_from_batch", NEW."account_id_base", NEW."category_base",
@@ -40,12 +48,15 @@ export function generatePullFromParents(
     return [];
   }
 
-  // Group SYNC columns by (sourceTable, fkColumn, parentPK)
+  // Group SYNC/SNAPSHOT columns by (sourceTable, fkColumn, parentPK)
   // This allows us to batch multiple columns from the same parent into one SELECT
+  // IMPORTANT: Both SYNC and SNAPSHOT are handled identically here - they both pull on INSERT and FK changes
   const syncGroups = new Map<string, SyncGroup>();
 
   for (const [colName, colDef] of Object.entries(table.columns)) {
-    if (!colDef.automationType || colDef.automationType !== 'SYNC') {
+    // Include both SYNC and SNAPSHOT - they have identical pull behavior
+    // The difference is only in push-to-children.ts (SYNC pushes, SNAPSHOT doesn't)
+    if (!colDef.automationType || (colDef.automationType !== 'SYNC' && colDef.automationType !== 'SNAPSHOT')) {
       continue;
     }
 
@@ -111,16 +122,16 @@ export function generatePullFromParents(
     const targetColumns = group.columns.map(c => `NEW."${c.targetColumn}"`).join(', ');
 
     if (triggerType === 'UPDATE') {
-      // Only pull if FK changed
-      lines.push(`  -- SYNC from ${group.sourceTable} (${columnCount} column${columnCount > 1 ? 's' : ''})`);
+      // Only pull if FK changed (applies to both SYNC and SNAPSHOT)
+      lines.push(`  -- SYNC/SNAPSHOT from ${group.sourceTable} (${columnCount} column${columnCount > 1 ? 's' : ''})`);
       lines.push(`  IF NEW."${group.fkColumn}" IS DISTINCT FROM OLD."${group.fkColumn}" THEN`);
       lines.push(`    SELECT ${sourceColumns}`);
       lines.push(`    INTO ${targetColumns}`);
       lines.push(`    FROM "${group.sourceTable}" WHERE "${group.parentPK}" = NEW."${group.fkColumn}";`);
       lines.push(`  END IF;`);
     } else {
-      // INSERT: always pull
-      lines.push(`  -- SYNC from ${group.sourceTable} (${columnCount} column${columnCount > 1 ? 's' : ''})`);
+      // INSERT: always pull (applies to both SYNC and SNAPSHOT)
+      lines.push(`  -- SYNC/SNAPSHOT from ${group.sourceTable} (${columnCount} column${columnCount > 1 ? 's' : ''})`);
       lines.push(`  SELECT ${sourceColumns}`);
       lines.push(`  INTO ${targetColumns}`);
       lines.push(`  FROM "${group.sourceTable}" WHERE "${group.parentPK}" = NEW."${group.fkColumn}";`);

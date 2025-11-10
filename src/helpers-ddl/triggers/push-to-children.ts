@@ -15,6 +15,14 @@ interface PushToChildGroup {
 /**
  * Generate PL/pgSQL code to push SYNC column changes to child tables
  *
+ * SYNC vs SNAPSHOT:
+ * - SYNC: Parent updates cascade to children (handled by this function)
+ * - SNAPSHOT: Parent updates do NOT cascade (intentionally excluded from this function)
+ *
+ * This is the KEY behavioral difference between SYNC and SNAPSHOT:
+ * - SYNC columns stay synchronized with parent (always current)
+ * - SNAPSHOT columns are frozen at capture time (historical audit trail)
+ *
  * ONLY for UPDATE triggers on parent tables.
  * When a parent column changes, push the new value to all child rows that SYNC it.
  *
@@ -46,6 +54,7 @@ export function generatePushToChildren(
 
     for (const [childColName, childColDef] of Object.entries(childTable.columns)) {
       // Look for SYNC automation that sources from this parent table
+      // IMPORTANT: SNAPSHOT is intentionally excluded here - it does NOT push on parent updates
       if (childColDef.automationType !== 'SYNC') continue;
       if (childColDef.automationSourceTable !== tableName) continue;
 
