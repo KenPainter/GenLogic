@@ -1,5 +1,0 @@
-tables:
-  test_table:
-    columns:
-      id: serial primary key
-      name: varchar(100) collate "en_US"

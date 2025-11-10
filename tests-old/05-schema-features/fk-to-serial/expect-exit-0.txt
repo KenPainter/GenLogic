@@ -1,1 +1,0 @@
-# FK from child table to parent with SERIAL PK

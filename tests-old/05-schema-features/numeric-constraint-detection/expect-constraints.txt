@@ -1,7 +1,0 @@
-  table_name   |  column_name   |      constraint_name       |                                      constraint_definition
----------------+----------------+----------------------------+----------------------------------------------------------------------------------------------
- accounts      | balance        | accounts_balance_check     | CHECK (((balance IS NULL) OR ((balance)::text <> ALL (ARRAY['NaN'::text, 'Infinity'::text, '-Infinity'::text]))))
- accounts      | interest_rate  | accounts_interest_rate_check | CHECK (((interest_rate IS NULL) OR ((interest_rate)::text <> ALL (ARRAY['NaN'::text, 'Infinity'::text, '-Infinity'::text]))))
- transactions  | amount         | transactions_amount_check  | CHECK (((amount IS NULL) OR ((amount)::text <> ALL (ARRAY['NaN'::text, 'Infinity'::text, '-Infinity'::text]))))
- transactions  | fee            | transactions_fee_check     | CHECK (((fee IS NULL) OR ((fee)::text <> ALL (ARRAY['NaN'::text, 'Infinity'::text, '-Infinity'::text]))))
-(4 rows)

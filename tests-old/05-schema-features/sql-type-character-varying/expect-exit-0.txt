@@ -1,1 +1,0 @@
-# Test multi-word type: CHARACTER VARYING

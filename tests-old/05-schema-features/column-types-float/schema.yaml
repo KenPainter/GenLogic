@@ -1,6 +1,0 @@
-tables:
-  test_float:
-    columns:
-      id: serial primary key
-      ratio: real
-      precise_ratio: double precision

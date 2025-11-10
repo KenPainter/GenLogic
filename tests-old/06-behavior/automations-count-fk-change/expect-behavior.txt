@@ -1,4 +1,0 @@
- category_name | product_count
----------------|---------------
- Electronics   |             1
- Books         |             1

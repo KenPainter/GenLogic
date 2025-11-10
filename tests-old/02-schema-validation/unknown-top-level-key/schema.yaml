@@ -1,6 +1,0 @@
-tables:
-  test_table:
-    columns:
-      id: serial primary key
-invalid_key_that_should_not_be_allowed:
-  something: value

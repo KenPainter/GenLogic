@@ -1,1 +1,0 @@
-[{"id":1,"amount":"100.50","status":"credit"},{"id":2,"amount":"-50.25","status":"debit"},{"id":3,"amount":"0.00","status":"zero"}]

@@ -1,1 +1,0 @@
-[{"can_update_protected_column":false}]

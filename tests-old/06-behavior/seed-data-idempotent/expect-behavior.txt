@@ -1,3 +1,0 @@
-EUR|Euro|€|1
-GBP|British Pound|£|1
-USD|US Dollar|$|1

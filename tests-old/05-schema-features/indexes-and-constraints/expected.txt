@@ -1,5 +1,0 @@
-Expected: Schema validates and creates:
-- 3 tables (students, courses, enrollments)
-- 1 unique constraint on enrollments (student, course, semester)
-- 2 additional indexes on enrollments (enrollment_date, semester+grade)
-- Foreign key indexes on enrollments (student, course) - created automatically

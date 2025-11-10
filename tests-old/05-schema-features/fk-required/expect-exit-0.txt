@@ -1,1 +1,0 @@
-# Required FK (not_null: true)

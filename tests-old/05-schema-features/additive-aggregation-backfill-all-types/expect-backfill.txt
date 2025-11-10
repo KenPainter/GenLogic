@@ -1,1 +1,0 @@
-[{"id":1,"customer_name":"Alice","total_quantity":6,"item_count":3,"max_price":"15.00","min_price":"5.00"},{"id":2,"customer_name":"Bob","total_quantity":5,"item_count":2,"max_price":"100.00","min_price":"25.00"},{"id":3,"customer_name":"Charlie - No Items","total_quantity":0,"item_count":0,"max_price":null,"min_price":null}]

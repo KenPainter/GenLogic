@@ -1,3 +1,0 @@
-matching_tables:
-  tax_rates:
-    result_column_name: rate

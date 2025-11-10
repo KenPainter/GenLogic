@@ -1,9 +1,0 @@
-tables:
-  test:
-    columns:
-      id: serial primary key
-      first_name: varchar(50)
-      last_name: varchar(50)
-      created_at: timestamp
-    indexes:
-      - [first_name, last_name]

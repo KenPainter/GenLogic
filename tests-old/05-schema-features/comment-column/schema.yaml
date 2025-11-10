@@ -1,9 +1,0 @@
-tables:
-  users:
-    columns:
-      id:
-        definition: serial primary key
-        comment: Primary key identifier
-      email:
-        definition: varchar(255)
-        comment: User email address

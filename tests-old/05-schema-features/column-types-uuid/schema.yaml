@@ -1,5 +1,0 @@
-tables:
-  test_uuid:
-    columns:
-      id: serial primary key
-      external_id: uuid

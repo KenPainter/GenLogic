@@ -1,8 +1,0 @@
-columns:
-  id: integer primary key
-
-tables:
-  users:
-    columns:
-      id: null
-      nonexistent: null  # This column doesn't exist

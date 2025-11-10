@@ -1,2 +1,0 @@
-app_config|true|100|3|2
-ui_settings||[NULL]|[NULL]|1

@@ -1,8 +1,0 @@
-_metadata:
-  generated_at: 2025-10-07T22:32:14.189Z
-  source_schema: /home/ken/hacking/genlogic/tests/schema-features/pattern-matching-tables/schema.yaml
-  database: genlogic_test_cli
-  genlogic_version: 1.0.0
-  note: This describes the ACTUAL database structure after GenLogic processing
-  warning: ⚠️  DO NOT implement automations in middleware - they run in the database!
-tables: {}

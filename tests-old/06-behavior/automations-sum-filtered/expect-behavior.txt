@@ -1,1 +1,0 @@
-[{"batch_id":1,"assigned_count":1,"unassigned_count":2,"assigned_amount":"50.00","unassigned_amount":"100.00"}]

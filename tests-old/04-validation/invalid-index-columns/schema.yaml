@@ -1,8 +1,0 @@
-tables:
-  test_table:
-    columns:
-      id: serial primary key
-      name: varchar(50)
-
-    indexes:
-      - [nonexistent_column]  # Should error - column doesn't exist

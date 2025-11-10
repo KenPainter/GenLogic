@@ -1,6 +1,0 @@
-tables:
-  test:
-    columns:
-      id: serial primary key
-      name: character varying(100)
-      description: character varying(255) not null

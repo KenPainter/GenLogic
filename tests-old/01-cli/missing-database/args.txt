@@ -1,2 +1,0 @@
-# Skip common args - testing error handling
---skip-common

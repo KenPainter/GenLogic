@@ -1,1 +1,0 @@
-# Test same-name inheritance using empty form (id:) instead of null

@@ -1,1 +1,0 @@
-[{"column_name":"code","column_definition":"char(20)"},{"column_name":"name","column_definition":"varchar(200)"},{"column_name":"price","column_definition":"numeric(12,4)"}]

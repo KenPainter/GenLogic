@@ -1,6 +1,0 @@
-tables:
-  test_json:
-    columns:
-      id: serial primary key
-      settings: json
-      metadata: jsonb

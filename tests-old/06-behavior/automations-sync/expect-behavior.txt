@@ -1,1 +1,0 @@
-[{"id":1,"name":"Laptop","category_tax_rate":"9.25","category_tax":"9.25"}]

@@ -1,7 +1,0 @@
-tables:
-  test:
-    columns:
-      id: serial primary key
-      name: varchar(50) primary key
-      email: varchar(100) unique not null
-      age: integer default 0

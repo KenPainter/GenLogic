@@ -1,1 +1,0 @@
-[{"tablename":"posts","indexname":"idx_posts_user","indexdef":"CREATE INDEX idx_posts_user ON public.posts USING btree (\"user\")"}]

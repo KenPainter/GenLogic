@@ -1,1 +1,0 @@
-[{"id":1,"title":"Post with author","user_id":1},{"id":2,"title":"Anonymous post","user_id":null}]

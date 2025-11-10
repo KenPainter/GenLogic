@@ -1,4 +1,0 @@
-tables:
-  test_table:
-    columns:
-      "123-invalid": serial primary key
