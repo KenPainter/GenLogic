@@ -5,11 +5,16 @@ import type { NewSchema } from '../../new-schema.js';
  *
  * Aggregations are batched by (parentTable, fkColumn) to minimize database round-trips.
  *
- * For BEFORE INSERT: Batch all SUM/COUNT/MIN/MAX into single UPDATE per parent row
- * For BEFORE UPDATE: Two paths:
+ * Trigger Timing:
+ * - INSERT: Called from BEFORE INSERT trigger (all aggregations work correctly on new rows)
+ * - UPDATE: Called from AFTER UPDATE trigger (MIN/MAX need post-mutation state for subqueries)
+ * - DELETE: Called from AFTER DELETE trigger (MIN/MAX need post-mutation state for subqueries)
+ *
+ * For INSERT: Batch all SUM/COUNT/MIN/MAX into single UPDATE per parent row
+ * For UPDATE: Two paths:
  *   - FK changed: Two batched UPDATEs (subtract all from old parent, add all to new parent)
  *   - FK same: Single batched UPDATE with deltas for changed columns
- * For BEFORE DELETE: Batch all operations into single UPDATE (SUM subtract, COUNT decrement, MIN/MAX recalculate)
+ * For DELETE: Batch all operations into single UPDATE (SUM subtract, COUNT decrement, MIN/MAX recalculate)
  *
  * Note: WHERE clauses on automations are NOT supported. To achieve filtered aggregations,
  * use formula columns that compute 1/0 values and SUM them instead of COUNT.

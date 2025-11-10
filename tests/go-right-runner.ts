@@ -455,7 +455,15 @@ export async function runMarkdownTest(fileName: string, pool: any, config: GoRig
  * Create a go-right test suite
  * Main entry point for creating test suites
  */
-export function createGoRightTestSuite(config: GoRightConfig): void {
+/**
+ * Setup function for go-right test suites
+ * Returns data needed for each test file to create its own describe() block
+ *
+ * IMPORTANT: Due to a bun limitation, each test file must call describe() directly
+ * at module scope, not through a shared function. This function prepares the data
+ * but the test file must create the describe block itself.
+ */
+export function setupGoRightTests(config: GoRightConfig) {
   const testDatabase = config.testDatabase || 'genlogic_tests';
   const testUser = config.testUser || process.env.USER || 'postgres';
   const timeout = config.timeout || 30000;
@@ -464,7 +472,7 @@ export function createGoRightTestSuite(config: GoRightConfig): void {
   if (!existsSync(config.schemasDir)) {
     console.warn(`Warning: Test directory does not exist: ${config.schemasDir}`);
     console.warn(`Skipping ${config.suiteName} tests.`);
-    return;
+    return null;
   }
 
   // Clear and recreate dump directory
@@ -479,38 +487,33 @@ export function createGoRightTestSuite(config: GoRightConfig): void {
 
   if (testFiles.length === 0) {
     console.warn(`Warning: No test files found in ${config.schemasDir}`);
-    return;
+    return null;
   }
 
-  // Shared database connection pool for all tests
-  let sharedPool: any = null;
+  // Return setup data for the test file to use
+  return {
+    testFiles,
+    timeout,
+    config,
 
-  describe(config.suiteName, () => {
-    // Setup: Create database and pool once before all tests
-    beforeAll(async () => {
+    // Function to create database and pool
+    async createPool() {
       await createTestDatabase(testDatabase, testUser);
-      sharedPool = new Pool({
+      return new Pool({
         host: '/var/run/postgresql',
         database: testDatabase,
         user: testUser
       });
-    });
+    },
 
-    // Teardown: Close pool and drop database once after all tests
-    afterAll(async () => {
-      if (sharedPool) {
-        await sharedPool.end();
+    // Function to cleanup pool and database
+    async cleanup(pool: any) {
+      if (pool) {
+        await pool.end();
       }
       if (!process.env.GENLOGIC_KEEP_TEST_DB) {
         await dropTestDatabase(testDatabase, testUser);
       }
-    });
-
-    // Run each test with the shared pool
-    for (const file of testFiles) {
-      test(file, async () => {
-        await runMarkdownTest(file, sharedPool, config);
-      }, { timeout });
     }
-  });
+  };
 }

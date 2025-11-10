@@ -9,11 +9,34 @@
  * - Tests run against real PostgreSQL to verify DDL, triggers, and constraints
  */
 
-import { createGoRightTestSuite } from './go-right-runner.js';
+import { setupGoRightTests, runMarkdownTest } from './go-right-runner.js';
+import { test, describe, beforeAll, afterAll } from 'bun:test';
 import { join } from 'path';
 
-createGoRightTestSuite({
+const setup = setupGoRightTests({
   schemasDir: join(import.meta.dir, 'column-automations'),
-  dumpDir: join(import.meta.dir, 'go-right-out'),
-  suiteName: 'Column Automations'
+  dumpDir: join(import.meta.dir, 'column-automations-out'),
+  suiteName: 'Column Automations',
+  testDatabase: 'genlogic_test_column_automations'
 });
+
+// Only create describe block if setup succeeded
+if (setup) {
+  describe(setup.config.suiteName, () => {
+    let pool: any = null;
+
+    beforeAll(async () => {
+      pool = await setup.createPool();
+    });
+
+    afterAll(async () => {
+      await setup.cleanup(pool);
+    });
+
+    for (const file of setup.testFiles) {
+      test(file, async () => {
+        await runMarkdownTest(file, pool, setup.config);
+      }, { timeout: setup.timeout });
+    }
+  });
+}

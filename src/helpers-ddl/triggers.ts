@@ -35,7 +35,10 @@ import { generatePushToChildren } from './triggers/push-to-children.js';
  * 3. Pull from parents - Fetch SYNC/SNAPSHOT values from parent tables via FK
  *                        (SYNC and SNAPSHOT have identical behavior on INSERT)
  * 4. Calculate formulas - Evaluate formula expressions in dependency order
- * 6. Push to parents - Update aggregation columns (SUM/COUNT/MAX/MIN) in parent tables
+ * 5. Push to parents - Update aggregation columns (SUM/COUNT/MAX/MIN) in parent tables
+ *
+ * Note: Push to parents happens in BEFORE INSERT (not AFTER) because all aggregations
+ *       work correctly on INSERT - there's no pre-existing row to consider
  */
 function generateBeforeInsertTrigger(
   tableName: string,
@@ -109,7 +112,9 @@ CREATE TRIGGER ${triggerName}
  * 4. Recalculate formulas - Evaluate formula expressions based on changed input columns
  * 5. Push to children - Update SYNC columns in child tables if parent columns changed
  *                       (SNAPSHOT is intentionally excluded - values frozen at capture time)
- * 6. Push to parents - Recalculate aggregation columns in parent tables
+ *
+ * Note: Push to parents (aggregations) moved to AFTER UPDATE trigger to ensure
+ *       MIN/MAX recalculations see the post-mutation state of the table
  */
 function generateBeforeUpdateTrigger(
   tableName: string,
@@ -146,12 +151,6 @@ function generateBeforeUpdateTrigger(
     sections.push(pushToChildrenCode.join('\n'));
   }
 
-  // Step 6: Push to parents (aggregations)
-  const pushCode = generatePushToParents(tableName, newSchema, 'UPDATE');
-  if (pushCode.length > 0) {
-    sections.push(pushCode.join('\n'));
-  }
-
   // If no operations needed, don't create trigger
   if (sections.length === 0) {
     return null;
@@ -180,12 +179,68 @@ CREATE TRIGGER ${triggerName}
 }
 
 /**
- * Generate BEFORE DELETE trigger for a table
+ * Generate AFTER UPDATE trigger for a table
+ *
+ * Sequence:
+ * 1. Push to parents - Update aggregation columns (SUM/COUNT/MAX/MIN) in parent tables
+ *
+ * Note: Aggregations moved to AFTER UPDATE to ensure MIN/MAX recalculations
+ *       see the post-mutation state of the table (critical for subqueries)
+ */
+function generateAfterUpdateTrigger(
+  tableName: string,
+  newSchema: NewSchema
+): string | null {
+  const table = newSchema.tables[tableName];
+  if (!table) {
+    return null;
+  }
+
+  const sections: string[] = [];
+
+  // Step 1: Push to parents (aggregations)
+  const pushCode = generatePushToParents(tableName, newSchema, 'UPDATE');
+  if (pushCode.length > 0) {
+    sections.push(pushCode.join('\n'));
+  }
+
+  // If no operations needed, don't create trigger
+  if (sections.length === 0) {
+    return null;
+  }
+
+  const functionName = `${tableName}_after_update_genlogic`;
+  const triggerName = `${tableName}_after_update_genlogic`;
+
+  return `
+CREATE OR REPLACE FUNCTION ${functionName}()
+RETURNS TRIGGER
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+${sections.join('\n\n')}
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER ${triggerName}
+  AFTER UPDATE ON "${tableName}"
+  FOR EACH ROW EXECUTE FUNCTION ${functionName}();
+`.trim();
+}
+
+/**
+ * Generate AFTER DELETE trigger for a table
  *
  * Sequence:
  * 1. Push to parents - Decrement COUNT, reduce SUM, recalculate MAX/MIN in parent tables
+ *
+ * Note: Aggregations moved to AFTER DELETE to ensure MIN/MAX recalculations
+ *       see the post-mutation state of the table (critical for subqueries)
  */
-function generateBeforeDeleteTrigger(
+function generateAfterDeleteTrigger(
   tableName: string,
   newSchema: NewSchema
 ): string | null {
@@ -207,8 +262,8 @@ function generateBeforeDeleteTrigger(
     return null;
   }
 
-  const functionName = `${tableName}_before_delete_genlogic`;
-  const triggerName = `${tableName}_before_delete_genlogic`;
+  const functionName = `${tableName}_after_delete_genlogic`;
+  const triggerName = `${tableName}_after_delete_genlogic`;
 
   return `
 CREATE OR REPLACE FUNCTION ${functionName}()
@@ -224,7 +279,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER ${triggerName}
-  BEFORE DELETE ON "${tableName}"
+  AFTER DELETE ON "${tableName}"
   FOR EACH ROW EXECUTE FUNCTION ${functionName}();
 `.trim();
 }
@@ -247,15 +302,21 @@ export function generateTriggersDDL(
     }
 
     // Generate BEFORE UPDATE trigger
-    const updateTrigger = generateBeforeUpdateTrigger(tableName, newSchema);
-    if (updateTrigger) {
-      statements.push(updateTrigger);
+    const beforeUpdateTrigger = generateBeforeUpdateTrigger(tableName, newSchema);
+    if (beforeUpdateTrigger) {
+      statements.push(beforeUpdateTrigger);
     }
 
-    // Generate BEFORE DELETE trigger
-    const deleteTrigger = generateBeforeDeleteTrigger(tableName, newSchema);
-    if (deleteTrigger) {
-      statements.push(deleteTrigger);
+    // Generate AFTER UPDATE trigger (for aggregations)
+    const afterUpdateTrigger = generateAfterUpdateTrigger(tableName, newSchema);
+    if (afterUpdateTrigger) {
+      statements.push(afterUpdateTrigger);
+    }
+
+    // Generate AFTER DELETE trigger (for aggregations)
+    const afterDeleteTrigger = generateAfterDeleteTrigger(tableName, newSchema);
+    if (afterDeleteTrigger) {
+      statements.push(afterDeleteTrigger);
     }
   }
 
