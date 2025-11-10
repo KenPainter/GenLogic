@@ -67,8 +67,33 @@ tables:
     "tables.categories.columns.id.type": "integer",
     "tables.categories.columns.name.type": "character varying",
     "tables.categories.columns.name.character_maximum_length": 50
+  },
+  "diff": {
+    "tablesToCreate.length": 1,
+    "tablesToCreate[0]": "categories",
+    "tablesToDrop.length": 0,
+    "columnsToAdd.length": 0,
+    "columnsToDrop.length": 0,
+    "columnsToModify.length": 0
   }
 }
+```
+
+## Query database to verify both tables exist
+
+```sql
+SELECT tablename FROM pg_tables
+WHERE schemaname = 'public'
+ORDER BY tablename;
+```
+
+## Both tables should be in database
+
+```json
+[
+  {"tablename": "categories"},
+  {"tablename": "customers"}
+]
 ```
 
 ## Verify old data preserved
@@ -117,8 +142,34 @@ tables:
     "tables.orders.foreignKeys.fk_orders_customer_id.parentTable": "customers",
     "tables.orders.foreignKeys.fk_orders_customer_id.childColumn": "customer_id",
     "tables.orders.foreignKeys.fk_orders_customer_id.parentColumn": "id"
+  },
+  "diff": {
+    "tablesToCreate.length": 1,
+    "tablesToCreate[0]": "orders",
+    "tablesToDrop.length": 0,
+    "columnsToAdd.length": 0,
+    "columnsToDrop.length": 0,
+    "columnsToModify.length": 0
   }
 }
+```
+
+## Query database to verify all three tables exist
+
+```sql
+SELECT tablename FROM pg_tables
+WHERE schemaname = 'public'
+ORDER BY tablename;
+```
+
+## All three tables in database
+
+```json
+[
+  {"tablename": "categories"},
+  {"tablename": "customers"},
+  {"tablename": "orders"}
+]
 ```
 
 ## Test FK constraint works
@@ -166,6 +217,15 @@ tables:
     "tables.customers.columns.email": "@exists",
     "tables.customers.columns.email.type": "character varying",
     "tables.customers.columns.email.character_maximum_length": 255
+  },
+  "diff": {
+    "tablesToCreate.length": 0,
+    "tablesToDrop.length": 0,
+    "columnsToAdd.length": 1,
+    "columnsToAdd[0].table": "customers",
+    "columnsToAdd[0].column": "email",
+    "columnsToDrop.length": 0,
+    "columnsToModify.length": 0
   }
 }
 ```
@@ -227,6 +287,15 @@ tables:
 {
   "newSchema": {
     "tables.customers.columns.name.character_maximum_length": 200
+  },
+  "diff": {
+    "tablesToCreate.length": 0,
+    "tablesToDrop.length": 0,
+    "columnsToAdd.length": 0,
+    "columnsToDrop.length": 0,
+    "columnsToModify.length": 1,
+    "columnsToModify[0].table": "customers",
+    "columnsToModify[0].column": "name"
   }
 }
 ```

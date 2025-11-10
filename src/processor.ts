@@ -196,6 +196,9 @@ export class GenLogicProcessor {
       columnsToDrop: diff.columnsToDrop
     };
 
+    // Dump diff for examination (includes drops before they're removed)
+    this.writeDiffToFile(diff, schemaPath);
+
     // Remove DROP operations from diff, making it safe for automated DDL execution
     delete diff.tablesToDrop;
     delete diff.columnsToDrop;
@@ -203,9 +206,6 @@ export class GenLogicProcessor {
     // Generate DROP SQL script for manual execution
     this.writeDropScript(diffDrops, schemaPath);
     this.writeDropsToFile(diffDrops, schemaPath);
-
-    // Dump diff for examination
-    this.writeDiffToFile(diff, schemaPath);
 
     //
     // --- DIFF IS COMPLETE ---

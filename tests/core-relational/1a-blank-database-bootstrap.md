@@ -104,7 +104,9 @@ tables:
   },
   "diff": {
     "tablesToCreate.length": 0,
+    "tablesToDrop.length": 0,
     "columnsToAdd.length": 0,
+    "columnsToDrop.length": 0,
     "columnsToModify.length": 0
   }
 }
