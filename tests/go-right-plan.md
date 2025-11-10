@@ -7,6 +7,8 @@ Comprehensive test coverage for GenLogic features when schemas are valid and pro
 ### **Group 1: Core Schema Operations**
 *Foundation tests for basic DDL generation*
 
+Directory: tests/build-core
+
 #### 1A. Blank Database Bootstrap
 - Empty database → Create simple schema
 - Verify tables created in correct layer order
@@ -231,7 +233,7 @@ Comprehensive test coverage for GenLogic features when schemas are valid and pro
 
 #### 12A. No-Change Rebuilds
 - Run same schema twice → Zero DDL
-- Verify `.sql` is empty or only has comments
+- Verify `.sql` is empty or only has comments (will have trigger commands)
 
 #### 12B. Schema Normalization
 - Equivalent definitions recognized as same
@@ -280,6 +282,7 @@ Advanced features and edge cases:
 ## Test Implementation Strategy
 
 ### Test Structure
+
 Each test should:
 1. **Setup**: Create/drop test database
 2. **Schema**: Apply YAML schema via GenLogic processor
@@ -300,9 +303,10 @@ Each test should:
 - `assertDiffHasChanges(diffPath, expectedChanges)`
 
 ### Test Database Strategy
-- Use test database per group: `genlogic_test_group1`, `genlogic_test_group2`, etc.
-- Or use single database with full teardown between tests
+- Use test database: genlogic_test
+- Test runner drops db at beginning and end of test
 - Consider using transactions with rollback for speed (if triggers work in transactions)
+  
 
 ---
 

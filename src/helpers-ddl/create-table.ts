@@ -16,12 +16,16 @@ function buildColumnDDL(col: ColumnDef): string {
     if (col.character_maximum_length !== undefined) {
       ddl += `(${col.character_maximum_length})`;
     }
-    // For numeric types
+    // For numeric/decimal types that support precision/scale
+    // NOTE: PostgreSQL integer types (smallint, integer, bigint) do NOT support precision/scale syntax
     else if (col.numeric_precision !== undefined) {
-      if (col.numeric_scale !== undefined) {
-        ddl += `(${col.numeric_precision},${col.numeric_scale})`;
-      } else {
-        ddl += `(${col.numeric_precision})`;
+      const typesWithPrecision = ['numeric', 'decimal', 'real', 'double precision'];
+      if (typesWithPrecision.includes(col.type)) {
+        if (col.numeric_scale !== undefined) {
+          ddl += `(${col.numeric_precision},${col.numeric_scale})`;
+        } else {
+          ddl += `(${col.numeric_precision})`;
+        }
       }
     }
   }

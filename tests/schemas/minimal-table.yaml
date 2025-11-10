@@ -1,5 +1,0 @@
-# Minimal valid schema - single table with primary key
-tables:
-  users:
-    columns:
-      id: integer primary key
