@@ -595,6 +595,10 @@ export class NewSchema {
 
       col.type = typeMatch[1].toLowerCase();
 
+      // Normalize type aliases to canonical names for storage
+      // This ensures decimal and numeric are treated identically
+      col.type = this.normalizePostgresType(col.type);
+
       // Validate that the type is a known PostgreSQL type
       if (!VALID_POSTGRES_TYPES.has(col.type)) {
         this.errors.push({
@@ -685,9 +689,33 @@ export class NewSchema {
    * Format: type(size,decimal) [not null] [default value] [primary key]
    * PUBLIC so database.ts can use the same logic for live schema normalization
    */
+  /**
+   * Normalize PostgreSQL type aliases to their canonical names
+   * This ensures that int, int4, and integer are all treated as equivalent
+   */
+  private normalizePostgresType(typeName: string): string {
+    const typeMap: Record<string, string> = {
+      'int': 'integer',
+      'int4': 'integer',
+      'int2': 'smallint',
+      'int8': 'bigint',
+      'float8': 'double precision',
+      'float4': 'real',
+      'bool': 'boolean',
+      'varchar': 'character varying',
+      'char': 'character',
+      'decimal': 'numeric'
+    };
+
+    return typeMap[typeName.toLowerCase()] || typeName;
+  }
+
   public rebuildDefinitionString(col: any): string {
-    // Use 'serial' for serial columns, otherwise use the base type
-    let def = col.serial ? 'serial' : col.type;
+    // Normalize type aliases to canonical names for consistent comparison
+    const normalizedType = col.serial ? 'serial' : this.normalizePostgresType(col.type);
+
+    // Build the type string (type + size/precision) using normalized type
+    let def = normalizedType;
 
     // Add size/precision (but NOT for serial - serial doesn't have size notation)
     if (!col.serial) {
@@ -695,12 +723,18 @@ export class NewSchema {
       if (col.character_maximum_length !== undefined) {
         def += `(${col.character_maximum_length})`;
       }
-      // For numeric types
+      // For numeric/decimal types that support precision/scale
+      // NOTE: PostgreSQL integer types (smallint, integer, bigint, int, int2, int4, int8)
+      // do NOT support precision/scale syntax
       else if (col.numeric_precision !== undefined) {
-        if (col.numeric_scale !== undefined) {
-          def += `(${col.numeric_precision},${col.numeric_scale})`;
-        } else {
-          def += `(${col.numeric_precision})`;
+        const typesWithPrecision = ['numeric', 'decimal', 'real', 'double precision'];
+        // Use normalized type for the check
+        if (typesWithPrecision.includes(normalizedType)) {
+          if (col.numeric_scale !== undefined) {
+            def += `(${col.numeric_precision},${col.numeric_scale})`;
+          } else {
+            def += `(${col.numeric_precision})`;
+          }
         }
       }
     }

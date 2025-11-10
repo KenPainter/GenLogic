@@ -320,10 +320,17 @@ export class DatabaseManager {
 
     if (row.character_maximum_length) {
       type += `(${row.character_maximum_length})`;
-    } else if (row.numeric_precision && row.numeric_scale !== null) {
-      type += `(${row.numeric_precision},${row.numeric_scale})`;
     } else if (row.numeric_precision) {
-      type += `(${row.numeric_precision})`;
+      // Only add precision/scale for types that support it
+      // PostgreSQL integer types (smallint, integer, bigint, int, int2, int4, int8) do NOT
+      const typesWithPrecision = ['numeric', 'decimal', 'real', 'double precision'];
+      if (typesWithPrecision.includes(row.data_type)) {
+        if (row.numeric_scale !== null) {
+          type += `(${row.numeric_precision},${row.numeric_scale})`;
+        } else {
+          type += `(${row.numeric_precision})`;
+        }
+      }
     }
 
     return type;

@@ -4,10 +4,10 @@ Comprehensive test coverage for GenLogic features when schemas are valid and pro
 
 ## Test Organization
 
-### **Group 1: Core Schema Operations**
-*Foundation tests for basic DDL generation*
+### **Group 1: Core-Relational** (tests/core-relational/)
+*Standard SQL DDL - tables, columns, keys, constraints, indexes, and idempotency*
 
-Directory: tests/build-core
+All database build functions necessary for GenLogic value-add, but without the value-add itself. Proves GenLogic can handle standard SQL correctly, efficiently, and idempotently.
 
 #### 1A. Blank Database Bootstrap
 - Empty database → Create simple schema
@@ -29,219 +29,62 @@ Directory: tests/build-core
 - PK with different integer types (smallint, bigint)
 - Table without PK (should work for lookup tables)
 
----
-
-### **Group 2: Foreign Keys & Relationships**
-*FK behavior, cascades, and data pipelines*
-
-#### 2A. FK Basics
+#### 1D. FK Basics
 - Simple parent-child relationship
 - Multi-level hierarchy (3-4 levels)
 - Multiple FKs to same parent table
 - Self-referential FK (allowed)
 
-#### 2B. FK Delete Actions
+#### 1E. FK Delete Actions
 - `delete cascade`
 - `delete restrict` (default)
 - `delete set null`
 - `delete set default`
 - `delete no action`
 
-#### 2C. FK Auto-Create Parent
-- Insert child with `auto create parent` → parent row created automatically
-- Verify parent created with correct PK value
-- Multiple children auto-creating same parent (deduplication)
-
-#### 2D. Layer Ordering
+#### 1F. Layer Ordering
 - Verify tables created in correct dependency order
 - Verify seed data inserted in layer order
 - 4-level hierarchy test
 
----
-
-### **Group 3: Automation - Pull from Parents**
-*Child columns that pull values from parent*
-
-#### 3A. SYNC Automation
-- Child pulls value from parent on INSERT
-- Child updates value when FK changes (UPDATE)
-- Child updates when parent value changes (push-to-children trigger)
-- Verify SYNC always matches current parent value
-
-#### 3B. SNAPSHOT Automation
-- Child captures parent value on INSERT
-- Value does NOT change when FK changes
-- Value does NOT change when parent changes
-- Historical point-in-time capture
-
-#### 3C. MATCH Automation
-- Child pulls value based on matching parent column (not FK)
-- Lookup table pattern
-- Verify correct row matched
-
----
-
-### **Group 4: Automation - Push to Parents**
-*Parent columns that aggregate child values*
-
-#### 4A. SUM Automation
-- Parent sums numeric column from children
-- INSERT child → parent updates
-- UPDATE child value → parent updates
-- DELETE child → parent updates
-- Multiple children
-
-#### 4B. COUNT Automation
-- Parent counts children
-- INSERT/UPDATE/DELETE updates count
-- COUNT with WHERE condition
-
-#### 4C. MAX/MIN Automation (if implemented)
-- Parent tracks max/min of child values
-- Handles INSERT/UPDATE/DELETE
-
-#### 4D. Aggregation Repair
-- Verify `.repair.sql` script regenerates correct aggregations
-- Test after manual data corruption
-
----
-
-### **Group 5: Formula Columns**
-*Calculated columns within a row*
-
-#### 5A. Simple Formulas
-- Arithmetic expressions (`amount * tax_rate`)
-- String concatenation
-- Date calculations
-- NULL handling
-
-#### 5B. Formula Dependencies
-- Formula depends on another formula
-- Verify correct layer ordering
-- Multi-level formula chains
-
-#### 5C. Formula + Automation
-- Formula that uses SYNC'd value from parent
-- Automation that uses formula result
-
----
-
-### **Group 6: Constraints & Integrity**
-*Data validation and protection*
-
-#### 6A. NaN/Infinity Protection
-- numeric, decimal, real, double precision columns
-- Verify CHECK constraint blocks NaN
-- Verify CHECK constraint blocks Infinity
-- Verify CHECK constraint blocks -Infinity
-- Verify NULL is allowed
-- Verify normal numbers pass
-
-#### 6B. UNIQUE Constraints
+#### 1G. UNIQUE Constraints
 - Single column unique
 - Multi-column unique (composite)
 - Unique constraint naming
 
-#### 6C. CHECK Constraints
+#### 1H. CHECK Constraints
 - Custom CHECK expressions
 - Verify constraint blocks invalid data
 - Verify constraint allows valid data
 
-#### 6D. NOT NULL
+#### 1I. NOT NULL
 - NOT NULL enforcement
 - PK columns always NOT NULL
 - FK columns with `not null` modifier
 
----
-
-### **Group 7: Indexes**
-*Performance and lookup optimization*
-
-#### 7A. Auto-Generated Indexes
+#### 1J. Auto-Generated Indexes
 - FK columns auto-indexed
 - Unique constraints create indexes
 - PK creates index
 
-#### 7B. Custom Indexes
+#### 1K. Custom Indexes
 - Single column index
 - Multi-column composite index
 - Index naming conventions
 
----
-
-### **Group 8: Seed Data**
-*Initial data population*
-
-#### 8A. Basic Seeding
-- Insert seed rows
-- Verify inserted in layer order (parent before child)
-- Verify automations trigger during seed
-- Verify formulas calculate during seed
-
-#### 8B. Seed with Lookups
-- Seed references other seed rows by natural key
-- Cross-table seed dependencies
-
----
-
-### **Group 9: Constants & Reusable Columns**
-*Schema-level reuse*
-
-#### 9A. Constants
-- Numeric constants
-- String constants
-- Constant substitution in definitions
-- Constant substitution in defaults
-- Recursive constants (constant references constant)
-
-#### 9B. Reusable Columns
-- Define once, use many times
-- Reusable with extensions
-- Verify type consistency
-
----
-
-### **Group 10: Advanced Triggers**
-*Complex multi-table automation*
-
-#### 10A. Cascading Updates
-- Parent changes → SYNC children update
-- Child aggregation → parent updates → grandparent aggregation updates
-- 3-level cascade
-
-#### 10B. Before/After Trigger Sequencing
-- Verify correct trigger execution order
-- BEFORE INSERT sequence
-- BEFORE UPDATE sequence
-- AFTER UPDATE/DELETE sequence
-
-#### 10C. Formula + Automation Interplay
-- Formula uses SYNC value
-- SYNC value uses formula from parent
-- Complex dependency chains
-
----
-
-### **Group 11: Error Handling** ✅
-*Schema validation*
-- ✅ All 29 error tests passing in `tests/errors-schema/`
-
----
-
-### **Group 12: Idempotency & Convergence**
-*Repeatability and stability*
-
-#### 12A. No-Change Rebuilds
+#### 1L. No-Change Rebuilds
+(expect some issues on this, GenLogic does not make this
+ easy to test.  Do your best and work through it with the user)
 - Run same schema twice → Zero DDL
 - Verify `.sql` is empty or only has comments (will have trigger commands)
 
-#### 12B. Schema Normalization
+#### 1M. Schema Normalization
 - Equivalent definitions recognized as same
 - `varchar(100)` vs `character varying(100)`
 - `integer` vs `int` vs `int4`
 - Whitespace variations
 
-#### 12C. Live Schema Detection
+#### 1N. Live Schema Detection
 - Correctly detect all live tables/columns
 - Correctly detect all live constraints
 - Correctly detect all live indexes
@@ -249,33 +92,178 @@ Directory: tests/build-core
 
 ---
 
+### **Group 2: Automation - Pull from Parents**
+*Child columns that pull values from parent*
+
+#### 2A. SYNC Automation
+- Child pulls value from parent on INSERT
+- Child updates value when FK changes (UPDATE)
+- Child updates when parent value changes (push-to-children trigger)
+- Verify SYNC always matches current parent value
+
+#### 2B. SNAPSHOT Automation
+- Child captures parent value on INSERT
+- Value does NOT change when FK changes
+- Value does NOT change when parent changes
+- Historical point-in-time capture
+
+#### 2C. MATCH Automation
+- Child pulls value based on matching parent column (not FK)
+- Lookup table pattern
+- Verify correct row matched
+
+---
+
+### **Group 3: Automation - Push to Parents**
+*Parent columns that aggregate child values*
+
+#### 3A. SUM Automation
+- Parent sums numeric column from children
+- INSERT child → parent updates
+- UPDATE child value → parent updates
+- DELETE child → parent updates
+- Multiple children
+
+#### 3B. COUNT Automation
+- Parent counts children
+- INSERT/UPDATE/DELETE updates count
+- COUNT with WHERE condition
+
+#### 3C. MAX/MIN Automation (if implemented)
+- Parent tracks max/min of child values
+- Handles INSERT/UPDATE/DELETE
+
+#### 3D. Aggregation Repair
+- Verify `.repair.sql` script regenerates correct aggregations
+- Test after manual data corruption
+
+---
+
+### **Group 4: Formula Columns**
+*Calculated columns within a row*
+
+#### 4A. Simple Formulas
+- Arithmetic expressions (`amount * tax_rate`)
+- String concatenation
+- Date calculations
+- NULL handling
+
+#### 4B. Formula Dependencies
+- Formula depends on another formula
+- Verify correct layer ordering
+- Multi-level formula chains
+
+#### 4C. Formula + Automation
+- Formula that uses SYNC'd value from parent
+- Automation that uses formula result
+
+---
+
+### **Group 5: FK Auto-Create Parent**
+*GenLogic-specific FK behavior*
+
+#### 5A. Auto-Create Parent
+- Insert child with `auto create parent` → parent row created automatically
+- Verify parent created with correct PK value
+- Multiple children auto-creating same parent (deduplication)
+
+---
+
+### **Group 6: Seed Data**
+*Initial data population with GenLogic features*
+
+#### 6A. Basic Seeding
+- Insert seed rows
+- Verify inserted in layer order (parent before child)
+- Verify automations trigger during seed
+- Verify formulas calculate during seed
+
+#### 6B. Seed with Lookups
+- Seed references other seed rows by natural key
+- Cross-table seed dependencies
+
+---
+
+### **Group 7: Schema Syntax Features**
+*GenLogic schema reuse and abstraction*
+
+#### 7A. Constants
+- Numeric constants
+- String constants
+- Constant substitution in definitions
+- Constant substitution in defaults
+- Recursive constants (constant references constant)
+
+#### 7B. Reusable Columns
+- Define once, use many times
+- Reusable with extensions
+- Verify type consistency
+
+---
+
+### **Group 8: Advanced Triggers**
+*Complex multi-table automation*
+
+#### 8A. Cascading Updates
+- Parent changes → SYNC children update
+- Child aggregation → parent updates → grandparent aggregation updates
+- 3-level cascade
+
+#### 8B. Before/After Trigger Sequencing
+- Verify correct trigger execution order
+- BEFORE INSERT sequence
+- BEFORE UPDATE sequence
+- AFTER UPDATE/DELETE sequence
+
+#### 8C. Formula + Automation Interplay
+- Formula uses SYNC value
+- SYNC value uses formula from parent
+- Complex dependency chains
+
+---
+
+### **Group 9: Protections**
+*GenLogic data integrity protections*
+
+#### 9A. NaN/Infinity Protection
+- numeric, decimal, real, double precision columns
+- Verify CHECK constraint blocks NaN
+- Verify CHECK constraint blocks Infinity
+- Verify CHECK constraint blocks -Infinity
+- Verify NULL is allowed
+- Verify normal numbers pass
+
+---
+
+### **Group 10: Error Handling** ✅
+*Schema validation*
+- ✅ All 29 error tests passing in `tests/errors-schema/`
+
+---
+
 ## Prioritization
 
 ### **Phase 1 (Essential)**
 Core functionality that must work for GenLogic to be usable:
-- Group 1: Core Schema Operations
-- Group 2A-2B: FK Basics & Delete Actions
-- Group 3A: SYNC Automation
-- Group 4A-4B: SUM/COUNT Automation
-- Group 5A: Simple Formulas
-- Group 6A: NaN Protection
-- Group 12A: Idempotency
+- Group 1: Core-Relational (all subtests 1A-1N)
+- Group 2A: SYNC Automation
+- Group 3A-3B: SUM/COUNT Automation
+- Group 4A: Simple Formulas
+- Group 9A: NaN/Infinity Protection
 
 ### **Phase 2 (Important)**
 Features that significantly enhance GenLogic's value:
-- Group 2C-2D: Auto-create & Layers
-- Group 3B-3C: SNAPSHOT/MATCH
-- Group 4D: Aggregation Repair
-- Group 5B: Formula Dependencies
-- Group 6B-6D: Other Constraints
-- Group 7: Indexes
-- Group 8: Seed Data
+- Group 2B-2C: SNAPSHOT/MATCH Automation
+- Group 3C-3D: MAX/MIN & Aggregation Repair
+- Group 4B-4C: Formula Dependencies & Interactions
+- Group 5A: Auto-Create Parent
+- Group 6: Seed Data
+- Group 7A: Constants
 
 ### **Phase 3 (Polish)**
 Advanced features and edge cases:
-- Group 9: Constants & Reusable Columns
-- Group 10: Advanced Triggers
-- Group 12B-12C: Normalization & Detection
+- Group 7B: Reusable Columns
+- Group 8: Advanced Triggers
 
 ---
 
@@ -313,13 +301,15 @@ Each test should:
 ## Current Test Coverage Status
 
 ### Completed ✅
-- **Group 11**: All 29 error validation tests passing
+- **Group 10**: All 29 error validation tests passing
+- **Group 1** (Core-Relational): 1A, 1B, 1C implemented
 
 ### In Progress 🚧
 - Planning phase (this document)
 
 ### Not Started ⏳
-- Groups 1-10, 12
+- **Group 1**: 1D-1N
+- **Groups 2-9**: All tests
 
 ---
 
@@ -328,12 +318,12 @@ Each test should:
 ### Existing Test Schemas
 The `tests/schemas/` directory has some existing schemas that can be starting points:
 - `minimal-table.yaml` - Group 1A candidate
-- `constants-substitution.yaml` - Group 9A candidate
-- `formula-column.yaml` - Group 5A candidate
-- `reusable-column.yaml` - Group 9B candidate
-- `child-to-parent-automations.yaml` - Group 4 candidate
-- `four-level-hierarchy.md` - Group 2D candidate
-- `multiple-fk-same-table.md` - Group 2A candidate
+- `constants-substitution.yaml` - Group 7A candidate
+- `formula-column.yaml` - Group 4A candidate
+- `reusable-column.yaml` - Group 7B candidate
+- `child-to-parent-automations.yaml` - Group 3 candidate
+- `four-level-hierarchy.md` - Group 1F candidate
+- `multiple-fk-same-table.md` - Group 1D candidate
 
 ### Key Questions to Answer
 1. Should tests run against real PostgreSQL or use mocks?
@@ -343,6 +333,6 @@ The `tests/schemas/` directory has some existing schemas that can be starting po
 3. How to handle test data cleanup between runs?
    - **Recommendation**: Drop/recreate test databases for each group
 4. Should we test `.repair.sql` scripts?
-   - **Recommendation**: Yes, in Group 4D
+   - **Recommendation**: Yes, in Group 3D
 5. Should we test permissions generation?
    - **Recommendation**: Later - not critical for Phase 1

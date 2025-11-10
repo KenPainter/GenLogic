@@ -82,7 +82,10 @@ Release plan:
 - Tests: 0.98.x
 - Docs: 0.99.x
 - Everything else: 0.99.x
+  - potential: change table-level 'constraints:' key to 'checks:'
+    the AI assistant gets very confused by 'constraints'
 
+Then: 1.0
 
 Some thoughts and to-do items
 - consider preventing SQL keywords as column names
@@ -93,5 +96,6 @@ Some thoughts and to-do items
   that looks for widows and orphans in both docs and
   tests/
 
-
+For 1.1 if we ever need them
+- column check constraints
 

@@ -17,7 +17,7 @@ import pkg from 'pg';
 const { Pool } = pkg;
 
 const SCHEMAS_DIR = join(import.meta.dir, 'core-relational');
-const DUMP_DIR = join(import.meta.dir, 'core-relational-out');
+const DUMP_DIR = join(import.meta.dir, 'go-right-out');
 const TEST_DATABASE = process.env.GENLOGIC_TEST_DB || 'genlogic_tests';
 const TEST_USER = process.env.USER || 'postgres';
 
@@ -31,6 +31,7 @@ interface TestContext {
   lastBuildDumps: Record<string, any>;
   lastSelectResults: any[] | null;
   currentBaseName: string;
+  buildStepCounter: number;
 }
 
 /**
@@ -187,6 +188,15 @@ async function executeBuildStep(
   step: TestStep & { type: 'build' },
   context: TestContext
 ): Promise<void> {
+  // Increment step counter
+  context.buildStepCounter++;
+
+  // Create step-specific dump directory
+  const stepDumpDir = join(DUMP_DIR, `${context.currentBaseName}.step${context.buildStepCounter}`);
+  if (!existsSync(stepDumpDir)) {
+    mkdirSync(stepDumpDir, { recursive: true });
+  }
+
   // Write YAML to temp file
   const schemaPath = join('/tmp', `${context.currentBaseName}.yaml`);
   writeFileSync(schemaPath, step.content);
@@ -196,7 +206,7 @@ async function executeBuildStep(
       database: TEST_DATABASE,
       user: TEST_USER,
       dryRun: false, // LIVE MODE - actually create tables
-      dumpDir: DUMP_DIR,
+      dumpDir: stepDumpDir,
     });
 
     // Suppress console output
@@ -212,11 +222,12 @@ async function executeBuildStep(
       console.error = originalError;
     }
 
-    // Load dump files into context
+    // Load dump files into context from step-specific directory
+    // GenLogic creates files with the base name prefix: {baseName}.{dumpType}.json
     context.lastBuildDumps = {};
     const dumpFiles = ['newSchema', 'live', 'diff', 'sql'];
     for (const dumpType of dumpFiles) {
-      const dumpPath = join(DUMP_DIR, `${context.currentBaseName}.${dumpType}.json`);
+      const dumpPath = join(stepDumpDir, `${context.currentBaseName}.${dumpType}.json`);
       if (existsSync(dumpPath)) {
         context.lastBuildDumps[dumpType] = JSON.parse(readFileSync(dumpPath, 'utf-8'));
       }
@@ -409,7 +420,8 @@ async function runMarkdownTest(fileName: string, pool: any): Promise<void> {
   const context: TestContext = {
     lastBuildDumps: {},
     lastSelectResults: null,
-    currentBaseName: baseName
+    currentBaseName: baseName,
+    buildStepCounter: 0
   };
 
   // Execute steps sequentially

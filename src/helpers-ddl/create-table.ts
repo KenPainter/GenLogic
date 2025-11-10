@@ -1,34 +1,15 @@
 import type { NewSchemaDiff } from '../newschema-diff.js';
 import type { NewSchema } from '../new-schema.js';
 import type { ColumnDef } from '../new-schema-subtypes.js';
+import { buildColumnTypeString } from './build-column-type.js';
 
 /**
  * Build column DDL for CREATE TABLE statements
  * Includes all modifiers: type, size, NOT NULL, DEFAULT, PRIMARY KEY
  */
 function buildColumnDDL(col: ColumnDef): string {
-  // Use 'serial' for serial columns, otherwise use the base type
-  let ddl = col.serial ? 'serial' : col.type;
-
-  // Add size/precision (but NOT for serial - serial doesn't have size notation)
-  if (!col.serial) {
-    // For character types
-    if (col.character_maximum_length !== undefined) {
-      ddl += `(${col.character_maximum_length})`;
-    }
-    // For numeric/decimal types that support precision/scale
-    // NOTE: PostgreSQL integer types (smallint, integer, bigint) do NOT support precision/scale syntax
-    else if (col.numeric_precision !== undefined) {
-      const typesWithPrecision = ['numeric', 'decimal', 'real', 'double precision'];
-      if (typesWithPrecision.includes(col.type)) {
-        if (col.numeric_scale !== undefined) {
-          ddl += `(${col.numeric_precision},${col.numeric_scale})`;
-        } else {
-          ddl += `(${col.numeric_precision})`;
-        }
-      }
-    }
-  }
+  // Build the type string (type + size/precision)
+  let ddl = buildColumnTypeString(col);
 
   // Add NOT NULL (nullable: false means NOT NULL)
   if (col.nullable === false) {

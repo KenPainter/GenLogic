@@ -71,32 +71,28 @@ export function diffSchemas(desired: NewSchema, live: NewSchema): NewSchemaDiff 
   // Find tables to drop (in live, not in desired)
   for (const tableName of liveTableNames) {
     if (!desiredTableNames.has(tableName)) {
-      diff.tablesToDrop.push(tableName);
+      diff.tablesToDrop!.push(tableName);
     }
   }
 
   // Compare common tables
   for (const tableName of desiredTableNames) {
-    if (!liveTableNames.has(tableName)) {
-      continue; // Already handled in tablesToCreate
-    }
-
     const desiredTable = desired.tables[tableName];
     const liveTable = live.tables[tableName];
 
-    // Compare columns
-    diffColumns(tableName, desiredTable, liveTable, diff);
+    // Compare columns - but ONLY for existing tables
+    // For new tables, columns are already included in the CREATE TABLE statement
+    // If we added them to columnsToAdd, we'd try to ALTER TABLE ADD COLUMN on columns that already exist
+    if (liveTable) {
+      diffColumns(tableName, desiredTable, liveTable, diff);
+    }
 
-    // Compare foreign keys
+    // Compare foreign keys, constraints, and indexes
+    // These must be compared even for new tables, because they require separate ALTER TABLE statements
+    // after the CREATE TABLE completes (FKs/constraints/indexes are not included in CREATE TABLE DDL)
     diffForeignKeys(tableName, desiredTable, liveTable, diff);
-
-    // Compare constraints
     diffConstraints(tableName, desiredTable, liveTable, diff);
-
-    // Compare unique constraints
     diffUniqueConstraints(tableName, desiredTable, liveTable, diff);
-
-    // Compare indexes
     diffIndexes(tableName, desiredTable, liveTable, diff);
   }
 
@@ -114,7 +110,7 @@ function diffColumns(
   diff: NewSchemaDiff
 ): void {
   const desiredColumns = desiredTable.columns || {};
-  const liveColumns = liveTable.columns || {};
+  const liveColumns = liveTable?.columns || {};
 
   const desiredColNames = new Set(Object.keys(desiredColumns));
   const liveColNames = new Set(Object.keys(liveColumns));
@@ -228,7 +224,7 @@ function diffForeignKeys(
   diff: NewSchemaDiff
 ): void {
   const desiredFKs = desiredTable.foreignKeys || {};
-  const liveFKs = liveTable.foreignKeys || {};
+  const liveFKs = liveTable?.foreignKeys || {};
 
   const desiredFKNames = new Set(Object.keys(desiredFKs));
   const liveFKNames = new Set(Object.keys(liveFKs));
@@ -311,8 +307,20 @@ function normalizeConstraintDefinition(def: string): string {
     const whereMatch = normalized.match(/WHERE\s+(.+)$/is);
     if (!whereMatch) return def;
 
+    // Strip PostgreSQL's explicit type casts (e.g., ::numeric, ::integer)
+    // Step 1: Remove the type cast syntax itself
+    let withoutCasts = whereMatch[1].replace(/::\w+\s*/g, '');
+
+    // Step 2: Collapse double parentheses around simple literals that were left after cast removal
+    // PostgreSQL wraps cast expressions: (0)::numeric becomes ((0))::numeric in AST
+    // After removing ::numeric, we have ((0)) which needs to become (0)
+    withoutCasts = withoutCasts.replace(/\(\((\d+)\)\)/g, '($1)');
+
+    // Normalize whitespace (collapse multiple spaces, trim)
+    withoutCasts = withoutCasts.replace(/\s+/g, ' ').trim();
+
     // Rebuild in PostgreSQL's canonical CHECK format
-    return `CHECK ((${whereMatch[1]}))`;
+    return `CHECK ((${withoutCasts}))`;
   } catch (error) {
     // If parsing fails, fall back to original definition
     // This ensures we don't break on edge cases
@@ -332,7 +340,7 @@ function diffConstraints(
   diff: NewSchemaDiff
 ): void {
   const desiredConstraints = desiredTable.constraints || {};
-  const liveConstraints = liveTable.constraints || {};
+  const liveConstraints = liveTable?.constraints || {};
 
   // Build sets of NORMALIZED constraint definitions (substance, not names or formatting)
   const desiredDefs = new Set<string>();
@@ -386,7 +394,7 @@ function diffUniqueConstraints(
   diff: NewSchemaDiff
 ): void {
   const desiredConstraints = desiredTable.uniqueConstraints || {};
-  const liveConstraints = liveTable.uniqueConstraints || {};
+  const liveConstraints = liveTable?.uniqueConstraints || {};
 
   // Build sets of normalized definitions (sorted column lists)
   // Names don't matter - we compare by substance (which columns are unique together)
@@ -441,7 +449,7 @@ function diffIndexes(
   diff: NewSchemaDiff
 ): void {
   const desiredIndexes = desiredTable.indexes || {};
-  const liveIndexes = liveTable.indexes || {};
+  const liveIndexes = liveTable?.indexes || {};
 
   // Build sets of normalized definitions (sorted column lists)
   // Names don't matter - we compare by substance (which columns are indexed together)

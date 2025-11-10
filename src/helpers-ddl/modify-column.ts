@@ -1,5 +1,6 @@
 import type { NewSchemaDiff } from '../newschema-diff.js';
 import type { ColumnDef } from '../new-schema-subtypes.js';
+import { buildColumnTypeString } from './build-column-type.js';
 
 /**
  * Build ALTER COLUMN statements for modifying an existing column
@@ -14,29 +15,9 @@ function buildAlterColumnDDL(
 ): string[] {
   const statements: string[] = [];
 
-  // Build new type string
-  let newType = newCol.type;
-  if (newCol.character_maximum_length !== undefined) {
-    newType += `(${newCol.character_maximum_length})`;
-  } else if (newCol.numeric_precision !== undefined) {
-    if (newCol.numeric_scale !== undefined) {
-      newType += `(${newCol.numeric_precision},${newCol.numeric_scale})`;
-    } else {
-      newType += `(${newCol.numeric_precision})`;
-    }
-  }
-
-  // Check if type changed
-  let oldType = oldCol.type;
-  if (oldCol.character_maximum_length !== undefined) {
-    oldType += `(${oldCol.character_maximum_length})`;
-  } else if (oldCol.numeric_precision !== undefined) {
-    if (oldCol.numeric_scale !== undefined) {
-      oldType += `(${oldCol.numeric_precision},${oldCol.numeric_scale})`;
-    } else {
-      oldType += `(${oldCol.numeric_precision})`;
-    }
-  }
+  // Build type strings using shared helper
+  const newType = buildColumnTypeString(newCol);
+  const oldType = buildColumnTypeString(oldCol);
 
   if (newType !== oldType) {
     statements.push(

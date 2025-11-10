@@ -1,29 +1,14 @@
 import type { NewSchemaDiff } from '../newschema-diff.js';
 import type { ColumnDef } from '../new-schema-subtypes.js';
+import { buildColumnTypeString } from './build-column-type.js';
 
 /**
  * Build column DDL for ALTER TABLE ADD COLUMN statements
  * Excludes PRIMARY KEY (which should be added as a separate table constraint)
  */
 function buildAddColumnDDL(col: ColumnDef): string {
-  // Use 'serial' for serial columns, otherwise use the base type
-  let ddl = col.serial ? 'serial' : col.type;
-
-  // Add size/precision (but NOT for serial)
-  if (!col.serial) {
-    // For character types
-    if (col.character_maximum_length !== undefined) {
-      ddl += `(${col.character_maximum_length})`;
-    }
-    // For numeric/decimal types only (NOT integer, bigint, smallint, etc.)
-    else if (col.numeric_precision !== undefined && /^(numeric|decimal)$/i.test(col.type)) {
-      if (col.numeric_scale !== undefined) {
-        ddl += `(${col.numeric_precision},${col.numeric_scale})`;
-      } else {
-        ddl += `(${col.numeric_precision})`;
-      }
-    }
-  }
+  // Build the type string (type + size/precision)
+  let ddl = buildColumnTypeString(col);
 
   // Add NOT NULL
   if (col.nullable === false) {
