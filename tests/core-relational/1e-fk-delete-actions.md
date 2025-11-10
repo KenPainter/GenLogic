@@ -26,7 +26,7 @@ tables:
     "tables.categories": "@exists",
     "tables.products": "@exists",
     "tables.products.foreignKeys.fk_products_category_id": "@exists",
-    "tables.products.foreignKeys.fk_products_category_id.onDelete": "CASCADE",
+    "tables.products.foreignKeys.fk_products_category_id.deleteAction": "cascade",
     "errors.length": 0
   }
 }
@@ -99,7 +99,7 @@ tables:
     "tables.suppliers": "@exists",
     "tables.inventory": "@exists",
     "tables.inventory.foreignKeys.fk_inventory_supplier_id": "@exists",
-    "tables.inventory.foreignKeys.fk_inventory_supplier_id.onDelete": "RESTRICT"
+    "tables.inventory.foreignKeys.fk_inventory_supplier_id.deleteAction": "restrict"
   },
   "diff": {
     "tablesToCreate.length": 2,
@@ -176,7 +176,7 @@ tables:
     "tables.warehouses": "@exists",
     "tables.shipments": "@exists",
     "tables.shipments.foreignKeys.fk_shipments_warehouse_id": "@exists",
-    "tables.shipments.foreignKeys.fk_shipments_warehouse_id.onDelete": "SET NULL"
+    "tables.shipments.foreignKeys.fk_shipments_warehouse_id.deleteAction": "set null"
   },
   "diff": {
     "tablesToCreate.length": 2,
@@ -265,7 +265,7 @@ tables:
   tasks:
     columns:
       id: serial primary key
-      status_id: integer default 1 FK status_codes delete set default
+      status_id: FK status_codes delete set default default 100
       description: varchar(200)
 ```
 
@@ -276,9 +276,9 @@ tables:
   "newSchema": {
     "tables.status_codes": "@exists",
     "tables.tasks": "@exists",
-    "tables.tasks.columns.status_id.column_default": "1",
+    "tables.tasks.columns.status_id.defaultValue": "100",
     "tables.tasks.foreignKeys.fk_tasks_status_id": "@exists",
-    "tables.tasks.foreignKeys.fk_tasks_status_id.onDelete": "SET DEFAULT"
+    "tables.tasks.foreignKeys.fk_tasks_status_id.deleteAction": "set default"
   },
   "diff": {
     "tablesToCreate.length": 2,
@@ -312,11 +312,11 @@ DELETE FROM status_codes WHERE id = 101;
 SELECT status_id, description FROM tasks WHERE description = 'Task A';
 ```
 
-## Verify status_id set to default (1)
+## Verify status_id set to default (100)
 
 ```json
 [
-  {"status_id": 1, "description": "Task A"}
+  {"status_id": 100, "description": "Task A"}
 ]
 ```
 
@@ -365,7 +365,7 @@ tables:
   tasks:
     columns:
       id: serial primary key
-      status_id: integer default 1 FK status_codes delete set default
+      status_id: FK status_codes delete set default default 100
       description: varchar(200)
 
   departments:
@@ -388,7 +388,7 @@ tables:
     "tables.departments": "@exists",
     "tables.employees": "@exists",
     "tables.employees.foreignKeys.fk_employees_department_id": "@exists",
-    "tables.employees.foreignKeys.fk_employees_department_id.onDelete": "NO ACTION"
+    "tables.employees.foreignKeys.fk_employees_department_id.deleteAction": "no action"
   },
   "diff": {
     "tablesToCreate.length": 2,

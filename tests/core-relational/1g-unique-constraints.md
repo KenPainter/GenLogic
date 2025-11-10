@@ -125,7 +125,7 @@ tables:
       id: serial primary key
       order_number: varchar(20)
       year: integer
-    unique:
+    unique-constraints:
       - [order_number, year]
 ```
 
@@ -197,7 +197,7 @@ tables:
       id: serial primary key
       order_number: varchar(20)
       year: integer
-    unique:
+    unique-constraints:
       - [order_number, year]
 
   employees:
@@ -262,7 +262,7 @@ tables:
       id: serial primary key
       order_number: varchar(20)
       year: integer
-    unique:
+    unique-constraints:
       - [order_number, year]
 
   employees:
@@ -278,7 +278,7 @@ tables:
       warehouse: varchar(10)
       product_code: varchar(20)
       bin_location: varchar(10)
-    unique:
+    unique-constraints:
       - [warehouse, product_code, bin_location]
 ```
 

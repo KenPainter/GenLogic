@@ -1,7 +1,7 @@
 import type { NewSchemaDiff } from '../newschema-diff.js';
 import type { NewSchema } from '../new-schema.js';
 import type { ColumnDef } from '../new-schema-subtypes.js';
-import { buildColumnTypeString } from './build-column-type.js';
+import { buildColumnTypeString, formatDefaultValue } from './build-column-type.js';
 
 /**
  * Build column DDL for CREATE TABLE statements
@@ -18,7 +18,7 @@ function buildColumnDDL(col: ColumnDef): string {
 
   // Add DEFAULT (but NOT for serial - the nextval is implicit)
   if (!col.serial && col.defaultValue !== undefined) {
-    ddl += ` default ${col.defaultValue}`;
+    ddl += ` default ${formatDefaultValue(col)}`;
   }
 
   // Add PRIMARY KEY

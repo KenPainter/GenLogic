@@ -419,6 +419,14 @@ export class NewSchema {
       remaining = remaining.replace(/\bnot\s+null\b/gi, '').trim();
     }
 
+    // Remove "delete <action>" where action can be: cascade, restrict, set null, set default, no action
+    // IMPORTANT: Process this BEFORE "default <value>" to avoid matching "default" in "set default"
+    const deleteMatch = remaining.match(/\bdelete\s+(cascade|restrict|set\s+null|set\s+default|no\s+action)\b/i);
+    if (deleteMatch) {
+      deleteAction = deleteMatch[1].toLowerCase().replace(/\s+/g, ' '); // normalize whitespace
+      remaining = remaining.replace(/\bdelete\s+(cascade|restrict|set\s+null|set\s+default|no\s+action)\b/gi, '').trim();
+    }
+
     // Extract "default <value>" modifier
     let defaultValue: string | undefined;
     const defaultMatch = remaining.match(/\bdefault\s+(.+?)(?=\s+\w+\s+|$)/i);
@@ -427,13 +435,6 @@ export class NewSchema {
       // Replace constants in default value
       defaultValue = this.replaceConstants(defaultValue, location);
       remaining = remaining.replace(/\bdefault\s+.+?(?=\s+\w+\s+|$)/gi, '').trim();
-    }
-
-    // Remove "delete <action>" where action can be: cascade, restrict, set null, set default, no action
-    const deleteMatch = remaining.match(/\bdelete\s+(cascade|restrict|set\s+null|set\s+default|no\s+action)\b/i);
-    if (deleteMatch) {
-      deleteAction = deleteMatch[1].toLowerCase().replace(/\s+/g, ' '); // normalize whitespace
-      remaining = remaining.replace(/\bdelete\s+(cascade|restrict|set\s+null|set\s+default|no\s+action)\b/gi, '').trim();
     }
 
     // Remove "auto create parent"
@@ -679,6 +680,12 @@ export class NewSchema {
       col.nullable = false;
     }
 
+    // Default nullable to true if not explicitly set
+    // This ensures consistency with live schema from PostgreSQL which always has explicit nullable
+    if (col.nullable === undefined) {
+      col.nullable = true;
+    }
+
     // Build normalized comparison string in PostgreSQL's canonical order
     // This is SEPARATE from the user's original definition string
     col.normalizedDef = this.rebuildDefinitionString(col);
@@ -746,7 +753,17 @@ export class NewSchema {
 
     // Add DEFAULT (but NOT for serial - the nextval is implicit)
     if (!col.serial && col.defaultValue !== undefined) {
-      def += ` default ${col.defaultValue}`;
+      // Format default value - add quotes for string types
+      const stringTypes = [
+        'character varying', 'varchar', 'character', 'char', 'text',
+        'date', 'timestamp', 'timestamp without time zone', 'timestamp with time zone',
+        'timestamptz', 'time', 'time without time zone', 'time with time zone', 'timetz',
+        'interval', 'uuid', 'json', 'jsonb', 'xml'
+      ];
+      const formattedDefault = stringTypes.includes(normalizedType)
+        ? `'${col.defaultValue}'`
+        : col.defaultValue;
+      def += ` default ${formattedDefault}`;
     }
 
     // Add PRIMARY KEY

@@ -285,9 +285,9 @@ tables:
     "tables.settings": "@exists",
     "tables.settings.columns.setting_key.nullable": false,
     "tables.settings.columns.setting_value.nullable": false,
-    "tables.settings.columns.setting_value.column_default": "'default_value'::character varying",
+    "tables.settings.columns.setting_value.defaultValue": "default_value",
     "tables.settings.columns.is_active.nullable": false,
-    "tables.settings.columns.is_active.column_default": "true"
+    "tables.settings.columns.is_active.defaultValue": "true"
   },
   "diff": {
     "tablesToCreate.length": 1,
@@ -320,7 +320,7 @@ SELECT setting_key, setting_value, is_active FROM settings ORDER BY setting_key;
 ```sql
 SELECT
   t.tablename,
-  COUNT(CASE WHEN c.is_nullable = 'NO' AND c.column_name != t2.constraint_column_usage THEN 1 END) as not_null_count
+  COUNT(CASE WHEN c.is_nullable = 'NO' AND (t2.constraint_column_usage IS NULL OR c.column_name != t2.constraint_column_usage) THEN 1 END) as not_null_count
 FROM pg_tables t
 JOIN information_schema.columns c ON c.table_name = t.tablename AND c.table_schema = t.schemaname
 LEFT JOIN (

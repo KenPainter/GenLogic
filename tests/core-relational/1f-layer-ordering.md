@@ -226,13 +226,8 @@ ORDER BY ad.street, lm.name;
 [
   {
     "city": "San Francisco",
-    "street": null,
-    "landmark": "Golden Gate Bridge"
-  },
-  {
-    "city": "San Francisco",
     "street": "123 Main St",
-    "landmark": null
+    "landmark": "Golden Gate Bridge"
   }
 ]
 ```

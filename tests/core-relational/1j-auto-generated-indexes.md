@@ -268,7 +268,7 @@ tables:
       warehouse: varchar(10)
       product_code: varchar(20)
       bin_location: varchar(10)
-    unique:
+    unique-constraints:
       - [warehouse, product_code, bin_location]
 ```
 
@@ -309,7 +309,7 @@ ORDER BY i.relname;
 
 ```json
 [
-  {"index_name": "inventory_warehouse_product_code_bin_location_key", "columns": ["warehouse", "product_code", "bin_location"], "is_unique": true}
+  {"index_name": "unique_inventory_warehouse_product_code_bin_location", "columns": "{warehouse,product_code,bin_location}", "is_unique": true}
 ]
 ```
 

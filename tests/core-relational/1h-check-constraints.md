@@ -353,15 +353,14 @@ SELECT discount_percent, discount_amount FROM discounts WHERE discount_amount IS
 
 ```sql
 SELECT
-  t.tablename,
+  c.conrelid::regclass::text as tablename,
   COUNT(c.conname) as check_constraint_count
-FROM pg_tables t
-LEFT JOIN pg_constraint c ON c.conrelid = t.tablename::regclass AND c.contype = 'c'
-WHERE t.schemaname = 'public'
+FROM pg_constraint c
+WHERE c.contype = 'c'
+  AND c.connamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public')
   AND c.conname NOT LIKE '%_not_null'
-GROUP BY t.tablename
-HAVING COUNT(c.conname) > 0
-ORDER BY t.tablename;
+GROUP BY c.conrelid
+ORDER BY tablename;
 ```
 
 ## Summary of CHECK constraints

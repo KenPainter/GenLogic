@@ -1,6 +1,41 @@
 import type { ColumnDef } from '../new-schema-subtypes.js';
 
 /**
+ * Format a default value for SQL DDL
+ * Adds quotes around string literals based on the column's SQL type
+ */
+export function formatDefaultValue(col: ColumnDef): string {
+  if (col.defaultValue === undefined) {
+    return '';
+  }
+
+  const value = col.defaultValue;
+
+  // Types that require quoted string literals
+  const stringTypes = [
+    'character varying', 'varchar',
+    'character', 'char',
+    'text',
+    'date',
+    'timestamp', 'timestamp without time zone', 'timestamp with time zone',
+    'timestamptz',
+    'time', 'time without time zone', 'time with time zone', 'timetz',
+    'interval',
+    'uuid',
+    'json', 'jsonb',
+    'xml'
+  ];
+
+  // Check if this column type needs quotes
+  if (stringTypes.includes(col.type)) {
+    return `'${value}'`;
+  }
+
+  // All other types (numeric, boolean, etc.) don't need quotes
+  return value;
+}
+
+/**
  * Normalize PostgreSQL type aliases to their canonical names
  * This ensures that int, int4, and integer are all treated as equivalent
  */
