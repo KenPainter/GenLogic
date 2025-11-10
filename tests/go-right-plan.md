@@ -128,10 +128,6 @@ All database build functions necessary for GenLogic value-add, but without the v
 - Parent tracks max/min of child values
 - Handles INSERT/UPDATE/DELETE
 
-#### 3D. Aggregation Repair
-- Verify `.repair.sql` script regenerates correct aggregations
-- Test after manual data corruption
-
 ---
 
 ### **Group 4: Formula Columns**
@@ -228,6 +224,11 @@ All database build functions necessary for GenLogic value-add, but without the v
 - Verify NULL is allowed
 - Verify normal numbers pass
 
+#### 9B. Aggregation Repair
+- Verify `.repair.sql` script regenerates correct aggregations
+- Test after manual data corruption
+- Ensures data integrity can be restored
+
 ---
 
 ### **Group 10: Error Handling** ✅
@@ -248,12 +249,13 @@ Core functionality that must work for GenLogic to be usable:
 
 ### **Phase 2 (Important)**
 Features that significantly enhance GenLogic's value:
-- Group 2B-2C: SNAPSHOT/MATCH Automation
-- Group 3C-3D: MAX/MIN & Aggregation Repair
+- Group 2B: SNAPSHOT Automation
+- Group 3C: MAX/MIN Automation
 - Group 4B-4C: Formula Dependencies & Interactions
 - Group 5A: Auto-Create Parent
 - Group 6: Seed Data
 - Group 7A: Constants
+- Group 9B: Aggregation Repair
 
 ### **Phase 3 (Polish)**
 Advanced features and edge cases:
