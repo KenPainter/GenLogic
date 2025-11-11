@@ -2,7 +2,6 @@ import { writeFileSync } from 'fs';
 import { dirname, basename, extname, join } from 'path';
 import type { DatabaseConfig } from './types.js';
 import { DatabaseManager } from './database.js';
-import { ResolvedSchemaGenerator } from './resolved-schema-generator.js';
 import { PermissionsGenerator } from './permissions-generator.js';
 import { loadYamlSchema } from './helpers-processor/yaml-loader.js';
 import { NewSchema } from './new-schema.js';
@@ -30,13 +29,11 @@ import { generateTriggersDDL } from './helpers-ddl/triggers.js';
 export class GenLogicProcessor {
   private config: DatabaseConfig;
   private database: DatabaseManager;
-  private resolvedSchemaGenerator: ResolvedSchemaGenerator;
   private permissionsGenerator: PermissionsGenerator;
 
   constructor(config: DatabaseConfig) {
     this.config = config;
     this.database = new DatabaseManager(config);
-    this.resolvedSchemaGenerator = new ResolvedSchemaGenerator();
     this.permissionsGenerator = new PermissionsGenerator();
   }
 
