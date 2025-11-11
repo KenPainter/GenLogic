@@ -11,6 +11,19 @@ export function formatDefaultValue(col: ColumnDef): string {
 
   const value = col.defaultValue;
 
+  // SQL keywords/functions that should never be quoted
+  const sqlKeywords = [
+    'CURRENT_TIMESTAMP', 'CURRENT_DATE', 'CURRENT_TIME',
+    'NOW()', 'LOCALTIME', 'LOCALTIMESTAMP',
+    'NULL', 'TRUE', 'FALSE'
+  ];
+
+  // Check if value is a SQL keyword/function (case-insensitive)
+  const upperValue = value.toUpperCase();
+  if (sqlKeywords.some(keyword => upperValue === keyword || upperValue.startsWith(keyword))) {
+    return value;
+  }
+
   // Types that require quoted string literals
   const stringTypes = [
     'character varying', 'varchar',

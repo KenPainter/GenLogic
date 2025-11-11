@@ -16,7 +16,7 @@ import { join } from 'path';
 const setup = setupGoRightTests({
   schemasDir: join(import.meta.dir, 'core-relational'),
   dumpDir: join(import.meta.dir, 'core-relational-out'),
-  suiteName: 'Group 1: Core Schema Operations',
+  suiteName: 'Core Schema Operations',
   testDatabase: 'genlogic_test_core_relational'
 });
 

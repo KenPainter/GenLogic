@@ -28,12 +28,14 @@ tables:
       # Reusable with default extension
       balance:
         base: amount-column
-        default: 0.00
+        definition: default 0.00
 
-      # Reusable with check constraint extension
+      # Reusable base (constraint at table level)
       credit_limit:
         base: amount-column
-        check: credit_limit >= 0
+
+    constraints:
+      - credit_limit >= 0
 
   transactions:
     columns:
@@ -43,21 +45,23 @@ tables:
       # Reusable with default extension
       amount:
         base: amount-column
-        default: 0.00
+        definition: default 0.00
 
-      # Reusable with default and check extension
+      # Reusable with default
       status:
         base: status-column
-        default: pending
-        check: status IN ('pending', 'completed', 'cancelled')
+        definition: default pending
 
       # Reusable with default extension
       created_at:
         base: timestamp-column
-        default: CURRENT_TIMESTAMP
+        definition: default CURRENT_TIMESTAMP
 
       updated_at:
         base: timestamp-column
+
+    constraints:
+      - status IN ('pending', 'completed', 'cancelled')
 ```
 
 ## Insert Account with Default Balance

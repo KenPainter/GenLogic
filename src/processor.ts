@@ -459,18 +459,38 @@ export class GenLogicProcessor {
 
       for (const [colName, colDef] of Object.entries((yamlTable as any).columns ?? {})) {
         if (typeof colDef === 'string') {
-          // String definition - check if it contains "primary key"
-          if (colDef.toLowerCase().includes('primary key')) {
+          // String definition - might be a SQL definition or a reusable column reference
+          let defToCheck = colDef;
+
+          // If this references a reusable column, get that column's definition
+          if (colDef in newSchema.reusableColumns) {
+            const reusableCol = newSchema.reusableColumns[colDef];
+            defToCheck = reusableCol.definition || reusableCol.base || colDef;
+          }
+
+          // Check if the actual definition contains "primary key"
+          if (defToCheck.toLowerCase().includes('primary key')) {
             pkColumn = colName;
-            pkDefinition = colDef;
+            pkDefinition = defToCheck;
             break;
           }
         } else if (typeof colDef === 'object' && colDef !== null) {
-          // Object definition - check for primary_key: true
+          // Object definition - check for primary_key: true or base reference
           if ((colDef as any).primary_key === true) {
             pkColumn = colName;
             pkDefinition = (colDef as any).definition || (colDef as any).type;
             break;
+          }
+
+          // Check if using base (reusable column with extensions)
+          if ((colDef as any).base && (colDef as any).base in newSchema.reusableColumns) {
+            const reusableCol = newSchema.reusableColumns[(colDef as any).base];
+            const baseDefinition = reusableCol.definition || reusableCol.base || '';
+            if (baseDefinition.toLowerCase().includes('primary key')) {
+              pkColumn = colName;
+              pkDefinition = baseDefinition;
+              break;
+            }
           }
         }
       }

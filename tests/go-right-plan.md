@@ -1,23 +1,6 @@
 
 ---
 
-### **Group 7: Schema Substitution Features**
-*GenLogic schema reuse and abstraction*
-
-#### 7A. Constants
-- Numeric constants
-- String constants
-- Constant substitution in definitions
-- Constant substitution in defaults
-- Recursive constants (constant references constant)
-
-#### 7B. Reusable Columns
-- Define once, use many times
-- Reusable with extensions
-- Verify type consistency
-
----
-
 ### **Group 8: Advanced Triggers**
 *Complex multi-table automation*
 

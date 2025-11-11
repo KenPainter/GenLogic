@@ -16,7 +16,7 @@ import { join } from 'path';
 const setup = setupGoRightTests({
   schemasDir: join(import.meta.dir, 'schema-reusable-tokens'),
   dumpDir: join(import.meta.dir, 'schema-reusable-tokens-out'),
-  suiteName: 'Group 7: Schema Reusable Tokens',
+  suiteName: 'Schema Reusable Tokens',
   testDatabase: 'genlogic_test_schema_reusable_tokens'
 });
 

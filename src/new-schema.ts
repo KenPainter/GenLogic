@@ -246,6 +246,21 @@ export class NewSchema {
       const baseCol = this.reusableColumns[baseName];
       const { base, ...localProps } = col;  // Remove 'base' key from spread
       resolvedCol = { ...baseCol, ...localProps };
+
+      // Special handling: If local definition is just modifiers (no type), append to base definition
+      if (localProps.definition && baseCol.definition) {
+        const localDef = localProps.definition.trim();
+        // Check if local definition starts with SQL modifiers (not a type)
+        const modifierKeywords = ['default', 'not null', 'null', 'unique', 'check', 'references'];
+        const startsWithModifier = modifierKeywords.some(keyword =>
+          localDef.toLowerCase().startsWith(keyword)
+        );
+
+        if (startsWithModifier) {
+          // Append modifier to base definition instead of replacing
+          resolvedCol.definition = `${baseCol.definition} ${localDef}`;
+        }
+      }
     }
 
     // Step 2: Apply constant substitution to all string fields

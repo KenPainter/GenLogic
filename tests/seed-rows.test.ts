@@ -16,7 +16,7 @@ import { join } from 'path';
 const setup = setupGoRightTests({
   schemasDir: join(import.meta.dir, 'seed-rows'),
   dumpDir: join(import.meta.dir, 'seed-rows-out'),
-  suiteName: 'Group 6: Seed Data',
+  suiteName: 'Seed Data',
   testDatabase: 'genlogic_test_seed_rows'
 });
 
