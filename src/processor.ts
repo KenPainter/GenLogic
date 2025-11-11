@@ -1,11 +1,8 @@
 import { writeFileSync } from 'fs';
 import { dirname, basename, extname, join } from 'path';
 import type { DatabaseConfig } from './types.js';
-import { SchemaProcessor } from './schema-processor.js';
 import { DatabaseManager } from './database.js';
-import { DiffEngine, type SchemaDiff } from './diff-engine.js';
 import { SQLGenerator, type SQLStatements } from './sql-generator.js';
-import { ContentManager } from './content-manager.js';
 import { ResolvedSchemaGenerator } from './resolved-schema-generator.js';
 import { PermissionsGenerator } from './permissions-generator.js';
 import { SchemaFlattener } from './schema-flattener.js';
@@ -34,22 +31,16 @@ import { generateTriggersDDL } from './helpers-ddl/triggers.js';
  */
 export class GenLogicProcessor {
   private config: DatabaseConfig;
-  private schemaProcessor: SchemaProcessor;
   private database: DatabaseManager;
-  private diffEngine: DiffEngine;
   private sqlGenerator: SQLGenerator;
-  private contentManager: ContentManager;
   private resolvedSchemaGenerator: ResolvedSchemaGenerator;
   private permissionsGenerator: PermissionsGenerator;
   private schemaFlattener: SchemaFlattener;
 
   constructor(config: DatabaseConfig) {
     this.config = config;
-    this.schemaProcessor = new SchemaProcessor();
     this.database = new DatabaseManager(config);
-    this.diffEngine = new DiffEngine();
     this.sqlGenerator = new SQLGenerator();
-    this.contentManager = new ContentManager();
     this.resolvedSchemaGenerator = new ResolvedSchemaGenerator();
     this.permissionsGenerator = new PermissionsGenerator();
     this.schemaFlattener = new SchemaFlattener();
