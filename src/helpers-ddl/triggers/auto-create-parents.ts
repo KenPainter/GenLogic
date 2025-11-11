@@ -10,8 +10,10 @@ import type { NewSchema } from '../../new-schema.js';
  * If user inserts transaction with account_id = 100 and account 100 doesn't exist,
  * automatically create account row with account_id = 100
  *
+ * Important: Only auto-creates when FK value is NOT NULL. If FK is NULL, no parent is created.
+ *
  * Generated code:
- *   IF NOT EXISTS (SELECT 1 FROM accounts WHERE account_id = NEW.account_id) THEN
+ *   IF NEW.account_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM accounts WHERE account_id = NEW.account_id) THEN
  *     INSERT INTO accounts (account_id) VALUES (NEW.account_id);
  *   END IF;
  */
@@ -38,17 +40,17 @@ export function generateAutoCreateParents(
     const parentColumn = fk.parentColumn;
 
     if (triggerType === 'UPDATE') {
-      // Only auto-create if FK changed
+      // Only auto-create if FK changed and is not NULL
       lines.push(`  -- Auto-create parent in ${parentTable} if needed`);
       lines.push(`  IF NEW."${childColumn}" IS DISTINCT FROM OLD."${childColumn}" THEN`);
-      lines.push(`    IF NOT EXISTS (SELECT 1 FROM "${parentTable}" WHERE "${parentColumn}" = NEW."${childColumn}") THEN`);
+      lines.push(`    IF NEW."${childColumn}" IS NOT NULL AND NOT EXISTS (SELECT 1 FROM "${parentTable}" WHERE "${parentColumn}" = NEW."${childColumn}") THEN`);
       lines.push(`      INSERT INTO "${parentTable}" ("${parentColumn}") VALUES (NEW."${childColumn}");`);
       lines.push(`    END IF;`);
       lines.push(`  END IF;`);
     } else {
-      // INSERT: always check
+      // INSERT: only auto-create if FK value is not NULL
       lines.push(`  -- Auto-create parent in ${parentTable} if needed`);
-      lines.push(`  IF NOT EXISTS (SELECT 1 FROM "${parentTable}" WHERE "${parentColumn}" = NEW."${childColumn}") THEN`);
+      lines.push(`  IF NEW."${childColumn}" IS NOT NULL AND NOT EXISTS (SELECT 1 FROM "${parentTable}" WHERE "${parentColumn}" = NEW."${childColumn}") THEN`);
       lines.push(`    INSERT INTO "${parentTable}" ("${parentColumn}") VALUES (NEW."${childColumn}");`);
       lines.push(`  END IF;`);
     }

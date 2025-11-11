@@ -173,13 +173,9 @@ All database build functions necessary for GenLogic value-add, but without the v
 - Verify automations trigger during seed
 - Verify formulas calculate during seed
 
-#### 6B. Seed with Lookups
-- Seed references other seed rows by natural key
-- Cross-table seed dependencies
-
 ---
 
-### **Group 7: Schema Syntax Features**
+### **Group 7: Schema Substitution Features**
 *GenLogic schema reuse and abstraction*
 
 #### 7A. Constants
