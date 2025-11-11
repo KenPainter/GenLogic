@@ -1,48 +1,38 @@
+# Complex Business Logic Test Cases
 
----
+## 8a. Formula → FK → SYNC → Formula Chain
 
-### **Group 8: Advanced Triggers**
-*Complex multi-table automation*
+Tests complex dependency chains where:
+1. A formula calculates a foreign key value (referencing an existing parent row)
+2. That FK change triggers SYNC to pull data from the parent
+3. Another formula uses that SYNC'd value
 
-#### 8A. Cascading Updates
-- Parent changes → SYNC children update
-- Child aggregation → parent updates → grandparent aggregation updates
-- 3-level cascade
+This verifies that trigger execution order correctly handles:
+- Formula evaluation before FK constraint checking
+- SYNC operations after FK updates
+- Formula recalculation using SYNC'd values
+- Complex dependency chains across multiple columns
 
-#### 8B. Before/After Trigger Sequencing
-- Verify correct trigger execution order
-- BEFORE INSERT sequence
-- BEFORE UPDATE sequence
-- AFTER UPDATE/DELETE sequence
+## 8b. Safe Loop - Conditional Cascading Discounts
 
-#### 8C. Formula + Automation Interplay
-- Formula uses SYNC value
-- SYNC value uses formula from parent
-- Complex dependency chains
+Tests a "safe loop" pattern with conditional cascading updates:
 
----
+**Schema:**
+- Discounts table: discount_code, discount_percent, second_discount_threshold
+- Orders table: discount_code (FK), order_total, qualifies_for_second_discount
+- Order_lines table: order_id (FK), line_total, discount_percent, second_discount_percent
 
-### **Group 9: Protections**
-*GenLogic data integrity protections*
+**Flow:**
+1. Order gets discount_code → SYNC discount_percent and second_discount_threshold to order
+2. Order lines SYNC discount_percent from order
+3. Lines calculate discounted totals and SUM to order.order_total
+4. Order calculates: qualifies_for_second_discount = (order_total < second_discount_threshold)
+5. Order lines SYNC qualifies_for_second_discount (as second_discount_percent: 10% or 0%)
+6. Lines recalculate with second discount and SUM again
+7. Order total updates (but doesn't trigger another cascade - loop terminates)
 
-#### 9A. NaN/Infinity Protection
-- numeric, decimal, real, double precision columns
-- Verify CHECK constraint blocks NaN
-- Verify CHECK constraint blocks Infinity
-- Verify CHECK constraint blocks -Infinity
-- Verify NULL is allowed
-- Verify normal numbers pass
-
-#### 9B. Aggregation Repair
-- Verify `.repair.sql` script regenerates correct aggregations
-- Test after manual data corruption
-- Ensures data integrity can be restored
-
----
-
-### **Group 10: Error Handling** ✅
-*Schema validation*
-- ✅ All 29 error tests passing in `tests/errors-schema/`
-
----
-
+This verifies:
+- Multi-level SYNC cascades work correctly
+- Conditional logic in formulas triggers appropriate cascades
+- Safe loops terminate correctly without infinite recursion
+- Complex real-world business logic patterns function as expected
