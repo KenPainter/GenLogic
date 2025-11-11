@@ -19,6 +19,7 @@ import { generateUniqueConstraintDDL } from './helpers-ddl/unique-constraint.js'
 import { generateIndexDDL } from './helpers-ddl/indexes.js';
 import { generateSeedDataDML } from './helpers-ddl/seed-data.js';
 import { generateTriggersDDL } from './helpers-ddl/triggers.js';
+import { generatePermissionsDDL } from './helpers-ddl/permissions.js';
 
 /**
  * GenLogic Core Processor
@@ -234,10 +235,18 @@ export class GenLogicProcessor {
     }
 
     // PHASE 3: Set permissions (global operation after all tables/triggers exist)
-    //console.log('Phase 3: Generate permission grants...');
+    console.log('Phase 3: Generate permission grants...');
+    const dbName = this.config.database || 'unknown';
+    console.log(`  Creating admin role: ${dbName}_genlogic_admin`);
+    console.log(`  Creating unprivileged application user: ${dbName}_app_user`);
+    console.log(`  Transferring table ownership to admin role`);
+    console.log(`  Setting column-level UPDATE permissions (blocking automated columns)`);
 
-    // TODO: Generate permission GRANT statements
-    const permissionSQL: string[] = [];
+    const permissionSQL: string[] = generatePermissionsDDL(
+      dbName,
+      parsedYaml,
+      newSchema
+    );
 
     // Assemble final SQL statement list
     const allStatements: string[] = [

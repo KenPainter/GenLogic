@@ -1,5 +1,6 @@
 import type { NewSchema } from '../new-schema.js';
 import { generateAutoCreateParents } from './triggers/auto-create-parents.js';
+import { generateInitializeAggregations } from './triggers/initialize-aggregations.js';
 import { generateProcessColumnLayers } from './triggers/process-column-layers.js';
 import { generatePushToParents } from './triggers/push-to-parents.js';
 import { generatePushToChildren } from './triggers/push-to-children.js';
@@ -31,9 +32,10 @@ import { generatePushToChildren } from './triggers/push-to-children.js';
  *
  * Sequence:
  * 2. Auto-create parents - If FK references non-existent parent, create parent row
- * 3. Pull from parents - Fetch SYNC/SNAPSHOT values from parent tables via FK
+ * 3. Initialize aggregations - Set SUM/COUNT to 0, MAX/MIN to NULL (prevents bogus values)
+ * 4. Pull from parents - Fetch SYNC/SNAPSHOT values from parent tables via FK
  *                        (SYNC and SNAPSHOT have identical behavior on INSERT)
- * 4. Calculate formulas - Evaluate formula expressions in dependency order
+ * 5. Calculate formulas - Evaluate formula expressions in dependency order
  *
  * Note: Push to parents moved to AFTER INSERT for consistency and to prevent
  *       potential trigger recursion in complex automation scenarios
@@ -55,7 +57,13 @@ function generateBeforeInsertTrigger(
     sections.push(autoCreateCode.join('\n'));
   }
 
-  // Step 3: Process columns by layer (SYNC/SNAPSHOT and formulas)
+  // Step 3: Initialize aggregations
+  const initAggregationsCode = generateInitializeAggregations(tableName, newSchema);
+  if (initAggregationsCode.length > 0) {
+    sections.push(initAggregationsCode.join('\n'));
+  }
+
+  // Step 4: Process columns by layer (SYNC/SNAPSHOT and formulas)
   const columnLayerCode = generateProcessColumnLayers(tableName, newSchema, 'INSERT');
   if (columnLayerCode.length > 0) {
     sections.push(columnLayerCode.join('\n'));
