@@ -35,10 +35,9 @@ import { generatePushToChildren } from './triggers/push-to-children.js';
  * 3. Pull from parents - Fetch SYNC/SNAPSHOT values from parent tables via FK
  *                        (SYNC and SNAPSHOT have identical behavior on INSERT)
  * 4. Calculate formulas - Evaluate formula expressions in dependency order
- * 5. Push to parents - Update aggregation columns (SUM/COUNT/MAX/MIN) in parent tables
  *
- * Note: Push to parents happens in BEFORE INSERT (not AFTER) because all aggregations
- *       work correctly on INSERT - there's no pre-existing row to consider
+ * Note: Push to parents moved to AFTER INSERT for consistency and to prevent
+ *       potential trigger recursion in complex automation scenarios
  */
 function generateBeforeInsertTrigger(
   tableName: string,
@@ -69,12 +68,6 @@ function generateBeforeInsertTrigger(
     sections.push(formulaCode.join('\n'));
   }
 
-  // Step 6: Push to parents (aggregations)
-  const pushCode = generatePushToParents(tableName, newSchema, 'INSERT');
-  if (pushCode.length > 0) {
-    sections.push(pushCode.join('\n'));
-  }
-
   // If no operations needed, don't create trigger
   if (sections.length === 0) {
     return null;
@@ -103,6 +96,59 @@ CREATE TRIGGER ${triggerName}
 }
 
 /**
+ * Generate AFTER INSERT trigger for a table
+ *
+ * Sequence:
+ * 1. Push to parents - Update aggregation columns (SUM/COUNT/MAX/MIN) in parent tables
+ *
+ * Note: Aggregations moved to AFTER INSERT for consistency with UPDATE/DELETE
+ *       and to prevent trigger recursion in complex automation scenarios
+ */
+function generateAfterInsertTrigger(
+  tableName: string,
+  newSchema: NewSchema
+): string | null {
+  const table = newSchema.tables[tableName];
+  if (!table) {
+    return null;
+  }
+
+  const sections: string[] = [];
+
+  // Step 1: Push to parents (aggregations)
+  const pushCode = generatePushToParents(tableName, newSchema, 'INSERT');
+  if (pushCode.length > 0) {
+    sections.push(pushCode.join('\n'));
+  }
+
+  // If no operations needed, don't create trigger
+  if (sections.length === 0) {
+    return null;
+  }
+
+  const functionName = `${tableName}_after_insert_genlogic`;
+  const triggerName = `${tableName}_after_insert_genlogic`;
+
+  return `
+CREATE OR REPLACE FUNCTION ${functionName}()
+RETURNS TRIGGER
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+${sections.join('\n\n')}
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER ${triggerName}
+  AFTER INSERT ON "${tableName}"
+  FOR EACH ROW EXECUTE FUNCTION ${functionName}();
+`.trim();
+}
+
+/**
  * Generate BEFORE UPDATE trigger for a table
  *
  * Sequence:
@@ -110,11 +156,10 @@ CREATE TRIGGER ${triggerName}
  * 3. Pull from parents - Re-fetch SYNC/SNAPSHOT values if FK changed
  *                        (SYNC and SNAPSHOT have identical behavior on FK changes)
  * 4. Recalculate formulas - Evaluate formula expressions based on changed input columns
- * 5. Push to children - Update SYNC columns in child tables if parent columns changed
- *                       (SNAPSHOT is intentionally excluded - values frozen at capture time)
  *
- * Note: Push to parents (aggregations) moved to AFTER UPDATE trigger to ensure
- *       MIN/MAX recalculations see the post-mutation state of the table
+ * Note: Push to children (SYNC) and push to parents (aggregations) moved to AFTER UPDATE
+ *       trigger to prevent trigger recursion when SYNC columns interact with formulas
+ *       and aggregations
  */
 function generateBeforeUpdateTrigger(
   tableName: string,
@@ -143,12 +188,6 @@ function generateBeforeUpdateTrigger(
   const formulaCode = generateCalculateFormulas(tableName, newSchema, 'UPDATE');
   if (formulaCode.length > 0) {
     sections.push(formulaCode.join('\n'));
-  }
-
-  // Step 5: Push to children (SYNC)
-  const pushToChildrenCode = generatePushToChildren(tableName, newSchema);
-  if (pushToChildrenCode.length > 0) {
-    sections.push(pushToChildrenCode.join('\n'));
   }
 
   // If no operations needed, don't create trigger
@@ -182,10 +221,12 @@ CREATE TRIGGER ${triggerName}
  * Generate AFTER UPDATE trigger for a table
  *
  * Sequence:
- * 1. Push to parents - Update aggregation columns (SUM/COUNT/MAX/MIN) in parent tables
+ * 1. Push to children - Update SYNC columns in child tables if parent columns changed
+ *                       (SNAPSHOT is intentionally excluded - values frozen at capture time)
+ * 2. Push to parents - Update aggregation columns (SUM/COUNT/MAX/MIN) in parent tables
  *
- * Note: Aggregations moved to AFTER UPDATE to ensure MIN/MAX recalculations
- *       see the post-mutation state of the table (critical for subqueries)
+ * Note: Both push operations moved to AFTER UPDATE to prevent trigger recursion.
+ *       Parent row mutation completes before any cascading updates occur.
  */
 function generateAfterUpdateTrigger(
   tableName: string,
@@ -198,7 +239,13 @@ function generateAfterUpdateTrigger(
 
   const sections: string[] = [];
 
-  // Step 1: Push to parents (aggregations)
+  // Step 1: Push to children (SYNC)
+  const pushToChildrenCode = generatePushToChildren(tableName, newSchema);
+  if (pushToChildrenCode.length > 0) {
+    sections.push(pushToChildrenCode.join('\n'));
+  }
+
+  // Step 2: Push to parents (aggregations)
   const pushCode = generatePushToParents(tableName, newSchema, 'UPDATE');
   if (pushCode.length > 0) {
     sections.push(pushCode.join('\n'));
@@ -301,13 +348,19 @@ export function generateTriggersDDL(
       statements.push(insertTrigger);
     }
 
+    // Generate AFTER INSERT trigger (for aggregations)
+    const afterInsertTrigger = generateAfterInsertTrigger(tableName, newSchema);
+    if (afterInsertTrigger) {
+      statements.push(afterInsertTrigger);
+    }
+
     // Generate BEFORE UPDATE trigger
     const beforeUpdateTrigger = generateBeforeUpdateTrigger(tableName, newSchema);
     if (beforeUpdateTrigger) {
       statements.push(beforeUpdateTrigger);
     }
 
-    // Generate AFTER UPDATE trigger (for aggregations)
+    // Generate AFTER UPDATE trigger (for push operations)
     const afterUpdateTrigger = generateAfterUpdateTrigger(tableName, newSchema);
     if (afterUpdateTrigger) {
       statements.push(afterUpdateTrigger);
