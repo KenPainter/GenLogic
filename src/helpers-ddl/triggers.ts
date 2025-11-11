@@ -1,7 +1,6 @@
 import type { NewSchema } from '../new-schema.js';
 import { generateAutoCreateParents } from './triggers/auto-create-parents.js';
-import { generatePullFromParents } from './triggers/pull-from-parents.js';
-import { generateCalculateFormulas } from './triggers/calculate-formulas.js';
+import { generateProcessColumnLayers } from './triggers/process-column-layers.js';
 import { generatePushToParents } from './triggers/push-to-parents.js';
 import { generatePushToChildren } from './triggers/push-to-children.js';
 
@@ -56,16 +55,10 @@ function generateBeforeInsertTrigger(
     sections.push(autoCreateCode.join('\n'));
   }
 
-  // Step 3: Pull from parents (SYNC/SNAPSHOT)
-  const pullCode = generatePullFromParents(tableName, newSchema, 'INSERT');
-  if (pullCode.length > 0) {
-    sections.push(pullCode.join('\n'));
-  }
-
-  // Step 4: Calculate formulas
-  const formulaCode = generateCalculateFormulas(tableName, newSchema, 'INSERT');
-  if (formulaCode.length > 0) {
-    sections.push(formulaCode.join('\n'));
+  // Step 3: Process columns by layer (SYNC/SNAPSHOT and formulas)
+  const columnLayerCode = generateProcessColumnLayers(tableName, newSchema, 'INSERT');
+  if (columnLayerCode.length > 0) {
+    sections.push(columnLayerCode.join('\n'));
   }
 
   // If no operations needed, don't create trigger
@@ -178,16 +171,10 @@ function generateBeforeUpdateTrigger(
     sections.push(autoCreateCode.join('\n'));
   }
 
-  // Step 3: Pull from parents (SYNC/SNAPSHOT)
-  const pullCode = generatePullFromParents(tableName, newSchema, 'UPDATE');
-  if (pullCode.length > 0) {
-    sections.push(pullCode.join('\n'));
-  }
-
-  // Step 4: Recalculate formulas
-  const formulaCode = generateCalculateFormulas(tableName, newSchema, 'UPDATE');
-  if (formulaCode.length > 0) {
-    sections.push(formulaCode.join('\n'));
+  // Step 3: Process columns by layer (SYNC/SNAPSHOT and formulas)
+  const columnLayerCode = generateProcessColumnLayers(tableName, newSchema, 'UPDATE');
+  if (columnLayerCode.length > 0) {
+    sections.push(columnLayerCode.join('\n'));
   }
 
   // If no operations needed, don't create trigger

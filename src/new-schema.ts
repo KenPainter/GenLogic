@@ -890,6 +890,32 @@ export class NewSchema {
     // Add automation edge: referenced column (layer N) -> dependent column (layer N+1)
     this.automationEdges.push([`${sourceTable}.${sourceColumn}`, `${tableName}.${colName}`]);
 
+    // For SYNC/SNAPSHOT: Add dependency on FK column so it's calculated before the pull
+    if (operation === 'SYNC' || operation === 'SNAPSHOT') {
+      let fkColumnName: string | undefined;
+
+      // Use explicit FK column if specified
+      if (fkColumn) {
+        fkColumnName = fkColumn;
+      } else {
+        // Search for FK that references sourceTable
+        const table = this.tables[tableName];
+        if (table?.foreignKeys) {
+          for (const fk of Object.values(table.foreignKeys)) {
+            if (fk.parentTable === sourceTable) {
+              fkColumnName = fk.childColumn;
+              break;
+            }
+          }
+        }
+      }
+
+      // Add edge: FK column -> SYNC column (FK must be calculated before SYNC can use it)
+      if (fkColumnName) {
+        this.automationEdges.push([`${tableName}.${fkColumnName}`, `${tableName}.${colName}`]);
+      }
+    }
+
     // Store the automation's source column dependency
     this.crossTableColumnDeps.push({
       dependentTable: tableName,
@@ -1207,9 +1233,9 @@ export class NewSchema {
 
     const result: Record<number, string[]> = {};
 
-    // Extract columns for this table from unified layers, filtering to only formula columns
+    // Extract columns for this table from unified layers, filtering to formula and automation columns
     for (const [layerNum, qualifiedColumnNames] of layers) {
-      const formulaColumns: string[] = [];
+      const automatedColumns: string[] = [];
 
       for (const qualifiedName of qualifiedColumnNames) {
         // Parse table.column format
@@ -1217,17 +1243,17 @@ export class NewSchema {
         const table = qualifiedName.substring(0, dotIndex);
         const colName = qualifiedName.substring(dotIndex + 1);
 
-        // Only include columns for this table that are formula columns
+        // Include columns for this table that have formulas or automations (SYNC/SNAPSHOT)
         if (table === tableName) {
           const col = tableDef.columns?.[colName];
-          if (col && col.formula) {
-            formulaColumns.push(colName);
+          if (col && (col.formula || col.automation)) {
+            automatedColumns.push(colName);
           }
         }
       }
 
-      if (formulaColumns.length > 0) {
-        result[layerNum] = formulaColumns;
+      if (automatedColumns.length > 0) {
+        result[layerNum] = automatedColumns;
       }
     }
 
