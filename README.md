@@ -76,22 +76,17 @@ to do so.
 
 ## Potential TO-DO List
 
-Current: 0.97
-
 Release plan:
-- Tests: 0.98.x
+- (current) Tests: 0.98.x 
 - Docs: 0.99.x
 - Everything else: 0.99.x
-  - potential: change table-level 'constraints:' key to 'checks:'
-    the AI assistant gets very confused by 'constraints'
+  - final dead code removal
 
 Then: 1.0
 
 Some thoughts and to-do items
-- consider preventing SQL keywords as column names
-- Drop LATEST or LAST_VALUE, SYNC table-to-table, SPREAD
-  from any remaining code or docs
 - document or prevent corruption of automation columns
+- consider preventing SQL keywords as column names
 - Replace add-navigation.mjs with a general reconciler
   that looks for widows and orphans in both docs and
   tests/

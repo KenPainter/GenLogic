@@ -1,6 +1,6 @@
 {
   "name": "genlogic",
-  "version": "0.98.4",
+  "version": "0.99.0",
   "description": "GenLogic - Augmented Normalization for PostgreSQL with foreign keys as data pipelines",
   "main": "src/index.ts",
   "bin": {
