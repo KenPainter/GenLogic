@@ -7,7 +7,6 @@ import { DatabaseManager } from './database.js';
 import { DiffEngine, type SchemaDiff } from './diff-engine.js';
 import { SQLGenerator, type SQLStatements } from './sql-generator.js';
 import { TriggerGenerator } from './trigger-generator.js';
-import { MatchingGenerator } from './matching-generator.js';
 import { ContentManager } from './content-manager.js';
 import { ResolvedSchemaGenerator } from './resolved-schema-generator.js';
 import { PermissionsGenerator } from './permissions-generator.js';
@@ -43,7 +42,6 @@ export class GenLogicProcessor {
   private diffEngine: DiffEngine;
   private sqlGenerator: SQLGenerator;
   private triggerGenerator: TriggerGenerator;
-  private matchingGenerator: MatchingGenerator;
   private contentManager: ContentManager;
   private resolvedSchemaGenerator: ResolvedSchemaGenerator;
   private permissionsGenerator: PermissionsGenerator;
@@ -57,7 +55,6 @@ export class GenLogicProcessor {
     this.diffEngine = new DiffEngine();
     this.sqlGenerator = new SQLGenerator();
     this.triggerGenerator = new TriggerGenerator();
-    this.matchingGenerator = new MatchingGenerator();
     this.contentManager = new ContentManager();
     this.resolvedSchemaGenerator = new ResolvedSchemaGenerator();
     this.permissionsGenerator = new PermissionsGenerator();
