@@ -595,6 +595,8 @@ export class NewSchema {
       let typeMatch;
       if (sql.match(/^character varying/i)) {
         typeMatch = sql.match(/^(character varying)(?:\((\d+)(?:,\s*(\d+))?\))?/i);
+      } else if (sql.match(/^double\s+precision/i)) {
+        typeMatch = sql.match(/^(double\s+precision)(?:\((\d+)(?:,\s*(\d+))?\))?/i);
       } else if (sql.match(/^double_precision/i)) {
         typeMatch = sql.match(/^(double_precision)(?:\((\d+)(?:,\s*(\d+))?\))?/i);
       } else {
@@ -726,7 +728,8 @@ export class NewSchema {
       'bool': 'boolean',
       'varchar': 'character varying',
       'char': 'character',
-      'decimal': 'numeric'
+      'decimal': 'numeric',
+      'double_precision': 'double precision'
     };
 
     return typeMap[typeName.toLowerCase()] || typeName;

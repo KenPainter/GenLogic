@@ -22,6 +22,7 @@ export type TestStep =
 export interface TestContext {
   lastBuildDumps: Record<string, any>;
   lastSelectResults: any[] | null;
+  lastError: string | null;
   currentBaseName: string;
   buildStepCounter: number;
 }
@@ -263,19 +264,28 @@ export async function executeSQLStep(
 
   let lastSelectResult: any[] | null = null;
 
-  // Execute each statement
-  for (const statement of statements) {
-    const result = await pool.query(statement);
+  // Clear previous error
+  context.lastError = null;
 
-    // If this statement returned rows (SELECT), save them
-    // This will keep overwriting, so we end up with the last SELECT result
-    if (result.rows) {
-      lastSelectResult = result.rows;
+  try {
+    // Execute each statement
+    for (const statement of statements) {
+      const result = await pool.query(statement);
+
+      // If this statement returned rows (SELECT), save them
+      // This will keep overwriting, so we end up with the last SELECT result
+      if (result.rows) {
+        lastSelectResult = result.rows;
+      }
     }
-  }
 
-  // Store the last SELECT result (or null if no SELECT statements)
-  context.lastSelectResults = lastSelectResult;
+    // Store the last SELECT result (or null if no SELECT statements)
+    context.lastSelectResults = lastSelectResult;
+  } catch (error: any) {
+    // Store error message for assertion
+    context.lastError = error.message || String(error);
+    context.lastSelectResults = null;
+  }
 }
 
 /**
@@ -288,13 +298,41 @@ export async function executeAssertStep(
 ): Promise<void> {
   const assertions = JSON.parse(step.content);
 
+  // Check if it's an error assertion
+  if (assertions.error !== undefined) {
+    assertError(context.lastError, assertions.error, fileName, step.lineNumber);
+  }
   // Check if it's an array (SQL result assertion)
-  if (Array.isArray(assertions)) {
+  else if (Array.isArray(assertions)) {
     assertSQLResults(context.lastSelectResults, assertions, fileName, step.lineNumber);
   }
   // Check if it's an object with dump file assertions
   else {
     assertDumps(context.lastBuildDumps, assertions, fileName, step.lineNumber);
+  }
+}
+
+/**
+ * Assert error occurred and matches expected pattern
+ */
+export function assertError(
+  actualError: string | null,
+  expectedPattern: string,
+  fileName: string,
+  lineNumber: number
+): void {
+  if (actualError === null) {
+    throw new Error(
+      `[${fileName}:${lineNumber}] Expected an error containing "${expectedPattern}" but query succeeded`
+    );
+  }
+
+  if (!actualError.includes(expectedPattern)) {
+    throw new Error(
+      `[${fileName}:${lineNumber}] Error mismatch\n\n` +
+      `Expected error to contain: "${expectedPattern}"\n\n` +
+      `Actual error: ${actualError}`
+    );
   }
 }
 
@@ -422,6 +460,7 @@ export async function runMarkdownTest(fileName: string, pool: any, config: GoRig
   const context: TestContext = {
     lastBuildDumps: {},
     lastSelectResults: null,
+    lastError: null,
     currentBaseName: baseName,
     buildStepCounter: 0
   };

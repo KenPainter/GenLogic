@@ -1,0 +1,42 @@
+#!/usr/bin/env bun
+/**
+ * GenLogic Protections Test Runner
+ *
+ * Tests data integrity protections (Group 9: Protections)
+ * Following the go-right-framework.md design:
+ * - Markdown files contain sequences of YAML builds, SQL statements, and JSON assertions
+ * - Each test gets a fresh database (DROP/CREATE entire database for isolation)
+ * - Tests run against real PostgreSQL to verify NaN/Infinity protection constraints
+ */
+
+import { setupGoRightTests, runMarkdownTest } from './go-right-runner.js';
+import { test, describe, beforeAll, afterAll } from 'bun:test';
+import { join } from 'path';
+
+const setup = setupGoRightTests({
+  schemasDir: join(import.meta.dir, 'protections'),
+  dumpDir: join(import.meta.dir, 'protections-out'),
+  suiteName: 'Protections',
+  testDatabase: 'genlogic_test_protections'
+});
+
+// Only create describe block if setup succeeded
+if (setup) {
+  describe(setup.config.suiteName, () => {
+    let pool: any = null;
+
+    beforeAll(async () => {
+      pool = await setup.createPool();
+    });
+
+    afterAll(async () => {
+      await setup.cleanup(pool);
+    });
+
+    for (const file of setup.testFiles) {
+      test(file, async () => {
+        await runMarkdownTest(file, pool, setup.config);
+      }, { timeout: setup.timeout });
+    }
+  });
+}
