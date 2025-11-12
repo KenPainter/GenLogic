@@ -35,40 +35,11 @@ This document analyzes every testable claim in the GenLogic documentation and va
 ---
 
 
-### 5. docs/13-getting-started/40-what-happens-in-a-build.md
-
-**Build Process Claims:**
-
-2. **Claim (Line 17):** "A GenLogic build never drops tables or columns"
-   - Status: ⚠️ Partially validated
-   - Test: tests/core-relational/1b-schema-evolution.md (shows additive changes)
-   - Note: Non-destructive behavior not explicitly tested
-
-3. **Claim (Lines 19-21):** "A 'drop script' is generated with every build so the DBA can drop unused or defunct columns and tables"
-   - Status: ❌ Not validated
-   - Note: Drop script generation not tested
-
----
-
 ### 8. docs/20-tables-and-columns/20-primary-and-foreing-keys.md
-
-**Primary Key Claims:**
-
-1. **Claim (Line 5):** "GenLogic supports single-column primary keys"
-   - Status: ✅ Validated
-   - Test: tests/core-relational/1c-primary-keys.md
 
 2. **Claim (Line 7):** "GenLogic does not require a table to have a primary key"
    - Status: ❌ Not validated
    - Note: No test for tables without primary keys
-
-3. **Claim (Lines 14-17):** "Serial value ranges: smallserial (1-32,767), serial (1-2,147,483,647), bigserial (1-9,223,372,036,854,775,807)"
-   - Status: ❌ Not validated
-   - Note: Serial type ranges not tested
-
-4. **Claim (Line 19):** "GenLogic sets the first value of serial columns to 100"
-   - Status: ✅ Validated
-   - Test: Implied in tests/core-relational/1c-primary-keys.md
 
 **Foreign Key Claims:**
 
@@ -79,21 +50,10 @@ This document analyzes every testable claim in the GenLogic documentation and va
      - ✅ Index creation: tests/core-relational/1j-auto-generated-indexes.md
      - ❌ Constraint naming: Not explicitly validated
 
-6. **Claim (Lines 91-103):** "Multiple foreign keys to same table require different column names"
-   - Status: ✅ Validated
-   - Test: Implied in aggregation tests with multiple FKs (3a5-sum-multiple-aggregations.md)
-
 7. **Claim (Lines 106-116):** "A table can reference itself (self-referential foreign keys)"
    - Status: ❌ Not validated
    - Note: No test for self-referential FKs
 
-8. **Claim (Lines 136-150):** "Foreign keys are by default nullable. Can be made not null"
-   - Status: ✅ Validated
-   - Test: tests/core-relational/1i-not-null.md
-
-9. **Claim (Lines 152-177):** "Delete actions: restrict (default), cascade, set null, set default"
-   - Status: ✅ Validated
-   - Test: tests/core-relational/1e-fk-delete-actions.md
 
 ---
 

@@ -55,6 +55,26 @@ JOIN orders o ON c.id = o.customer_id;
 ]
 ```
 
+## Verify FK Constraint Naming Convention
+
+GenLogic names FK constraints as fk_<child_table>_<column_name>.
+
+```sql
+SELECT conname
+FROM pg_constraint
+WHERE conrelid = 'orders'::regclass
+  AND contype = 'f'
+ORDER BY conname;
+```
+
+```json
+[
+  {
+    "conname": "fk_orders_customer_id"
+  }
+]
+```
+
 ## Step 2: Add multi-level hierarchy (3 levels)
 
 ```yaml
