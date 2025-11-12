@@ -1,4 +1,4 @@
-# Plan: FK Parens Syntax and Definition String Consolidation
+# Plan: Unified Column Definition Syntax
 
 ## End State
 
@@ -9,7 +9,10 @@ Definition string syntax for column specifications:
 column_name: type [modifiers]
 
 # FK shorthand (with parens):
-column_name: FK(parent_table) [fk_modifiers]
+column_name: FK(parent_table) [modifiers]
+
+# Re-usable shorthand
+column_name: reusable [modifiers]
 
 # Calculated columns (object form):
 column_name:
@@ -56,18 +59,57 @@ customer_id: FK(customers) not null
 
 Migration: `sed -i 's/FK \([a-z_][a-z0-9_]*\)/FK(\1)/g' *.yaml`
 
-## Code Tasks
+## Code End State
 
-1. Update FK parser in src/new-schema.ts:parseFKDefinition()
-   - Change regex to match FK(table_name)
-   - Extract parent table from parens
-   - Parse remaining modifiers
-   - Error on old "FK space" syntax
+Remove separate FK, reusable and "normal" branches.
+Parse a column's definition string once in a unified parser.
 
-2. Update FK detection in src/new-schema.ts:processColumn()
-   - Change check from .startsWith('FK') to match FK(...)
+### Single Parse Path
 
-3. Update error messages referencing FK syntax
+1. **Parse definition string to extract components:**
+   - Match FK(parent_table) pattern? Extract parent table name
+   - Match reusable column name? Look up and expand inline.  Match first and move on.
+   - Otherwise parse as SQL type definition
+   - Extract all modifiers (not null, unique, default, etc.)
+
+2. **Validate combinations after parsing:**
+   - Detect and report all invalid combinations
+   - Build final column definition from validated components
+
+3. **Store parsed results:**
+   - Column type and constraints
+   - FK relationships (if FK syntax used)
+   - Formula/automation expressions (if calculated column)
+
+### Invalid Combinations (New Errors)
+
+**Definition string ambiguity:**
+- Definition matches multiple reusable names (ambiguous reference)
+  - see "match first and move on" above, this would be
+    reported as unknown syntax.
+- Old FK space syntax: `FK table` (must use `FK(table)`)
+- Empty FK parentheses: `FK()` (must specify parent table)
+
+**Type conflicts:**
+- FK(parent) with explicit type specification (FK infers type from parent PK)
+- FK(parent) with primary key modifier (FK references PK, cannot be PK)
+- Reusable reference with explicit type (choose one or the other)
+
+**Reusable column restrictions:**
+- Reusable column cannot reference another reusable column (no chaining allowed)
+
+**Calculated column conflicts:**
+- Formula with default value (formula calculates, cannot have default)
+- Automation with default value (system sets default, user cannot)
+- Both formula AND automation (must be one or the other)
+
+**Circular references:**
+- Formula column dependencies that form a cycle (already detected)
+- Automation dependencies that form a cycle (already detected)
+
+### Error Message Updates
+
+All error messages referencing FK syntax must show: `FK(table_name)`
 
 ## Documentation Tasks
 
