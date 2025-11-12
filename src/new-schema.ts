@@ -798,6 +798,19 @@ export class NewSchema {
    * Returns null on error (error already added to errors array)
    */
   private parseSQLExpression(expr: string, location: string): string[] | null {
+    // Check for subqueries - look for SELECT statement pattern
+    // This matches SELECT...FROM pattern which indicates a subquery
+    // We need to be careful not to match EXTRACT(field FROM column) which is valid
+    const hasSelectFrom = /\bSELECT\b.*\bFROM\b/is.test(expr);
+
+    if (hasSelectFrom) {
+      this.errors.push({
+        location,
+        message: `Formula columns cannot contain subqueries. Use SYNC automation to pull values from parent tables`
+      });
+      return null;
+    }
+
     try {
       // Wrap in SELECT to parse expression fragment
       const sql = `SELECT ${expr}`;
