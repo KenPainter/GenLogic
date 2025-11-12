@@ -135,12 +135,13 @@ export class NewSchema {
   /**
    * Replace ${CONSTANT_NAME} placeholders in a string
    * Supports recursive constants (constants that reference other constants)
-   * Accumulates errors instead of throwing
+   * Returns null if errors were encountered (after logging them)
    */
-  replaceConstants(str: string, location: string): string {
+  replaceConstants(str: string, location: string): string | null {
     // Safety: prevent infinite loops
     let iterations = 0;
     const maxIterations = 10;
+    let hasError = false;
 
     let result = str;
     while (result.includes('${') && iterations < maxIterations) {
@@ -151,6 +152,7 @@ export class NewSchema {
             location,
             message: `Undefined constant: ${name}`
           });
+          hasError = true;
           return match; // Leave unreplaced
         }
         return String(this.constants[name]);
@@ -165,6 +167,11 @@ export class NewSchema {
         location,
         message: 'Circular constant reference detected'
       });
+      hasError = true;
+    }
+
+    if (hasError) {
+      return null;
     }
 
     return result;
@@ -238,7 +245,11 @@ export class NewSchema {
     }
 
     // Step 2: Apply constant substitution to definition string BEFORE parsing
-    col.definition = this.replaceConstants(col.definition, location);
+    const replacedDefinition = this.replaceConstants(col.definition, location);
+    if (!replacedDefinition) {
+      return; // Error already logged (undefined constant or circular reference)
+    }
+    col.definition = replacedDefinition;
 
     // Step 3: Parse definition string with unified parser
     const parsed = parseDefinition(this, location, col.definition, this.reusableColumns);
