@@ -390,3 +390,38 @@ ORDER BY t.relname;
   {"table_name": "shipments", "custom_index_count": "1"}
 ]
 ```
+
+## Verify Index Naming Convention
+
+GenLogic names custom indexes as idx_<table>_<column1>_<column2>_...
+
+```sql
+SELECT indexname
+FROM pg_indexes
+WHERE schemaname = 'public'
+  AND indexname LIKE 'idx_%'
+ORDER BY indexname;
+```
+
+```json
+[
+  {
+    "indexname": "idx_employees_department"
+  },
+  {
+    "indexname": "idx_employees_hire_date"
+  },
+  {
+    "indexname": "idx_employees_last_name"
+  },
+  {
+    "indexname": "idx_orders_customer_id_order_date"
+  },
+  {
+    "indexname": "idx_products_category"
+  },
+  {
+    "indexname": "idx_shipments_warehouse_carrier_ship_date"
+  }
+]
+```
