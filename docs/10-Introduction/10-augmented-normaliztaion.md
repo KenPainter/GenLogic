@@ -42,13 +42,24 @@ columns within tables as nodes in a Directed Acyclic Graph (DAG)
 where the edges are formed by the dependencies that are explicit
 in the calculations.  If line_total = qty * price, we have three
 nodes and edges price->line_total and qty->line_total. As long
-as the column Graph has no cycles, we can guarantee:
-- Termination: All calculations will complete in finite time.
-- Determinism: Given the same DML to the same database, calculated values
-    always produce the same result.
-- Consistency: All dependent values are computed after their dependencies.
-- No race conditions: No calculation can see an inconsistent intermediate state, no
-  query will see intermediate state.
+as the column Graph has no cycles, we can make a few assurances.
+
+**Guaranteed Termination (strong)**: All calculations will complete in finite time.
+This is mathematically guaranteed so long as we have proven that
+we detect cycles.
+
+**Guaranteed Determinism (with no random factors in formulas)**: Given the
+same DML to the same database, 
+calculated values always produce the same result.  As long as the
+formulas do not include random factors, this is true because:
+- calculations always execute in dependency order
+- triggers complete before commit
+
+**No Race Conditions**: No calculations or queries see inconsistent
+internal state.  This is guaranteed by Postgres's transaction
+model: BEFORE triggers complete atomically before the row is written, 
+AFTER triggers see the committed state, and all calculations within a
+transaction are isolated from other transactions.
 
 The use of a Directed Acyclic Graph means that a GenLogic schema
 is formally analyzable, though no effort has yet been made to demonstrate
@@ -66,7 +77,7 @@ reasons of productivity.
 - no ORM is needed, most DML is a single table write.
   All consequences of any 
   database write propogate completely with termination,
-  determinism, consistency, and without race conditions.
+  determinism, and without race conditions.
 - The stack above the database has no need of the many layers
   of abstraction bloat that seem to get worse every day.
 

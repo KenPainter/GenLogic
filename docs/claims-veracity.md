@@ -19,17 +19,6 @@ This document analyzes every testable claim in the GenLogic documentation and va
 
 ## Analysis by Documentation File
 
-### 1. docs/10-Introduction/10-augmented-normaliztaion.md
-
-
-3. **Claim (Lines 42-48):** "As long as the column Graph has no cycles, we can guarantee: Termination, Determinism, Consistency, No race conditions"
-   - Status: ⚠️ Partially validated
-   - Tests:
-     - ✅ Cycle detection: tests/schema-errors/28-fk-cycle.md, tests/schema-errors/29-formula-cycle.md, tests/schema-errors/30-automation-cycle.md
-     - ❌ Termination guarantee: Not explicitly tested
-     - ❌ Determinism: Not explicitly tested
-     - ❌ No race conditions: Not explicitly tested
-
 ---
 
 ### 2. docs/13-getting-started/10-installation.md
