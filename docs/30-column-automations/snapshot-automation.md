@@ -1,3 +1,5 @@
+Previous: [Constraints and Indexes](../20-tables-and-columns/30-constraints-and-indexes.md) | Next: [SYNC Parent to Child](sync-automation.md)
+
 # SNAPSHOT Automation
 
 SNAPSHOT columns capture values from a parent table at a specific point in time. Unlike SYNC, SNAPSHOT values remain frozen and do not update when the parent changes.
@@ -127,3 +129,7 @@ SYNC is used for current references:
 - Current pricing
 - Live status information
 - Active configuration values
+
+---
+
+Previous: [Constraints and Indexes](../20-tables-and-columns/30-constraints-and-indexes.md) | Next: [SYNC Parent to Child](sync-automation.md)

@@ -1,3 +1,5 @@
+Previous: [Formulas Within A Row](formula-columns.md) | Next: [Auto Create Parent](../40-row-automations/auto-create-parent.md)
+
 # Aggregations
 
 Aggregation columns in a parent table automatically compute values from child rows. GenLogic supports SUM, COUNT, MAX, and MIN.
@@ -274,3 +276,7 @@ Account 101 (Bob):
 SUM and COUNT default to 0 when there are no child rows.
 
 MAX and MIN default to NULL when there are no child rows.
+
+---
+
+Previous: [Formulas Within A Row](formula-columns.md) | Next: [Auto Create Parent](../40-row-automations/auto-create-parent.md)

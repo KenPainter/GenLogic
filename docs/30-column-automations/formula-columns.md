@@ -1,3 +1,5 @@
+Previous: [SYNC Parent to Child](sync-automation.md) | Next: [Aggregations to Parent](aggregations.md)
+
 # Formula Columns
 
 Formula columns calculate their value from other columns in the same row using SQL expressions.
@@ -154,3 +156,7 @@ When the parent tax rate changes, the child SYNC column updates, triggering form
 - Cannot reference other tables directly (use SYNC first)
 - Cannot use subqueries
 - Use PostgreSQL SQL expression syntax
+
+---
+
+Previous: [SYNC Parent to Child](sync-automation.md) | Next: [Aggregations to Parent](aggregations.md)

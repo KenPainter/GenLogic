@@ -1,3 +1,5 @@
+Previous: [Snapshot Parent to Child](snapshot-automation.md) | Next: [Formulas Within A Row](formula-columns.md)
+
 # SYNC Automation
 
 SYNC columns automatically pull values from a parent table through a foreign key relationship. The value stays synchronized with the parent - when the parent changes, all children update.
@@ -137,3 +139,7 @@ tables:
 ```
 
 When the parent tax rate changes, the child's `tax_rate` SYNC column updates, triggering recalculation of `tax_amount` and `total`.
+
+---
+
+Previous: [Snapshot Parent to Child](snapshot-automation.md) | Next: [Formulas Within A Row](formula-columns.md)

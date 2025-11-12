@@ -1,3 +1,5 @@
+Previous: [The Theory of GenLogic](../10-Introduction/10-augmented-normaliztaion.md) | Next: [Running a Build](20-running-a-build.md)
+
 # Installation
 
 ## Requirements
@@ -53,3 +55,7 @@ Or create a dedicated migration user:
 ```bash
 sudo -u postgres psql -c "CREATE ROLE genlogic_admin WITH LOGIN CREATEROLE;"
 ```
+
+---
+
+Previous: [The Theory of GenLogic](../10-Introduction/10-augmented-normaliztaion.md) | Next: [Running a Build](20-running-a-build.md)

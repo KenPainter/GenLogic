@@ -1,3 +1,5 @@
+Previous: [Accessing the Database](30-accessing-the-database.md) | Next: [Coding with AI](50-coding-with-ai.md)
+
 # What Happens in a Build
 
 ## Build Stages
@@ -52,3 +54,7 @@ With no cycles, a GenLogic-built database guarantees:
 - Determinism: Given the same DML to the same database, calculated values always produce the same result
 - Consistency: All dependent values are computed after their dependencies
 - No race conditions: No calculation can see an inconsistent intermediate state, no query will see intermediate state
+
+---
+
+Previous: [Accessing the Database](30-accessing-the-database.md) | Next: [Coding with AI](50-coding-with-ai.md)

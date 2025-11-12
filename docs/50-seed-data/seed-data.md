@@ -1,3 +1,5 @@
+Previous: [Auto Create Parent](../40-row-automations/auto-create-parent.md) | Next: [Intra-Table Dependencies With Calculated Foreign Keys](../60-advanced/intra-table-column-dependency-chain-via-fk.md)
+
 # Seed Data
 
 Seed data pre-populates tables with initial rows defined in the schema. GenLogic inserts seed data automatically when building the database.
@@ -188,3 +190,7 @@ Seed data is useful for:
   - so that child table seed rows can reference parent-table seed rows
 - Seed rows use `ON CONFLICT DO NOTHING` (cannot update existing rows)
 - Seed data is inserted on every GenLogic run (idempotent but not skippable)
+
+---
+
+Previous: [Auto Create Parent](../40-row-automations/auto-create-parent.md) | Next: [Intra-Table Dependencies With Calculated Foreign Keys](../60-advanced/intra-table-column-dependency-chain-via-fk.md)

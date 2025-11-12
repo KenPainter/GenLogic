@@ -1,3 +1,5 @@
+Previous: [Tables and Columns](10-tables-and-columns.md) | Next: [Constraints and Indexes](30-constraints-and-indexes.md)
+
 # Primary Keys and Foreign Keys
 
 ## Primary Keys
@@ -175,3 +177,7 @@ tables:
       # Allowed but redundant
       # category_id: FK categories delete restrict
 ```
+
+---
+
+Previous: [Tables and Columns](10-tables-and-columns.md) | Next: [Constraints and Indexes](30-constraints-and-indexes.md)

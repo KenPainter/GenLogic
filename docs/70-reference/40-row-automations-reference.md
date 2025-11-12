@@ -1,3 +1,5 @@
+Previous: [Reference: Column Automations](30-column-automations-reference.md) | Next: [Reference: Seed Rows](50-seed-data-reference.md)
+
 # Row Automations Technical Reference
 
 ## Auto-Create Parent
@@ -51,3 +53,7 @@ Inserting into level_3 with non-existent level_2_id creates both level_2 and lev
 ## No Auto-Delete
 
 GenLogic does not delete parent rows when children are removed.
+
+---
+
+Previous: [Reference: Column Automations](30-column-automations-reference.md) | Next: [Reference: Seed Rows](50-seed-data-reference.md)

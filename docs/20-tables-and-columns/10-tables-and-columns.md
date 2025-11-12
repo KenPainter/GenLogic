@@ -1,3 +1,5 @@
+Previous: [Tables and Columns Introduction](05-tables-and-columns-introduction.md) | Next: [Primary Keys and Foreign Keys](20-primary-and-foreing-keys.md)
+
 # Describing Tables and Columns
 
 GenLogic schemas are defined in YAML.  A top-level `tables` object lists
@@ -100,3 +102,7 @@ tables:
       price: numeric(10,2)
       tax_rate: numeric(5,4) default ${TAX_RATE}
 ```
+
+---
+
+Previous: [Tables and Columns Introduction](05-tables-and-columns-introduction.md) | Next: [Primary Keys and Foreign Keys](20-primary-and-foreing-keys.md)

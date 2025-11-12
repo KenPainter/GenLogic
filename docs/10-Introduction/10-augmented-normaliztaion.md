@@ -1,3 +1,5 @@
+Next: [Installation](../13-getting-started/10-installation.md)
+
 # The Theory of GenLogic
 
 GenLogic was born of the realization that a large class
@@ -85,3 +87,7 @@ Finally, in terms of performance, GenLogic is a "pay me now"
 system, where we increase the cost of a write operation to avoid
 race conditions and reduce the cost of development.  GenLogic
 shines when (cost of writes) < cost(hardware + development + support).
+
+---
+
+Next: [Installation](../13-getting-started/10-installation.md)

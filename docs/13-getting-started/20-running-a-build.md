@@ -1,3 +1,5 @@
+Previous: [Installation](10-installation.md) | Next: [Accessing the Database](30-accessing-the-database.md)
+
 # Running a Build
 
 ## Basic Build Command
@@ -67,3 +69,7 @@ See docs/70-reference/error-messages.md for all validation errors.
 GenLogic builds are idempotent. Rerunning with the same schema makes no changes except:
 - Triggers are always dropped and recreated
 - Seed rows are inserted (ON CONFLICT DO NOTHING)
+
+---
+
+Previous: [Installation](10-installation.md) | Next: [Accessing the Database](30-accessing-the-database.md)

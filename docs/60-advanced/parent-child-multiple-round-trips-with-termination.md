@@ -1,3 +1,5 @@
+Previous: [Intra-Table Dependencies With Calculated Foreign Keys](intra-table-column-dependency-chain-via-fk.md) | Next: [Reference: Tables and Columns](../70-reference/10-tables-and-columns-reference.md)
+
 # Multiple Round Trips Through Parent-Child Pair with Termination
 
 This pattern demonstrates how to specify complex calculations
@@ -140,3 +142,6 @@ New calculations:
 
 The system recalculates through both round trips automatically.
 
+---
+
+Previous: [Intra-Table Dependencies With Calculated Foreign Keys](intra-table-column-dependency-chain-via-fk.md) | Next: [Reference: Tables and Columns](../70-reference/10-tables-and-columns-reference.md)

@@ -1,3 +1,5 @@
+Previous: [Running a Build](20-running-a-build.md) | Next: [What Happens in a Build](40-what-happens-in-a-build.md)
+
 # Accessing the Database
 
 Applications should always connect to the database without the
@@ -19,3 +21,6 @@ The `<database_name>_genlogic_admin` role owns all GenLogic-managed tables and f
 - Bypasses column-level permission restrictions
 - Should only be used for schema migrations and GenLogic builds
 
+---
+
+Previous: [Running a Build](20-running-a-build.md) | Next: [What Happens in a Build](40-what-happens-in-a-build.md)

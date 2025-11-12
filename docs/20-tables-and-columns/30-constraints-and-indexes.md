@@ -1,3 +1,5 @@
+Previous: [Primary Keys and Foreign Keys](20-primary-and-foreing-keys.md) | Next: [Snapshot Parent to Child](../30-column-automations/snapshot-automation.md)
+
 # Constraints and Indexes
 
 ## Unique Constraints
@@ -196,3 +198,7 @@ Creates three indexes:
 Add custom indexes for frequently filtered columns, sort columns, or composite queries.
 
 Indexes speed up reads but slow down writes.
+
+---
+
+Previous: [Primary Keys and Foreign Keys](20-primary-and-foreing-keys.md) | Next: [Snapshot Parent to Child](../30-column-automations/snapshot-automation.md)

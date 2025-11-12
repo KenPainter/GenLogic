@@ -1,3 +1,5 @@
+Previous: [Reference: Tables and Columns](10-tables-and-columns-reference.md) | Next: [Reference: Row Automations](40-row-automations-reference.md)
+
 # Column Automations Technical Reference
 
 ## Automation Property
@@ -144,3 +146,7 @@ Formulas:
 - Calculate on insert and update
 - Can reference other formula columns (calculated in dependency order)
 - Can reference SYNC columns
+
+---
+
+Previous: [Reference: Tables and Columns](10-tables-and-columns-reference.md) | Next: [Reference: Row Automations](40-row-automations-reference.md)

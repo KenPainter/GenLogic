@@ -1,3 +1,5 @@
+Previous: [Seed Rows](../50-seed-data/seed-data.md) | Next: [Multiple Round Trips Through Parent-Child Pair with Termination](parent-child-multiple-round-trips-with-termination.md)
+
 # Intra-Table Column Dependency Chain via FK
 
 This pattern demonstrates column dependencies within a single table where 
@@ -99,3 +101,7 @@ base_price ───────────────────────
 ```
 
 GenLogic's topological sort ensures correct execution order across the FK relationship.
+
+---
+
+Previous: [Seed Rows](../50-seed-data/seed-data.md) | Next: [Multiple Round Trips Through Parent-Child Pair with Termination](parent-child-multiple-round-trips-with-termination.md)

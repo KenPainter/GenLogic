@@ -1,3 +1,5 @@
+Previous: [Aggregations to Parent](../30-column-automations/aggregations.md) | Next: [Seed Rows](../50-seed-data/seed-data.md)
+
 # Auto-Create Parent
 
 Auto-create parent automatically creates a parent row when inserting a child with a non-existent foreign key value.
@@ -135,3 +137,7 @@ GenLogic creates:
 3. The order row
 
 All parent rows are created automatically.
+
+---
+
+Previous: [Aggregations to Parent](../30-column-automations/aggregations.md) | Next: [Seed Rows](../50-seed-data/seed-data.md)

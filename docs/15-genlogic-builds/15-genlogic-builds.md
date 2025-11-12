@@ -1,3 +1,5 @@
+Previous: [Coding with AI](../13-getting-started/50-coding-with-ai.md) | Next: [Tables and Columns Introduction](../20-tables-and-columns/05-tables-and-columns-introduction.md)
+
 # GenLogic Build Process
 
 The GenLogic build process follows these stages
@@ -80,4 +82,6 @@ With no cycles, a GenLogic-built database gaurantees:
 - No race conditions: No calculation can see an inconsistent intermediate state, no
   query will see intermediate state.
 
+---
 
+Previous: [Coding with AI](../13-getting-started/50-coding-with-ai.md) | Next: [Tables and Columns Introduction](../20-tables-and-columns/05-tables-and-columns-introduction.md)

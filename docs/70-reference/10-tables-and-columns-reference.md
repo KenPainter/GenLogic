@@ -1,3 +1,5 @@
+Previous: [Multiple Round Trips Through Parent-Child Pair with Termination](../60-advanced/parent-child-multiple-round-trips-with-termination.md) | Next: [Reference: Column Automations](30-column-automations-reference.md)
+
 # Tables and Columns Technical Reference
 
 ## Top level Objects
@@ -178,3 +180,7 @@ tables:
             - date2 <= date1
 
 ```
+
+---
+
+Previous: [Multiple Round Trips Through Parent-Child Pair with Termination](../60-advanced/parent-child-multiple-round-trips-with-termination.md) | Next: [Reference: Column Automations](30-column-automations-reference.md)

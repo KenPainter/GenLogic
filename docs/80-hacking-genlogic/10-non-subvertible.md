@@ -1,3 +1,5 @@
+Previous: [Error Messages](../70-reference/error-messages.md)
+
 # Non-Subvertible Design
 
 GenLogic prevents users from corrupting automated column values
@@ -46,3 +48,7 @@ so it is summarized here.
 Test suite: `tests/non-subvertible/`
 - `10a1-insert-subversion-attempts.md` - Tests all 4 INSERT cases (SYNC, SNAPSHOT, Formula, Aggregate trigger overwrites)
 - `10a2-update-subversion-attempts.md` - Tests all 4 UPDATE cases (SYNC, SNAPSHOT, Formula, Aggregate all blocked via permission denied)
+
+---
+
+Previous: [Error Messages](../70-reference/error-messages.md)

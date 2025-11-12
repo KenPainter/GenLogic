@@ -1,3 +1,5 @@
+Previous: [What Happens in a Build](40-what-happens-in-a-build.md) | Next: [Build Process](../15-genlogic-builds/15-genlogic-builds.md)
+
 # Coding Schemas with AI Assistants
 
 ## Recommended Approach
@@ -68,3 +70,7 @@ For complex business logic patterns, see section 60 (Advanced):
 - Multiple round trips through parent-child pairs with termination
 
 These patterns show how to structure complex calculations that GenLogic guarantees will terminate.
+
+---
+
+Previous: [What Happens in a Build](40-what-happens-in-a-build.md) | Next: [Build Process](../15-genlogic-builds/15-genlogic-builds.md)

@@ -1,3 +1,5 @@
+Previous: [Reference: Row Automations](40-row-automations-reference.md) | Next: [Error Messages](error-messages.md)
+
 # Seed Data Technical Reference
 
 ## Seed-Rows Property
@@ -127,3 +129,7 @@ Seed data uses ON CONFLICT DO NOTHING.
 Re-running GenLogic does not duplicate seed rows.
 
 Manual data insertion does not conflict with seed data.
+
+---
+
+Previous: [Reference: Row Automations](40-row-automations-reference.md) | Next: [Error Messages](error-messages.md)

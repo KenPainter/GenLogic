@@ -1,3 +1,5 @@
+Previous: [Build Process](../15-genlogic-builds/15-genlogic-builds.md) | Next: [Tables and Columns](10-tables-and-columns.md)
+
 # Introduction to GenLogic YAML syntax
 
 This documentation assumes knowledge of basic Relational/SQL
@@ -33,3 +35,7 @@ In this section we will see how to describe a normalized
 SQL database.  This is the "normalization" portion of GenLogic's
 "Augmented Normalization".  Later sections will demonstrate
 the "Augmented" portion through automations and formulas.
+
+---
+
+Previous: [Build Process](../15-genlogic-builds/15-genlogic-builds.md) | Next: [Tables and Columns](10-tables-and-columns.md)

@@ -1,3 +1,5 @@
+Previous: [Reference: Seed Rows](50-seed-data-reference.md) | Next: [Non-Subvertible Design](../80-hacking-genlogic/10-non-subvertible.md)
+
 # Error Messages Reference
 
 ## Constants
@@ -137,3 +139,7 @@ Cycle detected: table.col1 -> table.col2 -> table.col1
 Cycle detected: table1.col1 -> table2.col2 -> table1.col1
 - Automation dependencies form cycle.
 - Remove circular dependency. Check SYNC/aggregation/formula chain.
+
+---
+
+Previous: [Reference: Seed Rows](50-seed-data-reference.md) | Next: [Non-Subvertible Design](../80-hacking-genlogic/10-non-subvertible.md)
