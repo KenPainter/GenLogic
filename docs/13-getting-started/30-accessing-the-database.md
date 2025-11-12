@@ -1,64 +1,21 @@
 # Accessing the Database
 
-## Application User Privileges
+Applications should always connect to the database without the
+admin role, to protect non-subvertibility.
 
-After GenLogic builds the database, application code connects as a normal unprivileged user.
+## Non-Subvertibility
 
-Create an application user:
+Non-Subvertibility works by two mechanisms:
+- INSERT: triggers write correct defaults and formula values, even
+  if subverting values are provided, they will be overwritten.
+- UPDATE: non-admin users have no UPDATE permissions on formula or
+  automation columns.
 
-```bash
-sudo -u postgres psql -c "CREATE ROLE myapp_user WITH LOGIN PASSWORD 'secret';"
-```
+If the application connects as the admin role, then **by either accident or malice**,
+UPDATE statements can corrupt formula or aggregation columns.
 
-GenLogic configures column-level permissions so application users can:
-- SELECT from all tables
-- INSERT into all tables
-- DELETE from all tables
-- UPDATE non-automated columns
+The `<database_name>_genlogic_admin` role owns all GenLogic-managed tables and functions. This role:
+- Can UPDATE any column, including automated columns
+- Bypasses column-level permission restrictions
+- Should only be used for schema migrations and GenLogic builds
 
-Application users cannot:
-- UPDATE automated or formula columns (permission denied)
-- Disable triggers (do not own tables)
-- Modify trigger code (do not own functions)
-- DROP or ALTER tables
-
-## Why This Prevents Subverting Calculations
-
-Triggers are created SECURITY DEFINER and owned by `<database_name>_genlogic_admin`.
-
-When application code performs DML:
-1. Application user has no privilege to UPDATE automated columns directly
-2. Triggers fire with admin privileges regardless of invoking user
-3. Triggers cannot be disabled or modified by application user
-4. Automated column values are calculated correctly
-
-This separation ensures calculated values cannot be corrupted by application code or malicious clients.
-
-## Connection String Example
-
-Application connects as unprivileged user:
-
-```javascript
-const pool = new Pool({
-  host: 'localhost',
-  database: 'myapp',
-  user: 'myapp_user',
-  password: 'secret'
-});
-```
-
-Do not connect as the privileged user (database owner) for regular application operations.
-
-## Testing Permissions
-
-Verify application user cannot UPDATE automated columns:
-
-```sql
--- This succeeds (non-automated column)
-UPDATE products SET name = 'New Name' WHERE product_id = 1;
-
--- This fails with permission denied (automated column)
-UPDATE customers SET order_count = 999 WHERE customer_id = 1;
-```
-
-The automated column is updated only by triggers, which execute with admin privileges.

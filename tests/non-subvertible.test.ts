@@ -18,7 +18,7 @@ const setup = setupGoRightTests({
   schemasDir: join(import.meta.dir, 'non-subvertible'),
   dumpDir: join(import.meta.dir, 'non-subvertible-out'),
   suiteName: 'Non-Subvertible',
-  testDatabase: 'genlogic_test_nonsubvertible'
+  testDatabase: 'genlogic_tests'
 });
 
 // Only create describe block if setup succeeded

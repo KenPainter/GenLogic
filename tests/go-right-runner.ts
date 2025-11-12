@@ -25,6 +25,8 @@ export interface TestContext {
   lastError: string | null;
   currentBaseName: string;
   buildStepCounter: number;
+  appPool: any | null;        // Lazily created after first build
+  testDatabase: string;       // Database name for app user creation
 }
 
 export interface GoRightConfig {
@@ -169,8 +171,11 @@ export async function dropTestDatabase(dbName: string, testUser: string): Promis
 /**
  * Drop all tables in the test database (between tests)
  * Much faster than dropping the entire database
+ *
+ * IMPORTANT: Uses privileged pool because dropping tables requires ownership
  */
-export async function dropAllTables(pool: any): Promise<void> {
+export async function dropAllTables(privilegedPool: any): Promise<void> {
+  const pool = privilegedPool;
   // Get all tables in public schema
   const result = await pool.query(`
     SELECT tablename FROM pg_tables
@@ -250,12 +255,29 @@ export async function executeBuildStep(
  * Execute SQL step
  * Handles multi-statement SQL blocks by splitting on semicolons
  * Stores results only from the last SELECT statement
+ *
+ * IMPORTANT: SQL executes as the unprivileged application user by default
+ * This matches real-world usage where apps connect as non-admin users
+ * The app user pool is lazily created after first build (when the user exists)
  */
 export async function executeSQLStep(
   step: TestStep & { type: 'sql' },
   context: TestContext,
-  pool: any
+  privilegedPool: any
 ): Promise<void> {
+  // Lazy create app user pool if not already created
+  // App user is created by first YAML build, so we can't create pool until after that
+  if (!context.appPool) {
+    const appUserName = `${context.testDatabase}_app_user`;
+    context.appPool = new Pool({
+      host: '/var/run/postgresql',
+      database: context.testDatabase,
+      user: appUserName
+    });
+  }
+
+  // Use app user pool for realistic testing (unprivileged)
+  const pool = context.appPool;
   // Split SQL into individual statements
   const statements = step.content
     .split(';')
@@ -446,23 +468,29 @@ export function getValueByPath(obj: any, path: string): any {
 
 /**
  * Run a single markdown test file
- * Uses shared database and pool - just drops tables between tests
+ * Uses shared database and privileged pool - just drops tables between tests
+ *
+ * IMPORTANT: SQL statements execute as unprivileged app user by default,
+ * while YAML builds execute as privileged user (needs CREATEROLE)
  */
-export async function runMarkdownTest(fileName: string, pool: any, config: GoRightConfig): Promise<void> {
+export async function runMarkdownTest(fileName: string, privilegedPool: any, config: GoRightConfig): Promise<void> {
   const baseName = fileName.replace(/\.md$/, '');
   const mdPath = join(config.schemasDir, fileName);
   const mdContent = readFileSync(mdPath, 'utf-8');
   const steps = parseMarkdownTest(mdContent);
 
   // Drop all tables to start fresh (much faster than recreating database)
-  await dropAllTables(pool);
+  // Uses privileged pool because we own the tables
+  await dropAllTables(privilegedPool);
 
   const context: TestContext = {
     lastBuildDumps: {},
     lastSelectResults: null,
     lastError: null,
     currentBaseName: baseName,
-    buildStepCounter: 0
+    buildStepCounter: 0,
+    appPool: null,  // Lazily created after first build
+    testDatabase: config.testDatabase || 'genlogic_tests'
   };
 
   // Execute steps sequentially
@@ -470,10 +498,13 @@ export async function runMarkdownTest(fileName: string, pool: any, config: GoRig
     try {
       switch (step.type) {
         case 'build':
+          // Builds run as privileged user (via GenLogicProcessor creating its own connection)
           await executeBuildStep(step, context, config);
           break;
         case 'sql':
-          await executeSQLStep(step, context, pool);
+          // SQL runs as unprivileged app user (realistic testing)
+          // App pool is lazily created inside executeSQLStep after first build
+          await executeSQLStep(step, context, privilegedPool);
           break;
         case 'assert':
           await executeAssertStep(step, context, fileName);
@@ -487,6 +518,11 @@ export async function runMarkdownTest(fileName: string, pool: any, config: GoRig
         (error instanceof Error ? error.message : String(error))
       );
     }
+  }
+
+  // Cleanup app pool if it was created
+  if (context.appPool) {
+    await context.appPool.end();
   }
 }
 
@@ -535,14 +571,19 @@ export function setupGoRightTests(config: GoRightConfig) {
     timeout,
     config,
 
-    // Function to create database and pool
+    // Function to create database and privileged pool
+    // App user pool is created lazily in runMarkdownTest after first build
     async createPool() {
       await createTestDatabase(testDatabase, testUser);
-      return new Pool({
+
+      // Privileged pool (setup user with CREATEROLE)
+      const privilegedPool = new Pool({
         host: '/var/run/postgresql',
         database: testDatabase,
         user: testUser
       });
+
+      return privilegedPool;
     },
 
     // Function to cleanup pool and database
@@ -550,9 +591,11 @@ export function setupGoRightTests(config: GoRightConfig) {
       if (pool) {
         await pool.end();
       }
-      if (!process.env.GENLOGIC_KEEP_TEST_DB) {
-        await dropTestDatabase(testDatabase, testUser);
-      }
+      // NOTE: We do NOT drop the test database between test runs
+      // because multiple test suites share the same database.
+      // Each test drops all tables at the start (dropAllTables in runMarkdownTest),
+      // which is much faster than dropping/recreating the database.
+      // To manually clean up: dropdb genlogic_tests
     }
   };
 }

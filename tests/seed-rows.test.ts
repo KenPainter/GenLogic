@@ -17,7 +17,7 @@ const setup = setupGoRightTests({
   schemasDir: join(import.meta.dir, 'seed-rows'),
   dumpDir: join(import.meta.dir, 'seed-rows-out'),
   suiteName: 'Seed Data',
-  testDatabase: 'genlogic_test_seed_rows'
+  testDatabase: 'genlogic_tests'
 });
 
 // Only create describe block if setup succeeded

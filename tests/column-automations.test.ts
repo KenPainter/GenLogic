@@ -17,7 +17,7 @@ const setup = setupGoRightTests({
   schemasDir: join(import.meta.dir, 'column-automations'),
   dumpDir: join(import.meta.dir, 'column-automations-out'),
   suiteName: 'Column Automations',
-  testDatabase: 'genlogic_test_column_automations'
+  testDatabase: 'genlogic_tests'
 });
 
 // Only create describe block if setup succeeded

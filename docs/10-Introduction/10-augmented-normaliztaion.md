@@ -28,7 +28,10 @@ Some ideas from relational theory were "loosely borrowed":
 - Just as a relational database is non-subvertible, GenLogic is
   non-subvertible - calculated values cannot be overwritten so 
   long as the application connects to the database with accounts
-  that do not have CREATEROLE privelege.
+  that are not an admin role, such as:
+  - <database>_genlogic_admin
+  - database owner
+  - PostgreSQL superuser
 - Just as DDL defines tables and keys and constraints without
   the user needing to know how they are stored on disk, the
   calculated values are defined without the user needing to

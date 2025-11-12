@@ -17,7 +17,7 @@ const setup = setupGoRightTests({
   schemasDir: join(import.meta.dir, 'core-relational'),
   dumpDir: join(import.meta.dir, 'core-relational-out'),
   suiteName: 'Core Schema Operations',
-  testDatabase: 'genlogic_test_core_relational'
+  testDatabase: 'genlogic_tests'
 });
 
 // Only create describe block if setup succeeded

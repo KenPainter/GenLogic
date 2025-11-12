@@ -17,7 +17,7 @@ const setup = setupGoRightTests({
   schemasDir: join(import.meta.dir, 'protections'),
   dumpDir: join(import.meta.dir, 'protections-out'),
   suiteName: 'Protections',
-  testDatabase: 'genlogic_test_protections'
+  testDatabase: 'genlogic_tests'
 });
 
 // Only create describe block if setup succeeded

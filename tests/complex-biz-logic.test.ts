@@ -17,7 +17,7 @@ const setup = setupGoRightTests({
   schemasDir: join(import.meta.dir, 'complex-biz-logic'),
   dumpDir: join(import.meta.dir, 'complex-biz-logic-out'),
   suiteName: 'Complex Business Logic',
-  testDatabase: 'genlogic_test_complex_biz_logic'
+  testDatabase: 'genlogic_tests'
 });
 
 // Only create describe block if setup succeeded

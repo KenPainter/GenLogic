@@ -107,10 +107,10 @@ FROM vendors;
 ]
 ```
 
-## Test: Attempt UPDATE of Formula Column
+## Test: Attempt UPDATE of Formula Column (Should Fail)
 
-User tries to subvert total_with_tax (formula column).
-Trigger should recalculate and overwrite the bogus value.
+User tries to subvert total_with_tax (formula column) in UPDATE statement.
+Column-level permissions should block this with permission denied error.
 
 ```sql
 UPDATE orders
@@ -119,23 +119,10 @@ SET order_amount = 150.00,
 WHERE order_id = 1;
 ```
 
-## Verify Formula Overwrite
-
-```sql
-SELECT order_id, order_amount, vendor_tax_rate, total_with_tax
-FROM orders
-WHERE order_id = 1;
-```
-
 ```json
-[
-  {
-    "order_id": 1,
-    "order_amount": "150.00",
-    "vendor_tax_rate": "0.0825",
-    "total_with_tax": "162.38"
-  }
-]
+{
+  "error": "permission denied"
+}
 ```
 
 ## Test: Attempt UPDATE of SYNC Column (Should Fail)
@@ -209,18 +196,22 @@ WHERE vendor_id = 1;
 ## Test: User Can Still UPDATE Non-Automated Columns
 
 Verify that column-level permissions don't break legitimate updates.
+This also updates order_amount which affects the formula column.
 
 ```sql
 UPDATE orders
 SET order_date = '2025-01-20',
-    quantity = 99
+    quantity = 99,
+    order_amount = 150.00
 WHERE order_id = 1;
 ```
 
 ## Verify Non-Automated Update Succeeded
 
+Formula column should recalculate based on new order_amount via trigger.
+
 ```sql
-SELECT order_id, order_date, quantity
+SELECT order_id, order_date, quantity, order_amount, total_with_tax
 FROM orders
 WHERE order_id = 1;
 ```
@@ -229,8 +220,10 @@ WHERE order_id = 1;
 [
   {
     "order_id": 1,
-    "order_date": "2025-01-20",
-    "quantity": 99
+    "order_date": "2025-01-20T00:00:00.000Z",
+    "quantity": 99,
+    "order_amount": "150.00",
+    "total_with_tax": "162.38"
   }
 ]
 ```
@@ -264,6 +257,7 @@ FROM vendors;
 ## Verify Data Integrity After All Tests
 
 All automated columns should still have correct values (not subverted).
+order_id 1 has updated order_amount (150.00) from the legitimate UPDATE above.
 
 ```sql
 SELECT order_id, order_amount, vendor_tax_rate, snapshot_tax_rate, total_with_tax

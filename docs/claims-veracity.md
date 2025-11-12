@@ -22,10 +22,6 @@ This document analyzes every testable claim in the GenLogic documentation and va
 ### 1. docs/10-Introduction/10-augmented-normaliztaion.md
 
 
-2. **Claim (Lines 28-31):** "GenLogic is non-subvertible - calculated values cannot be overwritten so long as the application connects to the database with accounts that do not have CREATEROLE privilege"
-   - Status: ❌ Not validated
-   - Note: No explicit test found for permission enforcement on calculated columns
-
 3. **Claim (Lines 42-48):** "As long as the column Graph has no cycles, we can guarantee: Termination, Determinism, Consistency, No race conditions"
    - Status: ⚠️ Partially validated
    - Tests:

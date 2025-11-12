@@ -252,8 +252,8 @@ export class GenLogicProcessor {
     const allStatements: string[] = [
       ...dropTriggerSQL,
       ...schemaSQL,
-      ...seedSQL,
-      ...permissionSQL
+      ...permissionSQL,
+      ...seedSQL
     ];
 
     // Filter out empty statements

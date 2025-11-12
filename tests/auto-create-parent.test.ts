@@ -17,7 +17,7 @@ const setup = setupGoRightTests({
   schemasDir: join(import.meta.dir, 'auto-create-parent'),
   dumpDir: join(import.meta.dir, 'auto-create-parent-out'),
   suiteName: 'FK Auto-Create Parent',
-  testDatabase: 'genlogic_test_auto_create_parent'
+  testDatabase: 'genlogic_tests'
 });
 
 // Only create describe block if setup succeeded

@@ -16,17 +16,17 @@ so it is summarized here.
 | INSERT | Aggregate | Nothing | Default initialization | Protected |
 | UPDATE | SYNC | Only if FK changes | Column-level GRANT | Protected |
 | UPDATE | SNAPSHOT | Only if FK changes | Column-level GRANT | Protected |
-| UPDATE | Formula | Recalculates | Trigger overwrites | Protected |
+| UPDATE | Formula | Recalculates | Column-level GRANT | Protected |
 | UPDATE | Aggregate | Nothing | Column-level GRANT | Protected |
 
 ## Why Two Mechanisms Are Required
 
-**Trigger overwrites** are sufficient when the trigger unconditionally sets the column value on every operation. User input is silently discarded - the trigger always wins.
+**Trigger overwrites** are used for INSERT operations because PostgreSQL does not support column-level INSERT restrictions. All automated columns must allow INSERT permission, so triggers unconditionally overwrite user input to ensure correctness.
 
-**Column-level GRANTs** are necessary when triggers only recalculate conditionally:
-- SYNC/SNAPSHOT on UPDATE: Only recalculates if FK changes
-- Aggregates on UPDATE: Only recalculated by child table triggers
-- Without permission restrictions, direct UPDATE with unchanged dependencies → bogus value persists
+**Column-level GRANTs** are used for UPDATE operations to provide clear, explicit protection. All automated columns (SYNC, SNAPSHOT, Formula, Aggregate) deny UPDATE permission, causing immediate "permission denied" errors if users attempt to update them. This is superior to silent correction because:
+- Users get explicit feedback about programming errors
+- Single, consistent protection mechanism for all automated columns on UPDATE
+- Simpler security model to understand and audit
 
 **Default initialization** for aggregates on INSERT is required because:
 - Parent table BEFORE INSERT trigger doesn't touch aggregation columns
@@ -37,12 +37,12 @@ so it is summarized here.
 
 ## Implementation Status
 
-- ✅ Trigger overwrites: Working (3 cases protected)
-- ✅ Column-level GRANTs: Implemented in `src/helpers-ddl/permissions.ts` and wired into processor
+- ✅ Trigger overwrites for INSERT: Working (all 4 column types protected)
+- ✅ Column-level GRANTs for UPDATE: Implemented in `src/helpers-ddl/permissions.ts` and wired into processor
 - ✅ Aggregate initialization: Implemented in `src/helpers-ddl/triggers/initialize-aggregations.ts`
 
 ## Tests
 
 Test suite: `tests/non-subvertible/`
-- `10a1-insert-subversion-attempts.md` - Tests all 4 INSERT cases (SYNC, SNAPSHOT, Formula, Aggregate)
-- `10a2-update-subversion-attempts.md` - Tests all 4 UPDATE cases (Formula overwrites, SYNC/SNAPSHOT/Aggregate permission denied)
+- `10a1-insert-subversion-attempts.md` - Tests all 4 INSERT cases (SYNC, SNAPSHOT, Formula, Aggregate trigger overwrites)
+- `10a2-update-subversion-attempts.md` - Tests all 4 UPDATE cases (SYNC, SNAPSHOT, Formula, Aggregate all blocked via permission denied)
