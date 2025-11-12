@@ -16,8 +16,8 @@ so it is summarized here.
 | INSERT | SNAPSHOT | Pulls from parent | Trigger overwrites | Protected |
 | INSERT | Formula | Calculates | Trigger overwrites | Protected |
 | INSERT | Aggregate | Nothing | Default initialization | Protected |
-| UPDATE | SYNC | Only if FK changes | Column-level GRANT | Protected |
-| UPDATE | SNAPSHOT | Only if FK changes | Column-level GRANT | Protected |
+| UPDATE | SYNC | Only if FK(changes) | Column-level GRANT | Protected |
+| UPDATE | SNAPSHOT | Only if FK(changes) | Column-level GRANT | Protected |
 | UPDATE | Formula | Recalculates | Column-level GRANT | Protected |
 | UPDATE | Aggregate | Nothing | Column-level GRANT | Protected |
 

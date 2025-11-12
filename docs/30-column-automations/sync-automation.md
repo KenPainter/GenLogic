@@ -18,7 +18,7 @@ tables:
   orders:
     columns:
       order_id: serial primary key
-      product_id: FK products
+      product_id: FK(products)
       quantity: integer
 
       # SYNC: Always reflects current parent value
@@ -55,7 +55,7 @@ tables:
   purchase_orders:
     columns:
       po_id: serial primary key
-      supplier_id: FK suppliers
+      supplier_id: FK(suppliers)
 
       supplier_name:
         definition: varchar(100)
@@ -89,7 +89,7 @@ tables:
   invoices:
     columns:
       invoice_id: serial primary key
-      jurisdiction_id: FK tax_rates
+      jurisdiction_id: FK(tax_rates)
       subtotal: numeric(10,2)
 
       # SYNC: Updates when parent tax rate changes
@@ -121,7 +121,7 @@ tables:
   invoices:
     columns:
       invoice_id: serial primary key
-      jurisdiction_id: FK tax_rates
+      jurisdiction_id: FK(tax_rates)
       subtotal: numeric(10,2)
 
       tax_rate:

@@ -23,7 +23,7 @@ tables:
   transactions:
     columns:
       transaction_id: serial primary key
-      account_id: FK accounts
+      account_id: FK(accounts)
       amount: numeric(10,2)
       description: varchar(200)
 ```
@@ -68,7 +68,7 @@ tables:
   orders:
     columns:
       order_id: serial primary key
-      customer_id: FK customers
+      customer_id: FK(customers)
       order_date: date
 ```
 
@@ -115,7 +115,7 @@ tables:
   reviews:
     columns:
       review_id: serial primary key
-      product_id: FK products
+      product_id: FK(products)
       rating: integer
       comment: text
 ```
@@ -203,7 +203,7 @@ tables:
   orders:
     columns:
       order_id: serial primary key
-      customer_id: FK customers
+      customer_id: FK(customers)
       total_amount: numeric(10,2)
 ```
 
@@ -211,7 +211,7 @@ All aggregations update when child rows change.
 
 ## Aggregating from Multiple Foreign Keys
 
-When a child table has multiple foreign keys to the same parent, specify which FK to aggregate from.
+When a child table has multiple foreign keys to the same parent, specify which FK(to) aggregate from.
 
 ```yaml
 tables:
@@ -238,8 +238,8 @@ tables:
   transfers:
     columns:
       transfer_id: serial primary key
-      from_account_id: FK accounts
-      to_account_id: FK accounts
+      from_account_id: FK(accounts)
+      to_account_id: FK(accounts)
       amount: numeric(10,2)
       transfer_date: date
 ```

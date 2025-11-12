@@ -8,7 +8,7 @@ Column automations use the `automation` property in object form.
 
 Automation types:
 - SYNC - pull and maintain current parent value
-- SNAPSHOT - capture parent value at insert/FK change
+- SNAPSHOT - capture parent value at insert/FK(change)
 - SUM - aggregate sum from child rows
 - COUNT - count child rows
 - MAX - maximum value from child rows
@@ -26,7 +26,7 @@ tables:
   child_table:
     columns:
       child_id: serial primary key
-      parent_id: FK parent_table
+      parent_id: FK(parent_table)
 
       synced_value:
         definition: numeric(10,2)
@@ -35,7 +35,7 @@ tables:
 
 SYNC updates when:
 - Child row inserted
-- Child FK updated to different parent
+- Child FK(updated) to different parent
 - Parent value changes
 
 ## SNAPSHOT Automation
@@ -50,7 +50,7 @@ tables:
   child_table:
     columns:
       child_id: serial primary key
-      parent_id: FK parent_table
+      parent_id: FK(parent_table)
 
       captured_value:
         definition: numeric(10,2)
@@ -59,7 +59,7 @@ tables:
 
 SNAPSHOT updates when:
 - Child row inserted
-- Child FK updated to different parent
+- Child FK(updated) to different parent
 
 SNAPSHOT does not update when parent value changes.
 
@@ -92,7 +92,7 @@ tables:
   child_table:
     columns:
       child_id: serial primary key
-      parent_id: FK parent_table
+      parent_id: FK(parent_table)
       amount: numeric(10,2)
       rating: integer
 ```
@@ -118,8 +118,8 @@ tables:
   transfers:
     columns:
       transfer_id: serial primary key
-      from_account_id: FK accounts
-      to_account_id: FK accounts
+      from_account_id: FK(accounts)
+      to_account_id: FK(accounts)
       amount: numeric(10,2)
 ```
 

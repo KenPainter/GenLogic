@@ -61,7 +61,7 @@ INSERT INTO postal_codes (postal_code) VALUES ('16075')
 
 ## Foreign Keys
 
-Define a foreign key with the 'FK <parent_table_name>' syntax.
+Define a foreign key with the 'FK(parent_table_name)' syntax.
 
 GenLogic infers the column type from the parent table's primary key.
 
@@ -84,7 +84,7 @@ tables:
       order_id: serial primary key
 
       # customer_id becomes an integer (serial creates integer)
-      customer_id: FK customers
+      customer_id: FK(customers)
 
       order_date: date
 ```
@@ -98,10 +98,10 @@ column names for each foreign key.
 tables:
   accounts:
     account_id: serial primary key
-  
+
   ledger:
-    account_id_debit: FK accounts
-    account_id_credit: FK accounts
+    account_id_debit: FK(accounts)
+    account_id_credit: FK(accounts)
 ```
 
 ### Self-Referential Foreign Keys
@@ -114,7 +114,7 @@ tables:
     columns:
       id: serial primary key
       name: varchar(100)
-      manager_id: FK employees
+      manager_id: FK(employees)
 ```
 
 ### Default Foreign Keys
@@ -129,7 +129,7 @@ tables:
 
   users:
     columns:
-      country: FK citizenship default 'Unknown' 
+      country: FK(citizenship) default 'Unknown'
       # Assumes a valid entry in table citizenship
       # See 'seed-rows' for more complete case
 ```
@@ -148,7 +148,7 @@ tables:
 
   users:
     columns:
-      country: FK citizenship not null
+      country: FK(citizenship) not null
 ```
 
 ### Delete Actions
@@ -169,13 +169,13 @@ tables:
   products:
     columns:
       id: serial primary key
-      category_id: FK categories delete cascade
+      category_id: FK(categories) delete cascade
       # Also allowed:
-      # category_id: FK categories delete set null
-      # category_id: FK categories delete set default
+      # category_id: FK(categories) delete set null
+      # category_id: FK(categories) delete set default
       #
       # Allowed but redundant
-      # category_id: FK categories delete restrict
+      # category_id: FK(categories) delete restrict
 ```
 
 ---

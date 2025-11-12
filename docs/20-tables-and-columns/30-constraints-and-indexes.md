@@ -165,7 +165,7 @@ tables:
   orders:
     columns:
       id: serial primary key
-      customer_id: FK customers
+      customer_id: FK(customers)
       order_date: date
 ```
 

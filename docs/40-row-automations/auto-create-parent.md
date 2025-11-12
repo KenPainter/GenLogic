@@ -37,7 +37,7 @@ tables:
     columns:
       product_id: serial primary key
       product_name: varchar(100)
-      category_id: FK categories auto create parent
+      category_id: FK(categories) auto create parent
 ```
 
 Insert a product with a category that doesn't exist:
@@ -115,13 +115,13 @@ tables:
     columns:
       store_id: serial primary key
       store_name: varchar(100)
-      region_id: FK regions auto create parent
+      region_id: FK(regions) auto create parent
 
   orders:
     columns:
       order_id: serial primary key
       order_date: date
-      store_id: FK stores auto create parent
+      store_id: FK(stores) auto create parent
 ```
 
 Insert an order with non-existent store and region:

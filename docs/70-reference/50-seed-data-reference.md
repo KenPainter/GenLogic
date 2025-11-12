@@ -49,7 +49,7 @@ tables:
     columns:
       product_id: serial primary key
       product_name: varchar(100)
-      category_id: FK categories
+      category_id: FK(categories)
     seed-rows:
       - product_id: 1
         product_name: Laptop
@@ -90,7 +90,7 @@ tables:
   orders:
     columns:
       order_id: serial primary key
-      customer_id: FK customers
+      customer_id: FK(customers)
     seed-rows:
       - order_id: 1
         customer_id: 100

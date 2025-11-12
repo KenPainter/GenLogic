@@ -46,7 +46,7 @@ tables:
   order_lines:
     columns:
       line_id: integer primary key
-      order_id: FK orders
+      order_id: FK(orders)
 
       # Trigger value: starts the calculation chain
       base_price: numeric(10,2)

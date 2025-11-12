@@ -130,7 +130,7 @@ tables:
   invoices:
     columns:
       invoice_id: serial primary key
-      jurisdiction_id: FK tax_rates
+      jurisdiction_id: FK(tax_rates)
       subtotal: numeric(10,2)
 
       # SYNC pulls from parent

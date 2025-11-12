@@ -73,14 +73,11 @@ tables:
       customer_id: id
 
       # Example: bare column name w/o definition
-      created_at: 
+      created_at:
 
-      # Example: definition overrides using column object form
-      #  base: names the re-usable column
-      #  definition: override/append to the base column's definition
-      customer_name: 
-        base: name
-        definition: not null 
+      # Example: reusable column with modifiers
+      #  Reference the reusable column and add modifiers inline
+      customer_name: name not null 
 
 ```
 ## Defining Constants

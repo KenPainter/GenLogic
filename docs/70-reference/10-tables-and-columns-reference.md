@@ -29,9 +29,7 @@ columns:
 tables:
     users:
         # ...other columns...
-        locale:
-            base: locale
-            definition: default '${DEFAULT_LOCALE_IDENTIFIER}'
+        locale: locale default '${DEFAULT_LOCALE_IDENTIFIER}'
 ```
 
 ## Column Definition String
@@ -54,7 +52,7 @@ username: varchar(50) not null unique
 
 ## Foreign Key Definition
 
-A foreign key definition starts with `FK <parent_table>` followed by optional modifiers:
+A foreign key definition starts with `FK(parent_table)` followed by optional modifiers:
 - `not null` - foreign keys are nullable by default
 - `default <value>`
 - `delete <action>` - cascade, restrict, set null, set default (restrict is default)
@@ -62,12 +60,12 @@ A foreign key definition starts with `FK <parent_table>` followed by optional mo
 
 Examples:
 ```yaml
-category_id: FK categories                           # nullable, delete restrict
-user_id: FK users not null                          # required FK
-parent_id: FK nodes delete cascade                  # cascade deletes
-region_id: FK regions delete set null               # nullify on parent delete
-status_id: FK statuses default 1                    # default FK value
-tag_id: FK tags auto create parent                  # create missing parents
+category_id: FK(categories)                           # nullable, delete restrict
+user_id: FK(users) not null                          # required FK
+parent_id: FK(nodes) delete cascade                  # cascade deletes
+region_id: FK(regions) delete set null               # nullify on parent delete
+status_id: FK(statuses) default 1                    # default FK(value)
+tag_id: FK(tags) auto create parent                  # create missing parents
 ```
 
 ## Column Syntax - Short Form
@@ -96,7 +94,7 @@ tables:
         email: varchar(255) not null unique
 
         # A foreign key definition
-        account_id: FK accounts
+        account_id: FK(accounts)
 ```
 
 ## Column Syntax - Object Form
@@ -104,7 +102,7 @@ tables:
 The object form is required when the column:
 - overrides the definition of a re-usable column
 - has an automation or formula
-- is an FK with a formula
+- is an FK(with) a formula
 
 ```yaml
 columns:
@@ -113,20 +111,17 @@ columns:
 
 tables: 
     my_table:
-        # object form to override/append to definition
-        name1:
-            base: name
-            definition: not null
+        # inline reusable with modifiers
+        name1: name not null
 
         # object form to add formula to re-usable column
         name2:
-            base: name
+            definition: name
             formula: case when other_column > 5 then name1 else '' end
 
         # object form to add formula to foreign-key
-        name:
-            base: name
-            definition: FK parent_table not null
+        name3:
+            definition: FK(parent_table) not null
             formula: coalesce(name1,name2)
 ```
 

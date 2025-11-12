@@ -16,7 +16,7 @@ tables:
   child_table:
     columns:
       child_id: serial primary key
-      parent_id: FK parent_table auto create parent
+      parent_id: FK(parent_table) auto create parent
       child_name: varchar(100)
 ```
 
@@ -40,12 +40,12 @@ tables:
   level_2:
     columns:
       id: serial primary key
-      level_1_id: FK level_1 auto create parent
+      level_1_id: FK(level_1) auto create parent
 
   level_3:
     columns:
       id: serial primary key
-      level_2_id: FK level_2 auto create parent
+      level_2_id: FK(level_2) auto create parent
 ```
 
 Inserting into level_3 with non-existent level_2_id creates both level_2 and level_1 rows.

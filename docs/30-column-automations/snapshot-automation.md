@@ -17,7 +17,7 @@ tables:
   orders:
     columns:
       order_id: serial primary key
-      product_id: FK products
+      product_id: FK(products)
       quantity: integer
       order_date: date
 
@@ -55,7 +55,7 @@ tables:
   invoices:
     columns:
       invoice_id: serial primary key
-      item_id: FK price_list
+      item_id: FK(price_list)
       quantity: integer
 
       # SNAPSHOT: Frozen at time of invoice
@@ -102,14 +102,14 @@ tables:
   orders:
     columns:
       order_id: serial primary key
-      product_id: FK products
+      product_id: FK(products)
 
       price_at_order:
         definition: numeric(10,2)
         automation: SNAPSHOT products.list_price
 ```
 
-Change the FK to point to a different product:
+Change the FK(to) point to a different product:
 ```sql
 UPDATE orders
 SET product_id = 200;

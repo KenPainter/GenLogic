@@ -67,7 +67,7 @@ tables:
     columns:
       product_id: serial primary key
       product_name: varchar(100)
-      category_id: FK categories
+      category_id: FK(categories)
       price: numeric(10,2)
     seed-rows:
       - product_id: 1
@@ -76,7 +76,7 @@ tables:
         price: 999.99
 ```
 
-GenLogic inserts categories first, then products. The FK constraint is satisfied.
+GenLogic inserts categories first, then products. The FK(constraint) is satisfied.
 
 ## Idempotency
 
@@ -114,7 +114,7 @@ tables:
   orders:
     columns:
       order_id: serial primary key
-      customer_id: FK customers
+      customer_id: FK(customers)
       order_date: date
     seed-rows:
       - order_id: 1

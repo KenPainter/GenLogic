@@ -26,7 +26,7 @@ tables:
       order_id: serial primary key
 
       # customer_id becomes an integer (serial creates integer)
-      customer_id: FK customers
+      customer_id: FK(customers)
 
       order_date: date
 ```

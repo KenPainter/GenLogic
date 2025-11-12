@@ -4,7 +4,7 @@ Previous: [Seed Rows](../50-seed-data/seed-data.md) | Next: [Multiple Round Trip
 
 This pattern demonstrates column dependencies within a single table where 
 1. a formula calculates a foreign key value
-2. the FK change triggers SYNC automation
+2. the FK(change) triggers SYNC automation
 3. which feeds into subsequent formulas.
 
 ## The Pattern
@@ -22,9 +22,9 @@ tables:
       product_id: integer primary key
       customer_type: varchar(20)
 
-      # Layer 1: Formula calculates FK value
+      # Layer 1: Formula calculates FK(value)
       category_id:
-        definition: FK categories
+        definition: FK(categories)
         formula: "CASE WHEN customer_type = 'premium' THEN 1 ELSE 2 END"
 
       # Layer 2: SYNC pulls values using the calculated FK
@@ -100,7 +100,7 @@ customer_type → category_id → tax_rate → price_with_tax
 base_price ─────────────────────────────┘
 ```
 
-GenLogic's topological sort ensures correct execution order across the FK relationship.
+GenLogic's topological sort ensures correct execution order across the FK(relationship).
 
 ---
 

@@ -15,20 +15,32 @@ Circular constant reference detected
 ## Column Definitions
 
 Column has no definition
-- Column specified without definition or reusable base.
-- Add definition property or base property referencing reusable column.
+- Column specified without definition string.
+- Add definition: `column_name: type` or `column_name: reusable_name`.
 
-Unknown reusable column: NAME
-- Column references non-existent reusable column.
-- Define reusable column or fix base reference.
+No type specified - column must have FK(), reusable reference, or SQL type
+- Column definition is empty after parsing modifiers.
+- Provide a type: `FK(table)`, reusable column name, or SQL type like `varchar(100)`.
 
-Invalid SQL definition: invalid
-- Column definition is not valid SQL type.
-- Use valid PostgreSQL type (varchar, integer, numeric, etc.).
+Reusable column NAME has no definition
+- Referenced reusable column exists but has no definition property.
+- Add `definition:` property to the reusable column in `columns:` section.
 
-Unrecognized SQL modifiers: "text" in definition: type text
-- Definition contains unrecognized SQL keywords.
-- Remove invalid keywords. Valid modifiers: primary key, not null, default, unique.
+Multiple reusable column references found: name1, name2
+- Column definition references multiple reusable columns.
+- Use only one reusable column per column definition.
+
+Unknown PostgreSQL type: TYPE - do you need to define a reusable column 'TYPE'?
+- Column definition uses unrecognized SQL type.
+- Use valid PostgreSQL type (varchar, integer, numeric, etc.) or define as reusable column.
+
+Invalid SQL type: TYPE
+- Column type string cannot be parsed.
+- Check SQL type syntax.
+
+Unrecognized SQL modifiers: "text" in definition: varchar(100) text
+- Definition contains unrecognized text after type.
+- Remove invalid text. Valid modifiers: primary key, not null, default, unique.
 
 ## Column Automation and Formula
 
@@ -54,17 +66,13 @@ Invalid SQL expression
 
 Unknown column property: PROPERTY
 - Column object contains unrecognized property.
-- Remove invalid property. Valid: definition, base, automation, formula, label, format, comment.
+- Remove invalid property. Valid: definition, automation, formula, label, format, comment.
 
 ## Foreign Keys
 
-FK definition missing parent table name
-- FK specified without table name.
-- Add parent table name after FK keyword: FK parent_table.
-
-Invalid FK definition. After removing modifiers, unrecognized content remains: "text"
-- FK definition has invalid syntax after modifiers.
-- Check FK syntax: FK parent_table [not null] [default value] [delete action] [auto create parent].
+Multiple FK definitions found - only one FK() allowed per column
+- Column definition contains multiple FK() references.
+- Use only one FK() per column: `customer_id: FK(customers)`.
 
 FK references non-existent table: TABLE
 - FK references undefined table.
@@ -73,6 +81,26 @@ FK references non-existent table: TABLE
 FK references table TABLE which has no primary key
 - FK references table without primary key.
 - Add primary key to parent table.
+
+Cannot specify explicit type when using FK: "text"
+- FK definition includes additional type after FK().
+- Remove explicit type. FK infers type from parent table's primary key.
+
+Cannot combine FK with reusable column reference
+- Column definition has both FK() and reusable column reference.
+- Use either FK() or reusable column, not both.
+
+FK columns cannot be primary keys - FK references a primary key, it is not one itself
+- FK column marked as primary key.
+- Remove primary key modifier from FK column.
+
+DELETE action is only valid on FK columns
+- Non-FK column has DELETE action modifier.
+- Remove DELETE action or change column to FK.
+
+AUTO CREATE PARENT is only valid on FK columns
+- Non-FK column has AUTO CREATE PARENT modifier.
+- Remove AUTO CREATE PARENT or change column to FK.
 
 ## Automations
 
@@ -130,7 +158,7 @@ Index references non-existent column: COLUMN
 
 Cycle detected: table1 -> table2 -> table1
 - Foreign key relationships form cycle.
-- Remove one FK to break cycle or make one FK nullable.
+- Remove one FK(to) break cycle or make one FK(nullable).
 
 Cycle detected: table.col1 -> table.col2 -> table.col1
 - Formula columns reference each other in loop.
