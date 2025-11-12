@@ -1,7 +1,7 @@
 # 2B2: SNAPSHOT on FK UPDATE
 
 Tests that child SNAPSHOT columns re-capture values when the foreign key is changed to point to a different parent.
-This is the same behavior as SYNC for FK changes.
+This is the same behavior as SYNC for FK(changes).
 
 ## Build Schema
 
@@ -17,7 +17,7 @@ tables:
   transactions:
     columns:
       transaction_id: serial primary key
-      currency_id: FK exchange_rates
+      currency_id: FK(exchange_rates)
       amount_local: numeric(12,2)
       transaction_date: date
 
@@ -93,7 +93,7 @@ FROM transactions;
 ]
 ```
 
-## Update FK to Point to Different Parent (Currency Change)
+## Update FK(to) Point to Different Parent (Currency Change)
 
 Simulate a correction: transaction was actually in GBP, not EUR.
 

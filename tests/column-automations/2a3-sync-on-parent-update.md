@@ -17,7 +17,7 @@ tables:
   invoices:
     columns:
       invoice_id: serial primary key
-      jurisdiction_id: FK tax_rates
+      jurisdiction_id: FK(tax_rates)
       invoice_date: date
       subtotal: numeric(10,2)
 

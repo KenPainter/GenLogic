@@ -22,7 +22,7 @@ tables:
   orders:
     columns:
       order_id: integer primary key
-      discount_code: FK discount_codes
+      discount_code: FK(discount_codes)
       # SYNC discount info from discount_codes
       discount_percent:
         definition: numeric(5,4)
@@ -46,7 +46,7 @@ tables:
   order_lines:
     columns:
       line_id: integer primary key
-      order_id: FK orders
+      order_id: FK(orders)
       base_price: numeric(10,2)
       # SYNC first discount from order
       discount_percent:

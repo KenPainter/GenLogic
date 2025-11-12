@@ -9,12 +9,8 @@ Error catalog reference: `src/new-schema.ts:90`
 ```json
 [
   {
-    "location": "users.name.definition",
-    "message": "Undefined constant: UNDEFINED_CONST"
-  },
-  {
     "location": "users.name",
-    "message": "Unrecognized SQL modifiers: \"(${UNDEFINED_CONST})\" in definition: varchar(${UNDEFINED_CONST})"
+    "message": "Undefined constant: UNDEFINED_CONST"
   }
 ]
 ```

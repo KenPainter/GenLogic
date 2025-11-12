@@ -19,7 +19,7 @@ tables:
   posts:
     columns:
       post_id: serial primary key
-      forum_id: FK forums
+      forum_id: FK(forums)
       author: varchar(100)
       content: text
       posted_at: timestamp

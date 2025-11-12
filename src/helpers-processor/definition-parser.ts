@@ -14,12 +14,11 @@ import type { NewSchema } from '../new-schema.js';
 
 export interface ParsedDefinition {
   // Type source (exactly one will be set)
-  typeSource: 'fk' | 'reusable' | 'explicit';
+  typeSource: 'fk' | 'explicit';
 
   // Type information
   fkParentTable?: string;          // If FK, the parent table name
-  reusableName?: string;           // If reusable, the name
-  explicitType?: string;           // If explicit, the SQL type
+  explicitType?: string;           // If explicit, the SQL type (may be from expanded reusable)
 
   // Modifiers (extracted from definition string)
   notNull?: boolean;
@@ -44,7 +43,7 @@ export function parseDefinition(
   newSchema: NewSchema,
   location: string,
   definition: string,
-  reusableColumns: Set<string>
+  reusableColumns: Record<string, any>
 ): ParsedDefinition | null {
 
   const original = definition;
@@ -92,10 +91,10 @@ export function parseDefinition(
     remaining = remaining.replace(fkText, '').trim();
   }
 
-  // Extract reusable column matches
+  // Extract reusable column matches and expand inline
   // Find all tokens that match reusable column names
   const tokens = remaining.split(/\s+/);
-  const reusableMatches = tokens.filter(token => reusableColumns.has(token));
+  const reusableMatches = tokens.filter(token => token in reusableColumns);
 
   if (reusableMatches.length > 1) {
     newSchema.errors.push({
@@ -105,16 +104,26 @@ export function parseDefinition(
     return null;
   }
 
-  let reusableName: string | undefined;
+  // If reusable found, replace it with its definition
   if (reusableMatches.length === 1) {
-    reusableName = reusableMatches[0];
-    // Remove reusable name from remaining string
-    remaining = remaining.replace(reusableName, '').trim();
+    const reusableName = reusableMatches[0];
+    const reusableDef = reusableColumns[reusableName];
+
+    if (!reusableDef.definition) {
+      newSchema.errors.push({
+        location,
+        message: `Reusable column ${reusableName} has no definition`
+      });
+      return null;
+    }
+
+    // Replace reusable name with its definition in the remaining string
+    remaining = remaining.replace(reusableName, reusableDef.definition).trim();
   }
 
-  // Validate: FK + reusable is invalid
-  const typeSourceCount = (fkParentTable ? 1 : 0) + (reusableName ? 1 : 0);
-  if (typeSourceCount > 1) {
+  // Validate: FK + reusable is invalid (check before replacement)
+  const hasReusable = reusableMatches.length === 1;
+  if (fkParentTable && hasReusable) {
     newSchema.errors.push({
       location,
       message: 'Cannot combine FK with reusable column reference'
@@ -175,21 +184,21 @@ export function parseDefinition(
   // ============================================================
   // PHASE 3: Type validation
   // ============================================================
-  // After extracting FK, reusable, and all modifiers, whatever remains is the explicit type
+  // After extracting FK, expanding reusable, and extracting modifiers, whatever remains is the type
 
   let explicitType: string | undefined;
 
-  // If we have FK or reusable, remaining should be empty (no explicit type allowed)
-  if (typeSourceCount > 0) {
+  // If we have FK, remaining should be empty (no explicit type allowed)
+  if (fkParentTable) {
     if (remaining !== '') {
       newSchema.errors.push({
         location,
-        message: `Cannot specify explicit type when using ${fkParentTable ? 'FK' : 'reusable column'}: "${remaining}"`
+        message: `Cannot specify explicit type when using FK: "${remaining}"`
       });
       return null;
     }
   } else {
-    // No FK or reusable - remaining must be the explicit type
+    // No FK - remaining must be the explicit type (either original or from reusable expansion)
     if (remaining === '') {
       newSchema.errors.push({
         location,
@@ -205,8 +214,6 @@ export function parseDefinition(
   let typeSource: 'fk' | 'reusable' | 'explicit';
   if (fkParentTable) {
     typeSource = 'fk';
-  } else if (reusableName) {
-    typeSource = 'reusable';
   } else {
     typeSource = 'explicit';
   }
@@ -254,9 +261,6 @@ export function parseDefinition(
   // Set type source specifics
   if (fkParentTable) {
     parsed.fkParentTable = fkParentTable;
-  }
-  if (reusableName) {
-    parsed.reusableName = reusableName;
   }
   if (explicitType) {
     parsed.explicitType = explicitType;

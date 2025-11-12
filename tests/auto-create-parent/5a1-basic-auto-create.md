@@ -1,6 +1,6 @@
 # 5A1: Basic Auto-Create Parent
 
-Tests the auto-create parent feature: inserting a child with a non-existent parent FK automatically creates the parent row.
+Tests the auto-create parent feature: inserting a child with a non-existent parent FK(automatically) creates the parent row.
 Covers: basic auto-create, verify parent created, verify child references correct parent.
 
 ## Build Schema
@@ -16,7 +16,7 @@ tables:
     columns:
       product_id: serial primary key
       product_name: varchar(100)
-      category_id: FK categories auto create parent
+      category_id: FK(categories) auto create parent
 ```
 
 ## Insert Product Without Existing Category

@@ -10,7 +10,7 @@ Error catalog reference: `src/new-schema.ts:180`
 [
   {
     "location": "users.balance",
-    "message": "Unknown reusable column: price"
+    "message": "Unknown PostgreSQL type: price - do you need to define a reusable column 'price'?"
   }
 ]
 ```
@@ -27,7 +27,5 @@ tables:
   users:
     columns:
       id: serial primary key
-      balance:
-        base: price
-        label: Account Balance
+      balance: price
 ```

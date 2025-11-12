@@ -467,7 +467,7 @@ export class GenLogicProcessor {
           // If this references a reusable column, get that column's definition
           if (colDef in newSchema.reusableColumns) {
             const reusableCol = newSchema.reusableColumns[colDef];
-            defToCheck = reusableCol.definition || reusableCol.base || colDef;
+            defToCheck = reusableCol.definition || colDef;
           }
 
           // Check if the actual definition contains "primary key"
@@ -484,10 +484,10 @@ export class GenLogicProcessor {
             break;
           }
 
-          // Check if using base (reusable column with extensions)
-          if ((colDef as any).base && (colDef as any).base in newSchema.reusableColumns) {
-            const reusableCol = newSchema.reusableColumns[(colDef as any).base];
-            const baseDefinition = reusableCol.definition || reusableCol.base || '';
+          // Check if using definition that references a reusable column
+          if ((colDef as any).definition && (colDef as any).definition in newSchema.reusableColumns) {
+            const reusableCol = newSchema.reusableColumns[(colDef as any).definition];
+            const baseDefinition = reusableCol.definition || '';
             if (baseDefinition.toLowerCase().includes('primary key')) {
               pkColumn = colName;
               pkDefinition = baseDefinition;

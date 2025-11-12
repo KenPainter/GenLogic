@@ -17,9 +17,9 @@ tables:
       product_id: integer primary key
       product_name: character varying(100)
       customer_type: character varying(20)
-      # Formula calculates FK based on customer_type
+      # Formula calculates FK(based) on customer_type
       category_id:
-        definition: FK categories
+        definition: FK(categories)
         formula: "CASE WHEN customer_type = 'glamor' THEN 3 WHEN customer_type = 'whiz-kid' THEN 1 ELSE 2 END"
       # SYNC pulls category_name from the parent
       category_name:
@@ -105,7 +105,7 @@ WHERE product_id = 2;
 ]
 ```
 
-## Update Customer Type - Should Recalculate FK and Chain
+## Update Customer Type - Should Recalculate FK(and) Chain
 
 When customer_type changes, formula should recalculate FK, trigger new SYNC, and recalculate final formula.
 'glamor' → Clothing/3
@@ -137,7 +137,7 @@ WHERE product_id = 1;
 
 ## Update Base Price - Should Only Recalculate Final Formula
 
-When base_price changes, only the final formula should recalculate (FK and SYNC stay the same).
+When base_price changes, only the final formula should recalculate (FK(and) SYNC stay the same).
 
 ```sql
 UPDATE products

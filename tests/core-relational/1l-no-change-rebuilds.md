@@ -181,7 +181,7 @@ SELECT
 ]
 ```
 
-## Step 5: Add FK relationship, then rebuild
+## Step 5: Add FK(relationship), then rebuild
 
 ```yaml
 tables:
@@ -200,12 +200,12 @@ tables:
   orders:
     columns:
       id: serial primary key
-      user_id: FK users
-      product_id: FK products
+      user_id: FK(users)
+      product_id: FK(products)
       order_date: date
 ```
 
-## Verify FK table added
+## Verify FK(table) added
 
 ```json
 {
@@ -259,8 +259,8 @@ tables:
   orders:
     columns:
       id: serial primary key
-      user_id: FK users
-      product_id: FK products
+      user_id: FK(users)
+      product_id: FK(products)
       order_date: date
 ```
 
@@ -319,8 +319,8 @@ tables:
   orders:
     columns:
       id: serial primary key
-      user_id: FK users
-      product_id: FK products
+      user_id: FK(users)
+      product_id: FK(products)
       order_date: date
 ```
 
@@ -364,8 +364,8 @@ tables:
   orders:
     columns:
       id: serial primary key
-      user_id: FK users
-      product_id: FK products
+      user_id: FK(users)
+      product_id: FK(products)
       order_date: date
 ```
 

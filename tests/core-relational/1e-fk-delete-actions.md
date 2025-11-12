@@ -2,7 +2,7 @@
 
 Tests different foreign key ON DELETE actions.
 
-## Step 1: FK with delete cascade
+## Step 1: FK(with) delete cascade
 
 ```yaml
 tables:
@@ -14,11 +14,11 @@ tables:
   products:
     columns:
       id: serial primary key
-      category_id: FK categories delete cascade
+      category_id: FK(categories) delete cascade
       name: varchar(100)
 ```
 
-## Verify delete cascade FK created
+## Verify delete cascade FK(created)
 
 ```json
 {
@@ -64,7 +64,7 @@ SELECT COUNT(*) as product_count FROM products WHERE category_id = 100;
 ]
 ```
 
-## Step 2: FK with delete restrict (default)
+## Step 2: FK(with) delete restrict (default)
 
 ```yaml
 tables:
@@ -76,7 +76,7 @@ tables:
   products:
     columns:
       id: serial primary key
-      category_id: FK categories delete cascade
+      category_id: FK(categories) delete cascade
       name: varchar(100)
 
   suppliers:
@@ -87,11 +87,11 @@ tables:
   inventory:
     columns:
       id: serial primary key
-      supplier_id: FK suppliers delete restrict
+      supplier_id: FK(suppliers) delete restrict
       product_name: varchar(100)
 ```
 
-## Verify delete restrict FK created
+## Verify delete restrict FK(created)
 
 ```json
 {
@@ -130,7 +130,7 @@ SELECT COUNT(*) as inventory_count FROM inventory WHERE supplier_id = 100;
 ]
 ```
 
-## Step 3: FK with delete set null
+## Step 3: FK(with) delete set null
 
 ```yaml
 tables:
@@ -142,7 +142,7 @@ tables:
   products:
     columns:
       id: serial primary key
-      category_id: FK categories delete cascade
+      category_id: FK(categories) delete cascade
       name: varchar(100)
 
   suppliers:
@@ -153,7 +153,7 @@ tables:
   inventory:
     columns:
       id: serial primary key
-      supplier_id: FK suppliers delete restrict
+      supplier_id: FK(suppliers) delete restrict
       product_name: varchar(100)
 
   warehouses:
@@ -164,11 +164,11 @@ tables:
   shipments:
     columns:
       id: serial primary key
-      warehouse_id: FK warehouses delete set null
+      warehouse_id: FK(warehouses) delete set null
       tracking_number: varchar(50)
 ```
 
-## Verify delete set null FK created
+## Verify delete set null FK(created)
 
 ```json
 {
@@ -220,7 +220,7 @@ SELECT warehouse_id, tracking_number FROM shipments WHERE tracking_number IN ('T
 ]
 ```
 
-## Step 4: FK with delete set default
+## Step 4: FK(with) delete set default
 
 ```yaml
 tables:
@@ -232,7 +232,7 @@ tables:
   products:
     columns:
       id: serial primary key
-      category_id: FK categories delete cascade
+      category_id: FK(categories) delete cascade
       name: varchar(100)
 
   suppliers:
@@ -243,7 +243,7 @@ tables:
   inventory:
     columns:
       id: serial primary key
-      supplier_id: FK suppliers delete restrict
+      supplier_id: FK(suppliers) delete restrict
       product_name: varchar(100)
 
   warehouses:
@@ -254,7 +254,7 @@ tables:
   shipments:
     columns:
       id: serial primary key
-      warehouse_id: FK warehouses delete set null
+      warehouse_id: FK(warehouses) delete set null
       tracking_number: varchar(50)
 
   status_codes:
@@ -265,11 +265,11 @@ tables:
   tasks:
     columns:
       id: serial primary key
-      status_id: FK status_codes delete set default default 100
+      status_id: FK(status_codes) delete set default default 100
       description: varchar(200)
 ```
 
-## Verify delete set default FK created
+## Verify delete set default FK(created)
 
 ```json
 {
@@ -320,7 +320,7 @@ SELECT status_id, description FROM tasks WHERE description = 'Task A';
 ]
 ```
 
-## Step 5: FK with delete no action
+## Step 5: FK(with) delete no action
 
 ```yaml
 tables:
@@ -332,7 +332,7 @@ tables:
   products:
     columns:
       id: serial primary key
-      category_id: FK categories delete cascade
+      category_id: FK(categories) delete cascade
       name: varchar(100)
 
   suppliers:
@@ -343,7 +343,7 @@ tables:
   inventory:
     columns:
       id: serial primary key
-      supplier_id: FK suppliers delete restrict
+      supplier_id: FK(suppliers) delete restrict
       product_name: varchar(100)
 
   warehouses:
@@ -354,7 +354,7 @@ tables:
   shipments:
     columns:
       id: serial primary key
-      warehouse_id: FK warehouses delete set null
+      warehouse_id: FK(warehouses) delete set null
       tracking_number: varchar(50)
 
   status_codes:
@@ -365,7 +365,7 @@ tables:
   tasks:
     columns:
       id: serial primary key
-      status_id: FK status_codes delete set default default 100
+      status_id: FK(status_codes) delete set default default 100
       description: varchar(200)
 
   departments:
@@ -376,11 +376,11 @@ tables:
   employees:
     columns:
       id: serial primary key
-      department_id: FK departments delete no action
+      department_id: FK(departments) delete no action
       name: varchar(100)
 ```
 
-## Verify delete no action FK created
+## Verify delete no action FK(created)
 
 ```json
 {

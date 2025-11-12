@@ -7,20 +7,16 @@ Covers: define once, use many times, type consistency.
 
 ```yaml
 columns:
-  id-column:
-    definition: serial primary key
+  id-column: serial primary key
 
-  name-column:
-    definition: varchar(100)
+  name-column: varchar(100)
 
-  email-column:
-    definition: varchar(200)
+  email-column: varchar(200)
 
-  created-at:
-    definition: timestamp default CURRENT_TIMESTAMP
+  created-at: timestamp default CURRENT_TIMESTAMP
 
-  price-column:
-    definition: numeric(10,2)
+  price-column: numeric(10,2)
+    
 
 tables:
   customers:
@@ -33,7 +29,7 @@ tables:
   orders:
     columns:
       order_id: id-column
-      customer_id: FK customers
+      customer_id: FK(customers)
       total_price: price-column
       created_at: created-at
 

@@ -30,7 +30,7 @@ tables:
       product_id: serial primary key
       product_name: varchar(100)
       base_price: numeric(10,2)
-      category_id: FK categories
+      category_id: FK(categories)
 
       # Formula with subquery - should be rejected
       calculated_price:

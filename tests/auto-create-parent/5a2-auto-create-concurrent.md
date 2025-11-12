@@ -16,7 +16,7 @@ tables:
     columns:
       employee_id: serial primary key
       employee_name: varchar(100)
-      dept_id: FK departments auto create parent
+      dept_id: FK(departments) auto create parent
 ```
 
 ## Insert Multiple Employees with Same Non-Existent Department

@@ -1,6 +1,6 @@
 # 3B2: COUNT on FK Change
 
-Tests that COUNT aggregations update correctly when child FK changes, moving the child from one parent to another.
+Tests that COUNT aggregations update correctly when child FK(changes), moving the child from one parent to another.
 Critical path: decrement old parent count, increment new parent count.
 
 ## Build Schema
@@ -20,7 +20,7 @@ tables:
   employees:
     columns:
       employee_id: serial primary key
-      department_id: FK departments
+      department_id: FK(departments)
       employee_name: varchar(100)
       hire_date: date
 ```

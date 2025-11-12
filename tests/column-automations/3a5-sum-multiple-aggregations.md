@@ -28,7 +28,7 @@ tables:
   line_items:
     columns:
       line_id: serial primary key
-      invoice_id: FK invoices
+      invoice_id: FK(invoices)
       product_name: varchar(100)
       quantity: integer
       unit_price: numeric(10,2)

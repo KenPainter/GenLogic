@@ -74,6 +74,27 @@ export interface SQLTypeInfo {
 }
 
 /**
+ * Helper: Check if there's unrecognized text remaining after parsing
+ * Returns true if there's an error (and pushes to newSchema.errors)
+ */
+function checkUnrecognizedModifiers(
+  newSchema: NewSchema,
+  location: string,
+  originalString: string,
+  parsedString: string,
+  remaining: string
+): boolean {
+  if (remaining.trim()) {
+    newSchema.errors.push({
+      location,
+      message: `Unrecognized SQL modifiers: "${remaining.trim()}" in definition: ${originalString}`
+    });
+    return true;
+  }
+  return false;
+}
+
+/**
  * Parse a SQL type string to extract type metadata
  * Returns type info or null if invalid
  * Pushes errors to newSchema.errors
@@ -102,6 +123,11 @@ export function parseSQLType(
   // Parse SERIAL types (shorthand for integer with auto-increment)
   const serialMatch = sql.match(/^(big|small)?serial/i);
   if (serialMatch) {
+    const remaining = sql.substring(serialMatch[0].length);
+    if (checkUnrecognizedModifiers(newSchema, location, typeString, serialMatch[0], remaining)) {
+      return null;
+    }
+
     result.serial = true;
     if (serialMatch[0].toLowerCase() === 'bigserial') {
       result.type = 'bigint';
@@ -135,6 +161,12 @@ export function parseSQLType(
     return null;
   }
 
+  // Check if there's unrecognized text after the type
+  const remaining = sql.substring(typeMatch[0].length);
+  if (checkUnrecognizedModifiers(newSchema, location, typeString, typeMatch[0], remaining)) {
+    return null;
+  }
+
   result.type = typeMatch[1].toLowerCase();
 
   // Normalize type aliases to canonical names
@@ -144,7 +176,7 @@ export function parseSQLType(
   if (!VALID_POSTGRES_TYPES.has(result.type)) {
     newSchema.errors.push({
       location,
-      message: `Unknown PostgreSQL type: ${result.type}`
+      message: `Unknown PostgreSQL type: ${result.type} - do you need to define a reusable column '${result.type}'?`
     });
     return null;
   }

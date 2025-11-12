@@ -108,7 +108,7 @@ SELECT id, name, price FROM products ORDER BY id;
 ]
 ```
 
-## Step 3: FK columns with NOT NULL
+## Step 3: FK(columns) with NOT NULL
 
 ```yaml
 tables:
@@ -127,12 +127,12 @@ tables:
   orders:
     columns:
       id: serial primary key
-      customer_id: FK customers not null
+      customer_id: FK(customers) not null
       order_date: date not null
       notes: text
 ```
 
-## Verify FK with NOT NULL
+## Verify FK(with) NOT NULL
 
 ```json
 {
@@ -149,7 +149,7 @@ tables:
 }
 ```
 
-## Test FK with NOT NULL requires value
+## Test FK(with) NOT NULL requires value
 
 ```sql
 INSERT INTO orders (customer_id, order_date, notes) VALUES (100, '2025-01-15', 'First order');
@@ -157,7 +157,7 @@ INSERT INTO orders (customer_id, order_date, notes) VALUES (101, '2025-01-16', N
 SELECT customer_id, order_date, notes FROM orders ORDER BY order_date;
 ```
 
-## Verify NOT NULL FK and date
+## Verify NOT NULL FK(and) date
 
 ```json
 [
@@ -185,7 +185,7 @@ tables:
   orders:
     columns:
       id: serial primary key
-      customer_id: FK customers not null
+      customer_id: FK(customers) not null
       order_date: date not null
       notes: text
 
@@ -256,7 +256,7 @@ tables:
   orders:
     columns:
       id: serial primary key
-      customer_id: FK customers not null
+      customer_id: FK(customers) not null
       order_date: date not null
       notes: text
 
@@ -285,7 +285,7 @@ tables:
     "tables.settings": "@exists",
     "tables.settings.columns.setting_key.nullable": false,
     "tables.settings.columns.setting_value.nullable": false,
-    "tables.settings.columns.setting_value.defaultValue": "default_value",
+    "tables.settings.columns.setting_value.defaultValue": "'default_value'",
     "tables.settings.columns.is_active.nullable": false,
     "tables.settings.columns.is_active.defaultValue": "true"
   },

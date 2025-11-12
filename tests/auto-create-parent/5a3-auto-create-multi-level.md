@@ -1,7 +1,7 @@
 # 5A3: Auto-Create Parent Multi-Level Hierarchy
 
 Tests auto-create parent in multi-level hierarchy where inserting a grandchild automatically creates both parent and grandparent.
-Covers: cascading auto-create, multi-level FK chains.
+Covers: cascading auto-create, multi-level FK(chains).
 
 ## Build Schema
 
@@ -16,13 +16,13 @@ tables:
     columns:
       country_id: serial primary key
       country_name: varchar(100)
-      region_id: FK regions auto create parent
+      region_id: FK(regions) auto create parent
 
   cities:
     columns:
       city_id: serial primary key
       city_name: varchar(100)
-      country_id: FK countries auto create parent
+      country_id: FK(countries) auto create parent
 ```
 
 ## Insert City Without Parent or Grandparent

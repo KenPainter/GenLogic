@@ -26,13 +26,10 @@ tables:
       account_name: varchar(100)
 
       # Reusable with default extension
-      balance:
-        base: amount-column
-        definition: default 0.00
+      balance: amount-column default 0.00
 
       # Reusable base (constraint at table level)
-      credit_limit:
-        base: amount-column
+      credit_limit: amount-column
 
     constraints:
       - credit_limit >= 0
@@ -40,25 +37,18 @@ tables:
   transactions:
     columns:
       transaction_id: id-column
-      account_id: FK accounts
+      account_id: FK(accounts)
 
       # Reusable with default extension
-      amount:
-        base: amount-column
-        definition: default 0.00
+      amount: amount-column default 0.00
 
       # Reusable with default
-      status:
-        base: status-column
-        definition: default pending
+      status: status-column default 'pending'
 
       # Reusable with default extension
-      created_at:
-        base: timestamp-column
-        definition: default CURRENT_TIMESTAMP
+      created_at: timestamp-column default CURRENT_TIMESTAMP
 
-      updated_at:
-        base: timestamp-column
+      updated_at: timestamp-column
 
     constraints:
       - status IN ('pending', 'completed', 'cancelled')

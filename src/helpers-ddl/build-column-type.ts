@@ -2,50 +2,15 @@ import type { ColumnDef } from '../new-schema-subtypes.js';
 
 /**
  * Format a default value for SQL DDL
- * Adds quotes around string literals based on the column's SQL type
+ * Returns the value exactly as the user entered it
  */
 export function formatDefaultValue(col: ColumnDef): string {
   if (col.defaultValue === undefined) {
     return '';
   }
 
-  const value = col.defaultValue;
-
-  // SQL keywords/functions that should never be quoted
-  const sqlKeywords = [
-    'CURRENT_TIMESTAMP', 'CURRENT_DATE', 'CURRENT_TIME',
-    'NOW()', 'LOCALTIME', 'LOCALTIMESTAMP',
-    'NULL', 'TRUE', 'FALSE'
-  ];
-
-  // Check if value is a SQL keyword/function (case-insensitive)
-  const upperValue = value.toUpperCase();
-  if (sqlKeywords.some(keyword => upperValue === keyword || upperValue.startsWith(keyword))) {
-    return value;
-  }
-
-  // Types that require quoted string literals
-  const stringTypes = [
-    'character varying', 'varchar',
-    'character', 'char',
-    'text',
-    'date',
-    'timestamp', 'timestamp without time zone', 'timestamp with time zone',
-    'timestamptz',
-    'time', 'time without time zone', 'time with time zone', 'timetz',
-    'interval',
-    'uuid',
-    'json', 'jsonb',
-    'xml'
-  ];
-
-  // Check if this column type needs quotes
-  if (stringTypes.includes(col.type)) {
-    return `'${value}'`;
-  }
-
-  // All other types (numeric, boolean, etc.) don't need quotes
-  return value;
+  // Return the default value exactly as entered by the user
+  return col.defaultValue;
 }
 
 /**

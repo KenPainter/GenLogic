@@ -110,7 +110,7 @@ SELECT COUNT(*) as count FROM customers;
 ]
 ```
 
-## Step 3: Add table with FK dependency
+## Step 3: Add table with FK(dependency)
 
 ```yaml
 tables:
@@ -127,11 +127,11 @@ tables:
   orders:
     columns:
       id: serial primary key
-      customer_id: FK customers
+      customer_id: FK(customers)
       order_date: date
 ```
 
-## Verify FK table added in new layer
+## Verify FK(table) added in new layer
 
 ```json
 {
@@ -172,14 +172,14 @@ ORDER BY tablename;
 ]
 ```
 
-## Test FK constraint works
+## Test FK(constraint) works
 
 ```sql
 INSERT INTO orders (customer_id, order_date) VALUES (100, '2025-01-01');
 SELECT customer_id, order_date FROM orders;
 ```
 
-## Verify FK data
+## Verify FK(data)
 
 ```json
 [
@@ -205,7 +205,7 @@ tables:
   orders:
     columns:
       id: serial primary key
-      customer_id: FK customers
+      customer_id: FK(customers)
       order_date: date
 ```
 
@@ -277,7 +277,7 @@ tables:
   orders:
     columns:
       id: serial primary key
-      customer_id: FK customers
+      customer_id: FK(customers)
       order_date: date
 ```
 

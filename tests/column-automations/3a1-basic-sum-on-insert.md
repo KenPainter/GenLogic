@@ -19,7 +19,7 @@ tables:
   transactions:
     columns:
       transaction_id: serial primary key
-      account_id: FK accounts
+      account_id: FK(accounts)
       amount: numeric(10,2)
       description: varchar(200)
 ```

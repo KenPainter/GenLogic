@@ -40,6 +40,8 @@ import type {
   IndexDef
 } from './new-schema-subtypes.js';
 import { parse, astVisitor } from 'pgsql-ast-parser';
+import { parseDefinition } from './helpers-processor/definition-parser.js';
+import { parseSQLType } from './helpers-processor/sql-type-parser.js';
 
 /**
  * Valid PostgreSQL base types
@@ -171,16 +173,12 @@ export class NewSchema {
   /**
    * Normalize a column definition to object form
    * Converts string definitions to { definition: string }
-   * Special case: if string matches a reusable column name, convert to { base: string }
+   * The definition parser will handle FK(), reusable references, and SQL types
    */
   private normalizeColumnDef(colDef: any): any {
     if (typeof colDef === 'string') {
-      // Check if this string matches a reusable column name (old-fashioned syntax)
-      // Examples: "amount: amount", "date: date"
-      if (colDef in this.reusableColumns) {
-        return { base: colDef };
-      }
-      // Regular SQL definition string
+      // String can be: reusable column name, FK reference, or SQL type
+      // All are stored in definition property and parsed by definition-parser
       return { definition: colDef };
     }
     return colDef;
@@ -204,8 +202,8 @@ export class NewSchema {
         // YAML parses this as null, we interpret it as "use reusable column with same name"
         if (colDef == null) {
           if (colName in this.reusableColumns) {
-            // Create { base: columnName } so downstream code spreads the reusable column
-            const normalizedCol = { base: colName };
+            // Create { definition: columnName } so parser expands the reusable column
+            const normalizedCol = { definition: colName };
             this.processColumn(tableName, colName, normalizedCol);
           } else {
             this.errors.push({
@@ -230,49 +228,8 @@ export class NewSchema {
   private processColumn(tableName: string, colName: string, col: any): void {
     const location = `${tableName}.${colName}`;
 
-    // Step 1: Resolve base if present
-    let resolvedCol = col;
-    if (col.base) {
-      const baseName = col.base;
-      if (!(baseName in this.reusableColumns)) {
-        this.errors.push({
-          location,
-          message: `Unknown reusable column: ${baseName}`
-        });
-        return;
-      }
-
-      // Spread: base properties first, then local overrides
-      const baseCol = this.reusableColumns[baseName];
-      const { base, ...localProps } = col;  // Remove 'base' key from spread
-      resolvedCol = { ...baseCol, ...localProps };
-
-      // Special handling: If local definition is just modifiers (no type), append to base definition
-      if (localProps.definition && baseCol.definition) {
-        const localDef = localProps.definition.trim();
-        // Check if local definition starts with SQL modifiers (not a type)
-        const modifierKeywords = ['default', 'not null', 'null', 'unique', 'check', 'references'];
-        const startsWithModifier = modifierKeywords.some(keyword =>
-          localDef.toLowerCase().startsWith(keyword)
-        );
-
-        if (startsWithModifier) {
-          // Append modifier to base definition instead of replacing
-          resolvedCol.definition = `${baseCol.definition} ${localDef}`;
-        }
-      }
-    }
-
-    // Step 2: Apply constant substitution to all string fields
-    const stringFields = ['definition', 'formula', 'automation', 'label', 'comment', 'format'];
-    for (const field of stringFields) {
-      if (typeof resolvedCol[field] === 'string') {
-        resolvedCol[field] = this.replaceConstants(resolvedCol[field], `${location}.${field}`);
-      }
-    }
-
-    // Step 3: Parse definition string
-    if (!resolvedCol.definition) {
+    // Step 1: Validate column has definition
+    if (!col.definition) {
       this.errors.push({
         location,
         message: 'Column has no definition'
@@ -280,18 +237,105 @@ export class NewSchema {
       return;
     }
 
-    // If this is a foreign key, parse it and replace with parent PK definition
-    if (resolvedCol.definition.startsWith('FK')) {
-      this.parseFKDefinition(tableName, colName, resolvedCol, location);
-      // parseFKDefinition replaces resolvedCol.definition with parent PK definition
+    // Step 2: Apply constant substitution to definition string BEFORE parsing
+    col.definition = this.replaceConstants(col.definition, location);
+
+    // Step 3: Parse definition string with unified parser
+    const parsed = parseDefinition(this, location, col.definition, this.reusableColumns);
+    if (!parsed) {
+      return; // Errors already logged
     }
 
-    // Now all columns have regular SQL definitions (either original or from parent PK)
-    // Parse SQL definition string
-    this.parseSQLDefinition(resolvedCol, location);
+    // Step 4: Resolve type based on type source
+    let finalTypeString: string;
 
-    // Step 4: Parse automation or formula (both is an error)
-    if (resolvedCol.automation && resolvedCol.formula) {
+    if (parsed.typeSource === 'fk') {
+      // Get parent table PK definition
+      const parentTable = this.tables[parsed.fkParentTable!];
+      const parentPKDef = parentTable.pkDefinition;
+
+      // Validate parent has PK
+      if (!parentPKDef || !parentTable.pkColumn) {
+        this.errors.push({
+          location,
+          message: `FK references table ${parsed.fkParentTable} which has no primary key`
+        });
+        return;
+      }
+
+      // Replace serial with integer (FK columns don't auto-increment)
+      // Remove primary key modifier
+      finalTypeString = parentPKDef
+        .replace(/\bserial\b/gi, 'integer')
+        .replace(/\bprimary\s+key\b/gi, '')
+        .trim();
+
+      // Store FK metadata
+      const fkName = `fk_${tableName}_${colName}`;
+      if (!this.tables[tableName].foreignKeys) {
+        this.tables[tableName].foreignKeys = {};
+      }
+      this.tables[tableName].foreignKeys[fkName] = {
+        name: fkName,
+        childColumn: colName,
+        parentTable: parsed.fkParentTable!,
+        parentColumn: parentTable.pkColumn,
+        deleteAction: parsed.deleteAction || 'restrict',
+        autoCreateParent: parsed.autoCreateParent || false
+      };
+
+      // Add FK index (PostgreSQL doesn't auto-index FK columns)
+      this.addIndexForColumn(tableName, colName, 'fk');
+
+      // Add FK edge for cycle detection
+      this.fkEdges.push([parsed.fkParentTable!, tableName]);
+
+    } else {
+      // Use explicit type (which may have been expanded from reusable in parser)
+      finalTypeString = parsed.explicitType!;
+    }
+
+    // Step 5: Parse SQL type to extract PostgreSQL metadata
+    const typeInfo = parseSQLType(this, location, finalTypeString);
+    if (!typeInfo) {
+      return; // Errors already logged
+    }
+
+    // Step 6: Apply type info and modifiers to column object
+    col.type = typeInfo.type;
+    col.serial = typeInfo.serial;
+    col.character_maximum_length = typeInfo.character_maximum_length;
+    col.numeric_precision = typeInfo.numeric_precision;
+    col.numeric_scale = typeInfo.numeric_scale;
+
+    // Apply modifiers from parsed definition
+    col.nullable = !parsed.notNull;
+    col.isUnique = parsed.isUnique || false;
+    col.isPrimaryKey = parsed.isPrimaryKey || false;
+
+    // Apply default value (with constant substitution)
+    if (parsed.defaultValue) {
+      col.defaultValue = this.replaceConstants(parsed.defaultValue, location);
+    }
+
+    // Normalize: PK columns are always NOT NULL
+    if (col.isPrimaryKey) {
+      col.nullable = false;
+    }
+
+    // Build normalized comparison string
+    col.normalizedDef = this.rebuildDefinitionString(col);
+
+    // Step 7: Apply constant substitution to formula/automation/comment
+    const otherStringFields = ['formula', 'automation', 'comment'];
+    for (const field of otherStringFields) {
+      if (typeof col[field] === 'string') {
+        col[field] = this.replaceConstants(col[field], `${location}.${field}`);
+      }
+    }
+
+    // Step 8: Parse automation or formula (both is an error)
+    if (col.automation && col.formula) {
       this.errors.push({
         location,
         message: 'Column cannot have both automation and formula'
@@ -299,9 +343,9 @@ export class NewSchema {
       return;
     }
 
-    if (resolvedCol.formula) {
+    if (col.formula) {
       // Parse formula to extract column dependencies
-      const deps = this.parseSQLExpression(resolvedCol.formula, location);
+      const deps = this.parseSQLExpression(col.formula, location);
       if (deps) {
         // Store column references for later validation
         if (!this.tables[tableName].columnRefs) {
@@ -324,7 +368,7 @@ export class NewSchema {
       // FORMULA COLUMN VALIDATION:
       // Formula columns calculate their value from other columns - they should never have defaults.
       // A default on a calculated column is nonsensical (what would it mean?).
-      if (resolvedCol.defaultValue !== undefined) {
+      if (col.defaultValue !== undefined) {
         this.errors.push({
           location,
           message: `Formula columns cannot have defaults - the value is calculated from other columns. ` +
@@ -333,16 +377,16 @@ export class NewSchema {
       }
     }
 
-    if (resolvedCol.automation) {
+    if (col.automation) {
       // Parse automation to extract cross-table dependencies
-      this.parseAutomation(tableName, colName, resolvedCol, location);
+      this.parseAutomation(tableName, colName, col, location);
 
       // AUTOMATION DEFAULT HANDLING:
       // Aggregate columns need sensible defaults for initial state before any data exists.
       // We auto-apply defaults here (schema-level) rather than in DDL generation (dumb layer).
 
       // Validation: User should NOT specify defaults on automations
-      if (resolvedCol.defaultValue !== undefined) {
+      if (col.defaultValue !== undefined) {
         this.errors.push({
           location,
           message: `Automation columns cannot have user-specified defaults. ` +
@@ -351,40 +395,40 @@ export class NewSchema {
       }
 
       // Validation: SUM/COUNT must be on numeric types
-      if (resolvedCol.automationType === 'SUM' || resolvedCol.automationType === 'COUNT') {
+      if (col.automationType === 'SUM' || col.automationType === 'COUNT') {
         const numericTypes = ['integer', 'bigint', 'smallint', 'numeric', 'decimal', 'real', 'double precision'];
-        if (!numericTypes.includes(resolvedCol.type)) {
+        if (!numericTypes.includes(col.type)) {
           this.errors.push({
             location,
-            message: `${resolvedCol.automationType} automation requires a numeric type, got: ${resolvedCol.type}`
+            message: `${col.automationType} automation requires a numeric type, got: ${col.type}`
           });
         }
 
         // Auto-apply: SUM/COUNT get default 0 (prevents NULL on empty aggregations)
-        resolvedCol.defaultValue = '0';
+        col.defaultValue = '0';
 
         // Rebuild normalizedDef to include the default we just added
-        resolvedCol.normalizedDef = this.rebuildDefinitionString(resolvedCol);
+        col.normalizedDef = this.rebuildDefinitionString(col);
       }
 
       // MIN/MAX/LAST_VALUE: No default (NULL until first value exists)
       // This is the natural/correct behavior, so we don't set anything
     }
 
-    // Step 5: Store in this.tables[tableName].columns
+    // Step 9: Store in this.tables[tableName].columns
     if (!this.tables[tableName].columns) {
       this.tables[tableName].columns = {};
     }
-    this.tables[tableName].columns[colName] = resolvedCol;
+    this.tables[tableName].columns[colName] = col;
 
-    // Step 6: Add NaN/Infinity protection constraint for floating-point numeric types
+    // Step 10: Add NaN/Infinity protection constraint for floating-point numeric types
     // INTEGRITY: NaN and Infinity are NEVER valid in business applications
-    if (this.isFloatingPointNumeric(resolvedCol.type)) {
+    if (this.isFloatingPointNumeric(col.type)) {
       this.addNaNProtectionConstraint(tableName, colName);
     }
 
-    // Step 7: Add UNIQUE constraint if column has unique modifier
-    if (resolvedCol.isUnique) {
+    // Step 11: Add UNIQUE constraint if column has unique modifier
+    if (col.isUnique) {
       this.addUniqueConstraintForColumn(tableName, colName);
     }
 
@@ -402,7 +446,7 @@ export class NewSchema {
       // Normalized comparison string
       'normalizedDef'
     ];
-    for (const key of Object.keys(resolvedCol)) {
+    for (const key of Object.keys(col)) {
       if (!knownColumnKeys.includes(key)) {
         this.errors.push({
           location,
@@ -412,151 +456,6 @@ export class NewSchema {
     }
   }
 
-  /**
-   * Parse FK definition: "FK parent_table [not null] [delete <action>] [auto create parent]"
-   * Extract modifiers by removing them from the string
-   * After removal, what's left should be the parent table name
-   *
-   * Supported delete actions: cascade, restrict, set null, set default, no action
-   */
-  private parseFKDefinition(tableName: string, colName: string, col: any, location: string): void {
-    // Remove "FK" prefix and trim
-    let remaining = col.definition.substring(2).trim(); // Remove "FK"
-
-    // Parse modifiers by removing them from the string
-    let notNull = false;
-    let deleteAction: string | undefined;
-    let autoCreateParent = false;
-
-    // Remove "not null" (case insensitive)
-    if (/\bnot\s+null\b/i.test(remaining)) {
-      notNull = true;
-      remaining = remaining.replace(/\bnot\s+null\b/gi, '').trim();
-    }
-
-    // Remove "delete <action>" where action can be: cascade, restrict, set null, set default, no action
-    // IMPORTANT: Process this BEFORE "default <value>" to avoid matching "default" in "set default"
-    const deleteMatch = remaining.match(/\bdelete\s+(cascade|restrict|set\s+null|set\s+default|no\s+action)\b/i);
-    if (deleteMatch) {
-      deleteAction = deleteMatch[1].toLowerCase().replace(/\s+/g, ' '); // normalize whitespace
-      remaining = remaining.replace(/\bdelete\s+(cascade|restrict|set\s+null|set\s+default|no\s+action)\b/gi, '').trim();
-    }
-
-    // Extract "default <value>" modifier
-    let defaultValue: string | undefined;
-    const defaultMatch = remaining.match(/\bdefault\s+(.+?)(?=\s+\w+\s+|$)/i);
-    if (defaultMatch) {
-      defaultValue = defaultMatch[1].trim();
-      // Replace constants in default value
-      defaultValue = this.replaceConstants(defaultValue, location);
-      remaining = remaining.replace(/\bdefault\s+.+?(?=\s+\w+\s+|$)/gi, '').trim();
-    }
-
-    // Remove "auto create parent"
-    if (/\bauto\s+create\s+parent\b/i.test(remaining)) {
-      autoCreateParent = true;
-      remaining = remaining.replace(/\bauto\s+create\s+parent\b/gi, '').trim();
-    }
-
-    // After removing all modifiers, what's left should be:
-    // A) Single word → parent table name
-    // B) Multiple words → ERROR
-    // C) Empty → ERROR (must specify parent table)
-
-    if (remaining === '') {
-      this.errors.push({
-        location,
-        message: 'FK definition missing parent table name'
-      });
-      // Set an obviously invalid definition so the subsequent SQL parsing error is clear
-      col.definition = `ERROR FK definition missing parent table name`;
-      return;
-    }
-
-    if (/\s/.test(remaining)) {
-      this.errors.push({
-        location,
-        message: `Invalid FK definition. After removing modifiers, unrecognized content remains: "${remaining}"`
-      });
-      // Set an obviously invalid definition so the subsequent SQL parsing error is clear
-      col.definition = `ERROR invalid FK syntax, unrecognized content: "${remaining}"`;
-      return;
-    }
-
-    const parentTable = remaining;
-
-    // Validate parent table exists
-    if (!(parentTable in this.tables)) {
-      this.errors.push({
-        location,
-        message: `FK references non-existent table: ${parentTable}`
-      });
-      // Set an obviously invalid definition so the subsequent SQL parsing error is clear
-      col.definition = `ERROR FK references non-existent table ${parentTable}`;
-      return;
-    }
-
-    // Get parent PK
-    const parentPK = this.tables[parentTable].pkColumn;
-    const parentPKDef = this.tables[parentTable].pkDefinition;
-
-    if (!parentPK || !parentPKDef) {
-      this.errors.push({
-        location,
-        message: `FK references table ${parentTable} which has no primary key`
-      });
-      // Set an obviously invalid definition so the subsequent SQL parsing error is clear
-      col.definition = `ERROR due to no primary key in ${parentTable}, this definition could not be inferred`;
-      return;
-    }
-
-    // Start with parent PK definition (without "primary key")
-    // Replace constants in parent PK definition before using it
-    let newDefinition = this.replaceConstants(parentPKDef, location);
-    newDefinition = newDefinition.replace(/\bprimary\s+key\b/gi, '').trim();
-
-    // CRITICAL: Replace 'serial' with 'integer' - FK columns don't auto-increment
-    // Parent PK may be "serial" but child FK is just a regular integer reference
-    newDefinition = newDefinition.replace(/\bserial\b/gi, 'integer');
-
-    // Add FK constraint keywords if specified
-    if (notNull) {
-      newDefinition += ' not null';
-    }
-    // Only add default if it's not already in the parent definition
-    if (defaultValue && !/\bdefault\b/i.test(newDefinition)) {
-      newDefinition += ` default ${defaultValue}`;
-    }
-
-    // Replace FK definition with parent PK definition
-    col.definition = newDefinition;
-
-    // Generate FK constraint name: fk_tablename_columnname
-    const fkName = `fk_${tableName}_${colName}`;
-
-    // Store FK at table level (keyed by FK name)
-    if (!this.tables[tableName].foreignKeys) {
-      this.tables[tableName].foreignKeys = {};
-    }
-
-    const fkDef: ForeignKeyDef = {
-      name: fkName,
-      childColumn: colName,
-      parentTable: parentTable,
-      parentColumn: parentPK,
-      deleteAction: deleteAction || 'restrict',  // Default to 'restrict' (PostgreSQL's implicit default)
-      autoCreateParent: autoCreateParent
-    };
-
-    this.tables[tableName].foreignKeys![fkName] = fkDef;
-
-    // Add index for FK column (PostgreSQL doesn't auto-index FK columns)
-    this.addIndexForColumn(tableName, colName, 'fk');
-
-    // Add edge for cycle detection (topologicalSortByLayers deduplicates for us)
-    // Edge direction: [parent, child] means "child depends on parent" (parent must exist first)
-    this.fkEdges.push([parentTable, tableName]);
-  }
 
   /**
    * Parse SQL definition string and populate column type information

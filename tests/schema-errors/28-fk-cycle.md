@@ -1,4 +1,4 @@
-# Test: FK cycle detected
+# Test: FK(cycle) detected
 
 Tests that the processor detects cycles in foreign key relationships.
 
@@ -23,11 +23,11 @@ tables:
     columns:
       id: serial primary key
       name: varchar(100)
-      current_order_id: FK orders
+      current_order_id: FK(orders)
 
   orders:
     columns:
       id: serial primary key
-      user_id: FK users
+      user_id: FK(users)
       amount: numeric(12,2)
 ```

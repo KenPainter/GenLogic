@@ -10,7 +10,7 @@ Error catalog reference: `src/new-schema.ts:525`
 [
   {
     "location": "users.status",
-    "message": "Invalid SQL definition: invalid"
+    "message": "Unknown PostgreSQL type: invalid - do you need to define a reusable column 'invalid'?"
   }
 ]
 ```

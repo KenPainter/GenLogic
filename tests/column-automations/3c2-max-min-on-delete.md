@@ -25,7 +25,7 @@ tables:
   price_history:
     columns:
       history_id: serial primary key
-      stock_id: FK stocks
+      stock_id: FK(stocks)
       trade_date: date
       price: numeric(10,2)
 ```

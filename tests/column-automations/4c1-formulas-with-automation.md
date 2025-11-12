@@ -21,7 +21,7 @@ tables:
   items:
     columns:
       item_id: serial primary key
-      price_list_id: FK price_lists
+      price_list_id: FK(price_lists)
       item_name: varchar(100)
       wholesale_cost: numeric(10,2)
       quantity_sold: integer

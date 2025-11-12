@@ -17,7 +17,7 @@ tables:
   invoices:
     columns:
       invoice_id: serial primary key
-      item_id: FK price_list
+      item_id: FK(price_list)
       quantity: integer
       invoice_date: date
 

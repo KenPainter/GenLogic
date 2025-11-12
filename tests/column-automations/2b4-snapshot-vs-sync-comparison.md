@@ -1,7 +1,7 @@
 # 2B4: SNAPSHOT vs SYNC Side-by-Side Comparison
 
 Comprehensive test demonstrating the behavioral differences between SNAPSHOT and SYNC.
-Both automation types respond identically to INSERT and FK changes, but differ on parent updates.
+Both automation types respond identically to INSERT and FK(changes), but differ on parent updates.
 
 ## Build Schema
 
@@ -17,7 +17,7 @@ tables:
   sales:
     columns:
       sale_id: serial primary key
-      product_id: FK products
+      product_id: FK(products)
       sale_date: date
       quantity: integer
 

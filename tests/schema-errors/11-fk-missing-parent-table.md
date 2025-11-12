@@ -1,4 +1,4 @@
-# Test: FK definition missing parent table name
+# Test: FK(definition) missing parent table name
 
 Tests that the processor detects when a foreign key definition is missing the parent table name.
 
@@ -10,11 +10,7 @@ Error catalog reference: `src/new-schema.ts:395`
 [
   {
     "location": "orders.customer_id",
-    "message": "FK definition missing parent table name"
-  },
-  {
-    "location": "orders.customer_id",
-    "message": "Invalid SQL definition: ERROR FK definition missing parent table name"
+    "message": "Unknown PostgreSQL type: fk - do you need to define a reusable column 'fk'?"
   }
 ]
 ```

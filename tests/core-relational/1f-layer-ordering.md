@@ -14,19 +14,19 @@ tables:
   level1_states:
     columns:
       id: serial primary key
-      country_id: FK level0_countries
+      country_id: FK(level0_countries)
       name: varchar(100)
 
   level2_cities:
     columns:
       id: serial primary key
-      state_id: FK level1_states
+      state_id: FK(level1_states)
       name: varchar(100)
 
   level3_addresses:
     columns:
       id: serial primary key
-      city_id: FK level2_cities
+      city_id: FK(level2_cities)
       street: varchar(200)
 ```
 
@@ -102,19 +102,19 @@ tables:
   level1_states:
     columns:
       id: serial primary key
-      country_id: FK level0_countries
+      country_id: FK(level0_countries)
       name: varchar(100)
 
   level2_cities:
     columns:
       id: serial primary key
-      state_id: FK level1_states
+      state_id: FK(level1_states)
       name: varchar(100)
 
   level3_addresses:
     columns:
       id: serial primary key
-      city_id: FK level2_cities
+      city_id: FK(level2_cities)
       street: varchar(200)
 ```
 
@@ -151,7 +151,7 @@ ORDER BY tablename;
 ]
 ```
 
-## Step 3: Add table with FK to level 2 (creates level 3 sibling)
+## Step 3: Add table with FK(to) level 2 (creates level 3 sibling)
 
 ```yaml
 tables:
@@ -169,25 +169,25 @@ tables:
   level1_states:
     columns:
       id: serial primary key
-      country_id: FK level0_countries
+      country_id: FK(level0_countries)
       name: varchar(100)
 
   level2_cities:
     columns:
       id: serial primary key
-      state_id: FK level1_states
+      state_id: FK(level1_states)
       name: varchar(100)
 
   level3_addresses:
     columns:
       id: serial primary key
-      city_id: FK level2_cities
+      city_id: FK(level2_cities)
       street: varchar(200)
 
   level3_landmarks:
     columns:
       id: serial primary key
-      city_id: FK level2_cities
+      city_id: FK(level2_cities)
       name: varchar(100)
 ```
 
@@ -250,37 +250,37 @@ tables:
   level1_states:
     columns:
       id: serial primary key
-      country_id: FK level0_countries
+      country_id: FK(level0_countries)
       name: varchar(100)
 
   level2_cities:
     columns:
       id: serial primary key
-      state_id: FK level1_states
+      state_id: FK(level1_states)
       name: varchar(100)
 
   level3_addresses:
     columns:
       id: serial primary key
-      city_id: FK level2_cities
+      city_id: FK(level2_cities)
       street: varchar(200)
 
   level3_landmarks:
     columns:
       id: serial primary key
-      city_id: FK level2_cities
+      city_id: FK(level2_cities)
       name: varchar(100)
 
   transactions:
     columns:
       id: serial primary key
-      country_id: FK level0_countries
-      currency_id: FK level0_currencies
-      city_id: FK level2_cities
+      country_id: FK(level0_countries)
+      currency_id: FK(level0_currencies)
+      city_id: FK(level2_cities)
       amount: numeric(10,2)
 ```
 
-## Verify table with multiple FK dependencies
+## Verify table with multiple FK(dependencies)
 
 ```json
 {
@@ -297,7 +297,7 @@ tables:
 }
 ```
 
-## Test cross-layer FK dependencies
+## Test cross-layer FK(dependencies)
 
 ```sql
 INSERT INTO level0_currencies (code, name) VALUES ('USD', 'US Dollar');

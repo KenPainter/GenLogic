@@ -142,19 +142,9 @@ export function formatSQLType(parsed: ParsedSQLType): string {
   if (parsed.unique) sql += ' UNIQUE';
   if (parsed["not-null"]) sql += ' NOT NULL';
 
-  // Add DEFAULT clause
+  // Add DEFAULT clause - use exactly as user entered it
   if (parsed.default !== undefined) {
-    // Add quotes back for string literals (simple heuristic: if it's not a number/boolean/function)
-    const defaultValue = parsed.default;
-    if (defaultValue.match(/^-?\d+(\.\d+)?$/) || // number
-        defaultValue.toLowerCase() === 'true' ||
-        defaultValue.toLowerCase() === 'false' ||
-        defaultValue.toLowerCase() === 'null' ||
-        defaultValue.match(/\w+\(.*\)$/)) { // function call
-      sql += ` DEFAULT ${defaultValue}`;
-    } else {
-      sql += ` DEFAULT '${defaultValue}'`;
-    }
+    sql += ` DEFAULT ${parsed.default}`;
   }
 
   return sql;

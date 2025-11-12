@@ -37,7 +37,7 @@ tables:
   orders:
     columns:
       id: serial primary key
-      customer_id: FK customers
+      customer_id: FK(customers)
       amount: numeric(12,2)
       customer_total:
         definition: numeric(12,2)

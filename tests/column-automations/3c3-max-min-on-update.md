@@ -26,7 +26,7 @@ tables:
   readings:
     columns:
       reading_id: serial primary key
-      sensor_id: FK sensors
+      sensor_id: FK(sensors)
       timestamp: timestamp
       temperature: numeric(5,2)
 ```

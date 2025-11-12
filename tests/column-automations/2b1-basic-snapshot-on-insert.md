@@ -17,7 +17,7 @@ tables:
   orders:
     columns:
       order_id: serial primary key
-      product_id: FK products
+      product_id: FK(products)
       quantity: integer
       order_date: date
 

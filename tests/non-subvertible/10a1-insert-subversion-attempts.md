@@ -24,7 +24,7 @@ tables:
   orders:
     columns:
       order_id: serial primary key
-      vendor_id: FK vendors
+      vendor_id: FK(vendors)
       order_date: date
       order_amount: numeric(10,2)
       quantity: integer

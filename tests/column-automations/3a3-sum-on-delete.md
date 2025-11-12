@@ -19,7 +19,7 @@ tables:
   sales:
     columns:
       sale_id: serial primary key
-      category_id: FK categories
+      category_id: FK(categories)
       product_name: varchar(100)
       amount: numeric(12,2)
 ```

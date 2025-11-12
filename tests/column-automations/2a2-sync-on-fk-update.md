@@ -16,10 +16,10 @@ tables:
   purchase_orders:
     columns:
       po_id: serial primary key
-      supplier_id: FK suppliers
+      supplier_id: FK(suppliers)
       order_date: date
 
-      # SYNC: Should update when FK changes
+      # SYNC: Should update when FK(changes)
       supplier_name:
         definition: varchar(100)
         automation: SYNC suppliers.supplier_name
@@ -97,7 +97,7 @@ FROM purchase_orders;
 ]
 ```
 
-## Update FK to Point to Different Parent
+## Update FK(to) Point to Different Parent
 
 ```sql
 UPDATE purchase_orders

@@ -20,7 +20,7 @@ tables:
     columns:
       product_id: serial primary key
       product_name: varchar(100)
-      category_id: FK categories auto create parent
+      category_id: FK(categories) auto create parent
 ```
 
 ## Insert Product Without Existing Category

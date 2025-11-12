@@ -14,11 +14,11 @@ tables:
   orders:
     columns:
       id: serial primary key
-      customer_id: FK customers
+      customer_id: FK(customers)
       order_date: date
 ```
 
-## Verify FK created
+## Verify FK(created)
 
 ```json
 {
@@ -37,7 +37,7 @@ tables:
 }
 ```
 
-## Test FK constraint works
+## Test FK(constraint) works
 
 ```sql
 INSERT INTO customers (name) VALUES ('Alice');
@@ -47,7 +47,7 @@ FROM customers c
 JOIN orders o ON c.id = o.customer_id;
 ```
 
-## Verify FK join works
+## Verify FK(join) works
 
 ```json
 [
@@ -57,7 +57,7 @@ JOIN orders o ON c.id = o.customer_id;
 
 ## Verify FK Constraint Naming Convention
 
-GenLogic names FK constraints as fk_<child_table>_<column_name>.
+GenLogic names FK(constraints) as fk_<child_table>_<column_name>.
 
 ```sql
 SELECT conname
@@ -87,13 +87,13 @@ tables:
   orders:
     columns:
       id: serial primary key
-      customer_id: FK customers
+      customer_id: FK(customers)
       order_date: date
 
   line_items:
     columns:
       id: serial primary key
-      order_id: FK orders
+      order_id: FK(orders)
       product_name: varchar(100)
       quantity: integer
 ```
@@ -147,21 +147,21 @@ tables:
   orders:
     columns:
       id: serial primary key
-      customer_id: FK customers
+      customer_id: FK(customers)
       order_date: date
 
   line_items:
     columns:
       id: serial primary key
-      order_id: FK orders
+      order_id: FK(orders)
       product_name: varchar(100)
       quantity: integer
 
   shipments:
     columns:
       id: serial primary key
-      order_id: FK orders
-      customer_id: FK customers
+      order_id: FK(orders)
+      customer_id: FK(customers)
       ship_date: date
 ```
 
@@ -183,7 +183,7 @@ tables:
 }
 ```
 
-## Test multiple FK constraints
+## Test multiple FK(constraints)
 
 ```sql
 INSERT INTO shipments (order_id, customer_id, ship_date) VALUES (100, 100, '2025-01-16');
@@ -193,7 +193,7 @@ JOIN customers c ON s.customer_id = c.id
 JOIN orders o ON s.order_id = o.id;
 ```
 
-## Verify multiple FK data
+## Verify multiple FK(data)
 
 ```json
 [
@@ -213,28 +213,28 @@ tables:
   orders:
     columns:
       id: serial primary key
-      customer_id: FK customers
+      customer_id: FK(customers)
       order_date: date
 
   line_items:
     columns:
       id: serial primary key
-      order_id: FK orders
+      order_id: FK(orders)
       product_name: varchar(100)
       quantity: integer
 
   shipments:
     columns:
       id: serial primary key
-      order_id: FK orders
-      customer_id: FK customers
+      order_id: FK(orders)
+      customer_id: FK(customers)
       ship_date: date
 
   employees:
     columns:
       id: serial primary key
       name: varchar(100)
-      manager_id: FK employees
+      manager_id: FK(employees)
 ```
 
 ## Verify self-referential FK

@@ -23,7 +23,7 @@ tables:
     columns:
       product_id: serial primary key
       product_name: varchar(100)
-      category_id: FK categories
+      category_id: FK(categories)
       price: numeric(10,2)
     seed-rows:
       - product_id: 1
@@ -217,7 +217,7 @@ tables:
     columns:
       product_id: serial primary key
       product_name: varchar(100)
-      category_id: FK categories
+      category_id: FK(categories)
       price: numeric(10,2)
     seed-rows:
       - product_id: 1

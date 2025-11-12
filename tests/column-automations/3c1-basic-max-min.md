@@ -24,7 +24,7 @@ tables:
   reviews:
     columns:
       review_id: serial primary key
-      product_id: FK products
+      product_id: FK(products)
       reviewer_name: varchar(100)
       rating: integer
       comment: text

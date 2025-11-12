@@ -19,7 +19,7 @@ tables:
   order_items:
     columns:
       item_id: serial primary key
-      order_id: FK orders
+      order_id: FK(orders)
       product_name: varchar(100)
       quantity: integer
       unit_price: numeric(10,2)

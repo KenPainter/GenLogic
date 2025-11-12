@@ -71,7 +71,7 @@ SELECT name, email FROM customers;
 ]
 ```
 
-## Step 2: Add table with FK relationship
+## Step 2: Add table with FK(relationship)
 
 ```yaml
 tables:
@@ -84,7 +84,7 @@ tables:
   orders:
     columns:
       id: serial primary key
-      customer_id: FK customers not null
+      customer_id: FK(customers) not null
       order_date: date
       total: numeric(10,2)
     constraints:
@@ -163,7 +163,7 @@ tables:
   orders:
     columns:
       id: serial primary key
-      customer_id: FK customers not null
+      customer_id: FK(customers) not null
       order_date: date
       total: numeric(10,2)
     constraints:
@@ -257,7 +257,7 @@ tables:
   orders:
     columns:
       id: serial primary key
-      customer_id: FK customers not null
+      customer_id: FK(customers) not null
       order_date: date
       total: numeric(10,2)
     constraints:
@@ -358,7 +358,7 @@ tables:
   orders:
     columns:
       id: serial primary key
-      customer_id: FK customers not null
+      customer_id: FK(customers) not null
       order_date: date
       total: numeric(10,2)
     constraints:

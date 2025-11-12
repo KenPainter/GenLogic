@@ -48,7 +48,7 @@ ORDER BY i.relname;
 ]
 ```
 
-## Step 2: FK creates index automatically
+## Step 2: FK(creates) index automatically
 
 ```yaml
 tables:
@@ -60,11 +60,11 @@ tables:
   orders:
     columns:
       id: serial primary key
-      customer_id: FK customers
+      customer_id: FK(customers)
       order_date: date
 ```
 
-## Verify FK index created
+## Verify FK(index) created
 
 ```json
 {
@@ -79,7 +79,7 @@ tables:
 }
 ```
 
-## Query for FK index
+## Query for FK(index)
 
 ```sql
 SELECT
@@ -95,7 +95,7 @@ WHERE t.relname = 'orders'
 ORDER BY i.relname;
 ```
 
-## Verify FK index exists
+## Verify FK(index) exists
 
 ```json
 [
@@ -115,7 +115,7 @@ tables:
   orders:
     columns:
       id: serial primary key
-      customer_id: FK customers
+      customer_id: FK(customers)
       order_date: date
 
   products:
@@ -177,7 +177,7 @@ tables:
   orders:
     columns:
       id: serial primary key
-      customer_id: FK customers
+      customer_id: FK(customers)
       order_date: date
 
   products:
@@ -189,12 +189,12 @@ tables:
   line_items:
     columns:
       id: serial primary key
-      order_id: FK orders
-      product_id: FK products
+      order_id: FK(orders)
+      product_id: FK(products)
       quantity: integer
 ```
 
-## Verify multiple FK indexes created
+## Verify multiple FK(indexes) created
 
 ```json
 {
@@ -210,7 +210,7 @@ tables:
 }
 ```
 
-## Query for multiple FK indexes
+## Query for multiple FK(indexes)
 
 ```sql
 SELECT
@@ -225,7 +225,7 @@ WHERE t.relname = 'line_items'
 ORDER BY i.relname, a.attname;
 ```
 
-## Verify both FK indexes exist
+## Verify both FK(indexes) exist
 
 ```json
 [
@@ -246,7 +246,7 @@ tables:
   orders:
     columns:
       id: serial primary key
-      customer_id: FK customers
+      customer_id: FK(customers)
       order_date: date
 
   products:
@@ -258,8 +258,8 @@ tables:
   line_items:
     columns:
       id: serial primary key
-      order_id: FK orders
-      product_id: FK products
+      order_id: FK(orders)
+      product_id: FK(products)
       quantity: integer
 
   inventory:

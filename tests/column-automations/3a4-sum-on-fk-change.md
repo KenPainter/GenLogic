@@ -1,6 +1,6 @@
 # 3A4: SUM on FK Change (Moving Between Parents)
 
-Tests that SUM aggregations update correctly when child FK changes, moving the child from one parent to another.
+Tests that SUM aggregations update correctly when child FK(changes), moving the child from one parent to another.
 Critical path: subtract from old parent, add to new parent.
 
 ## Build Schema
@@ -20,7 +20,7 @@ tables:
   tasks:
     columns:
       task_id: serial primary key
-      project_id: FK projects
+      project_id: FK(projects)
       task_name: varchar(200)
       hours_allocated: numeric(8,2)
 ```

@@ -23,7 +23,7 @@ tables:
   inventory:
     columns:
       inventory_id: serial primary key
-      warehouse_id: FK warehouses
+      warehouse_id: FK(warehouses)
       product_name: varchar(100)
       quantity: integer
 
