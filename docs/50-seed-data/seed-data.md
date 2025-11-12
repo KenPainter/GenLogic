@@ -4,14 +4,13 @@ Previous: [Auto Create Parent](../40-row-automations/auto-create-parent.md) | Ne
 
 Seed data pre-populates tables with initial rows defined in the schema. GenLogic inserts seed data automatically when building the database.
 
-## A note about Serial Primary Keys
+## Serial Primary Keys and Seed Data
 
-GenLogic always initalizes the serial value of a new table so
-that the first value is 100.
+GenLogic always initializes the serial value of a new table so that the first value is 100.
 
-By convention, all examples show primary key values of less than
-100.  The start at 100 was specifically done so that seed rows
-can be created with known primary key values.
+Required: Serial primary key values in seed data must be <= 99. GenLogic will reject seed rows with serial PK values > 99 to prevent collisions with the auto-increment sequence.
+
+All examples in this documentation use primary key values less than 100 for seed data.
 
 ## Basic Seed Data
 

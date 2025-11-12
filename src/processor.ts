@@ -4,6 +4,7 @@ import type { DatabaseConfig } from './types.js';
 import { DatabaseManager } from './database.js';
 import { PermissionsGenerator } from './permissions-generator.js';
 import { loadYamlSchema } from './helpers-processor/yaml-loader.js';
+import { validateConstantCycles } from './helpers-processor/constant-resolver.js';
 import { NewSchema } from './new-schema.js';
 import { diffSchemas } from './newschema-diff.js';
 import { topologicalSortByLayers } from './helpers-processor/topological-sort.js';
@@ -64,6 +65,25 @@ export class GenLogicProcessor {
     console.log('  Copying constants to new schema...');
     for (const [name, value] of Object.entries(parsedYaml.constants ?? {})) {
       newSchema.constants[name] = value;
+    }
+
+    // Validate constants for cycles IMMEDIATELY - before anything uses them
+    console.log('  Validating constants for cycles...');
+    validateConstantCycles(newSchema);
+
+    // EARLY EXIT if constant validation failed
+    if (newSchema.errors.length > 0) {
+      // Write newSchema for test verification before exiting
+      this.writeNewSchema(schemaPath, newSchema);
+
+      console.error('\n❌ Constant validation failed:\n');
+      for (const error of newSchema.errors) {
+        console.error(`  ${error.location}: ${error.message}`);
+      }
+      const errorSummary = newSchema.errors
+        .map(e => `${e.location}: ${e.message}`)
+        .join('\n');
+      throw new Error(`Constant validation failed:\n${errorSummary}`);
     }
 
     // Extract reusable columns - normalize them as we add them

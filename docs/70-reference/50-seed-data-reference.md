@@ -29,7 +29,7 @@ Required for:
 - Idempotency (ON CONFLICT DO NOTHING)
 - Child seed data to reference parent seed data via FK
 
-Convention: use values less than 100 for seed data (serial starts at 100).
+**Requirement**: Serial primary key values must be <= 99 (serial sequences start at 100). GenLogic validates and rejects seed rows that violate this constraint.
 
 ## Seed Data with Foreign Keys
 

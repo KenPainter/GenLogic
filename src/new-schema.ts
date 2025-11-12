@@ -1035,6 +1035,26 @@ export class NewSchema {
         }
       }
     }
+
+    // Validate: serial PK columns in seed rows must have values <= 99
+    const pkColumn = this.tables[tableName].pkColumn;
+    if (pkColumn && pkColumn in tableColumns) {
+      const colDef = tableColumns[pkColumn];
+      if (colDef.serial && colDef.isPrimaryKey) {
+        for (let i = 0; i < table['seed-rows'].length; i++) {
+          const row = table['seed-rows'][i];
+          if (pkColumn in row) {
+            const pkValue = row[pkColumn];
+            if (typeof pkValue === 'number' && pkValue > 99) {
+              this.errors.push({
+                location: `${tableName}.seed-rows[${i}].${pkColumn}`,
+                message: `Seed row primary key value must be <= 99 for serial columns (got ${pkValue}). Serial sequences start at 100.`
+              });
+            }
+          }
+        }
+      }
+    }
   }
 
   /**
