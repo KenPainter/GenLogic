@@ -446,7 +446,7 @@ export class NewSchema {
     // Check for unknown column keys
     const knownColumnKeys = [
       // User-provided
-      'definition', 'base', 'label', 'comment', 'format', 'formula', 'automation',
+      'definition', 'formula', 'automation',
       // PostgreSQL-aligned properties
       'type', 'character_maximum_length', 'numeric_precision', 'numeric_scale',
       'nullable', 'isPrimaryKey', 'isUnique', 'defaultValue', 'serial',
@@ -457,11 +457,12 @@ export class NewSchema {
       // Normalized comparison string
       'normalizedDef'
     ];
+    const userColumnKeys = ['definition', 'formula', 'automation'];
     for (const key of Object.keys(col)) {
       if (!knownColumnKeys.includes(key)) {
         this.errors.push({
           location,
-          message: `Unknown column property: ${key}`
+          message: `Unknown column property: ${key}, valid keys: ${userColumnKeys.join(', ')}`
         });
       }
     }
@@ -892,12 +893,12 @@ export class NewSchema {
       const tableColumns = this.tables[tableName].columns || {};
 
       // Check for unknown table keys
-      const knownTableKeys = ['columns', 'comment', 'seed-rows', 'constraints', 'unique-constraints', 'indexes', 'singleton'];
+      const knownTableKeys = ['columns', 'seed-rows', 'constraints', 'unique-constraints', 'indexes'];
       for (const key of Object.keys(table)) {
         if (!knownTableKeys.includes(key)) {
           this.errors.push({
             location: tableName,
-            message: `Unknown table property: ${key}`
+            message: `Unknown table property: ${key}, valid keys: ${knownTableKeys.join(', ')}`
           });
         }
       }

@@ -10,7 +10,7 @@ Error catalog reference: `src/new-schema.ts:825`
 [
   {
     "location": "users",
-    "message": "Unknown table property: invalid_property"
+    "message": "Unknown table property: invalid_property, valid keys: columns, seed-rows, constraints, unique-constraints, indexes"
   }
 ]
 ```

@@ -10,7 +10,7 @@ Error catalog reference: `src/new-schema.ts:337`
 [
   {
     "location": "users.name",
-    "message": "Unknown column property: invalid_prop"
+    "message": "Unknown column property: invalid_prop, valid keys: definition, formula, automation"
   }
 ]
 ```
@@ -24,6 +24,5 @@ tables:
       id: serial primary key
       name:
         definition: varchar(100)
-        label: Name
         invalid_prop: some_value
 ```
