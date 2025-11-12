@@ -1,0 +1,12 @@
+tables:
+  products:
+    columns:
+      product_id: serial primary key
+      product_name: varchar(100)
+      base_price: numeric(10,2)
+      tax_rate: numeric(5,4)
+
+      # Formula column - will create BEFORE trigger
+      total_price:
+        definition: numeric(10,2)
+        formula: base_price * (1 + tax_rate)

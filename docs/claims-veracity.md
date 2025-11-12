@@ -26,59 +26,18 @@ This document analyzes every testable claim in the GenLogic documentation and va
 
 **Build Command Claims:**
 
-
-2. **Claim (Lines 27-32):** "Dry run: Validates schema, Compares to live database, Generates DDL, Shows planned changes, Does not execute DDL"
-   - Status: ❌ Not validated
-   - Note: No explicit dry-run test found
-
-3. **Claim (Lines 43-46):** "Generated files: *.newSchema.json, *.diff.json, *.ddl.sql, *.drop.sql"
-   - Status: ⚠️ Partially validated
-   - Note: Output files exist in tests/schema-reusable-tokens-out/ but file generation is not explicitly tested
-
-4. **Claim (Lines 61-62):** "If schema validation fails, GenLogic prints errors and exits with status 1"
-   - Status: ✅ Validated
-   - Test: tests/schema-errors.test.ts (entire test suite)
-
 5. **Claim (Lines 66-69):** "GenLogic builds are idempotent. Rerunning with the same schema makes no changes except: Triggers are always dropped and recreated, Seed rows are inserted (ON CONFLICT DO NOTHING)"
    - Status: ⚠️ Partially validated
    - Tests:
      - ✅ Idempotency: tests/core-relational/1l-no-change-rebuilds.md
      - ❌ Trigger drop/recreate: Not explicitly verified
-     - ❌ Seed row ON CONFLICT: Not explicitly tested
 
 ---
 
-### 4. docs/13-getting-started/30-accessing-the-database.md
-
-**Database Access Claims:**
-
-1. **Claim (Lines 14-17):** "Application users can: SELECT from all tables, INSERT into all tables, DELETE from all tables, UPDATE non-automated columns"
-   - Status: ❌ Not validated
-   - Note: No test validates user permissions
-
-2. **Claim (Lines 19-23):** "Application users cannot: UPDATE automated or formula columns (permission denied), Disable triggers, Modify trigger code, DROP or ALTER tables"
-   - Status: ❌ Not validated
-   - Note: No test validates permission denial
-
-3. **Claim (Lines 27-34):** "Triggers are created SECURITY DEFINER and owned by genlogic_admin. When application code performs DML: Application user has no privilege to UPDATE automated columns directly, Triggers fire with admin privileges"
-   - Status: ❌ Not validated
-   - Note: No test validates SECURITY DEFINER behavior
-
----
 
 ### 5. docs/13-getting-started/40-what-happens-in-a-build.md
 
 **Build Process Claims:**
-
-1. **Claim (Lines 5-13):** "Build stages: Parse YAML, Conduct inferences, Topologically sort tables and detect FK cycles, Topologically sort columns and detect calculation cycles, Compare to live database, Calculate diff, Generate DDL, Execute DDL"
-   - Status: ⚠️ Partially validated
-   - Tests:
-     - ✅ FK cycle detection: tests/schema-errors/28-fk-cycle.md
-     - ✅ Calculation cycle detection: tests/schema-errors/29-formula-cycle.md, tests/schema-errors/30-automation-cycle.md
-     - ✅ Schema evolution: tests/core-relational/1b-schema-evolution.md
-     - ❌ Parse stage: Not explicitly tested
-     - ❌ Topological sorting: Not explicitly validated
-     - ❌ Diff calculation: Not explicitly validated
 
 2. **Claim (Line 17):** "A GenLogic build never drops tables or columns"
    - Status: ⚠️ Partially validated
@@ -88,64 +47,6 @@ This document analyzes every testable claim in the GenLogic documentation and va
 3. **Claim (Lines 19-21):** "A 'drop script' is generated with every build so the DBA can drop unused or defunct columns and tables"
    - Status: ❌ Not validated
    - Note: Drop script generation not tested
-
-4. **Claim (Lines 26-32):** "A GenLogic DDL will: Create new tables, Add or alter columns, Drop/add constraints/indexes/unique constraints, ALWAYS drop all triggers, ALWAYS rebuild all triggers, INSERT seed rows"
-   - Status: ⚠️ Partially validated
-   - Tests:
-     - ✅ Create tables: tests/core-relational/1a-blank-database-bootstrap.md
-     - ✅ Add columns: tests/core-relational/1b-schema-evolution.md
-     - ✅ Constraints: tests/core-relational/1g-unique-constraints.md, tests/core-relational/1h-check-constraints.md
-     - ✅ Indexes: tests/core-relational/1j-auto-generated-indexes.md, tests/core-relational/1k-custom-indexes.md
-     - ✅ Seed rows: tests/seed-rows/6a1-basic-seed-rows.md
-     - ❌ Trigger drop/recreate: Not explicitly verified
-
-5. **Claim (Line 42):** "GenLogic puts a constraint on all numeric columns that will reject NaN, Infinity, and -Infinity"
-   - Status: ✅ Validated
-   - Test: tests/protections/9a1-nan-infinity-protection.md
-
-6. **Claim (Lines 50-54):** "With no cycles, a GenLogic-built database guarantees: Termination, Determinism, Consistency, No race conditions"
-   - Status: ⚠️ Partially validated
-   - Tests:
-     - ✅ Cycle prevention: tests/schema-errors/28-fk-cycle.md, tests/schema-errors/29-formula-cycle.md, tests/schema-errors/30-automation-cycle.md
-     - ❌ Termination guarantee: Not explicitly tested
-     - ❌ Determinism: Not explicitly tested
-     - ❌ Consistency: Not explicitly tested
-     - ❌ Race condition prevention: Not explicitly tested
-
----
-
-### 6. docs/20-tables-and-columns/05-tables-and-columns-introduction.md
-
-**Syntax Introduction:**
-
-1. **Claim (Lines 12-29):** "Foreign key type is inferred from parent table's primary key"
-   - Status: ✅ Validated
-   - Test: tests/core-relational/1d-fk-basics.md
-
----
-
-### 7. docs/20-tables-and-columns/10-tables-and-columns.md
-
-**Column Definition Claims:**
-
-1. **Claim (Lines 26-30):** "Column definition string specifies: type (any valid postgres type), 'primary key' (one per table), 'not null' (optional), 'default value' (optional), 'unique' (optional)"
-   - Status: ✅ Validated
-   - Tests:
-     - Primary key: tests/core-relational/1c-primary-keys.md
-     - Not null: tests/core-relational/1i-not-null.md
-     - Unique: tests/core-relational/1g-unique-constraints.md
-
-2. **Claim (Lines 50-83):** "Reusable column definitions can be: renamed, used bare, or overridden with base/definition syntax"
-   - Status: ✅ Validated
-   - Tests:
-     - tests/schema-reusable-tokens/7b1-basic-reusable-columns.md
-     - tests/schema-reusable-tokens/7b2-reusable-with-extensions.md
-
-3. **Claim (Lines 84-102):** "Constants can be placed anywhere in schema using ${CONSTANT_NAME}"
-   - Status: ✅ Validated
-   - Tests:
-     - tests/schema-reusable-tokens/7a1-basic-constants.md
-     - tests/schema-reusable-tokens/7a2-multiple-constants.md
 
 ---
 
