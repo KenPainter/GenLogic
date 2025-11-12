@@ -21,27 +21,11 @@ This document analyzes every testable claim in the GenLogic documentation and va
 
 ---
 
-### 2. docs/13-getting-started/10-installation.md
-
-**Installation Claims:**
-
-1. **Claim (Lines 5-7):** "Requirements: Bun >= 1.2.0, PostgreSQL server with trusted local connections, Database user with CREATEROLE privilege"
-   - Status: ❌ Not validated
-   - Note: No test validates minimum version requirements or CREATEROLE enforcement
-
-2. **Claim (Line 55):** "GenLogic fails immediately if the user lacks CREATEROLE privilege"
-   - Status: ❌ Not validated
-   - Note: No test validates this failure mode
-
----
 
 ### 3. docs/13-getting-started/20-running-a-build.md
 
 **Build Command Claims:**
 
-1. **Claim (Lines 14-15):** "If the specified database does not exist, GenLogic creates it automatically"
-   - Status: ✅ Validated
-   - Test: tests/core-relational/1a-blank-database-bootstrap.md
 
 2. **Claim (Lines 27-32):** "Dry run: Validates schema, Compares to live database, Generates DDL, Shows planned changes, Does not execute DDL"
    - Status: ❌ Not validated

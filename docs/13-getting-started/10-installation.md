@@ -2,9 +2,9 @@
 
 ## Requirements
 
-- Bun >= 1.2.0
+- Bun (developed and tested with 1.2.22)
 - PostgreSQL server with trusted local connections
-- Database user with CREATEROLE privilege
+- Database user with CREATEROLE privelege
 
 ## Install from Source
 
@@ -38,7 +38,9 @@ Options:
 
 ## Database User Setup
 
-GenLogic requires a database user with CREATEROLE privilege.
+he build user with CREATEROLE privilege creates the `<database>_genlogic_admin` role
+and transfers ownership of all GenLogic-managed objects to it.
+
 
 Using the postgres superuser:
 
@@ -51,5 +53,3 @@ Or create a dedicated migration user:
 ```bash
 sudo -u postgres psql -c "CREATE ROLE genlogic_admin WITH LOGIN CREATEROLE;"
 ```
-
-GenLogic fails immediately if the user lacks CREATEROLE privilege.
