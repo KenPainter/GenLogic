@@ -11,6 +11,7 @@ import { topologicalSortByLayers } from './helpers-processor/topological-sort.js
 import { generateCreateTableDDL } from './helpers-ddl/create-table.js';
 import { generateAddColumnDDL } from './helpers-ddl/add-column.js';
 import { generateAggregationRepair } from './helpers-ddl/repair-aggregations.js';
+import { generateSequenceRepairDDL } from './helpers-ddl/repair-sequences.js';
 import { generateResolvedSchema } from './helpers-ddl/resolved-schema.js';
 import { generateModifyColumnDDL } from './helpers-ddl/modify-column.js';
 import { generateDropPrimaryKeyDDL, generateAddPrimaryKeyDDL } from './helpers-ddl/primary-key.js';
@@ -239,6 +240,16 @@ export class GenLogicProcessor {
       schemaSQL.push(...generateUniqueConstraintDDL(diff, tablesInLayer));  // UNIQUE constraints (drop then add)
       schemaSQL.push(...generateIndexDDL(diff, tablesInLayer));  // Indexes (drop then add)
       schemaSQL.push(...generateTriggersDDL(newSchema, tablesInLayer));  // Triggers (CREATE OR REPLACE for automation)
+    }
+
+    // PHASE 2.4: Repair sequences if they're out of sync with table data
+    console.log('Phase 2.4: Check and repair sequences...');
+    const sequenceRepairSQL = generateSequenceRepairDDL(liveSchema);
+    if (sequenceRepairSQL.length > 0) {
+      console.log(`  Found ${sequenceRepairSQL.filter(s => s.includes('setval')).length} sequences needing repair`);
+      schemaSQL.push(...sequenceRepairSQL);
+    } else {
+      console.log('  All sequences are in sync');
     }
 
     // PHASE 2.5: Seed data in layer order (after schema + triggers complete)

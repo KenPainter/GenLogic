@@ -48,10 +48,22 @@ function normalizePostgresType(typeName: string): string {
  * @returns Type string suitable for SQL DDL (e.g., "character varying(100)", "numeric(10,2)", "integer")
  */
 export function buildColumnTypeString(col: ColumnDef): string {
-  // Normalize type aliases to canonical names for consistent comparison
-  const normalizedType = col.serial ? 'serial' : normalizePostgresType(col.type);
+  // For serial columns, determine the correct serial type based on underlying type
+  let normalizedType: string;
+  if (col.serial) {
+    const baseType = normalizePostgresType(col.type);
+    if (baseType === 'bigint') {
+      normalizedType = 'bigserial';
+    } else if (baseType === 'smallint') {
+      normalizedType = 'smallserial';
+    } else {
+      normalizedType = 'serial';  // integer -> serial
+    }
+  } else {
+    normalizedType = normalizePostgresType(col.type);
+  }
 
-  // Use 'serial' for serial columns, otherwise use the normalized type
+  // Use the normalized type
   let typeStr = normalizedType;
 
   // Add size/precision (but NOT for serial - serial doesn't have size notation)

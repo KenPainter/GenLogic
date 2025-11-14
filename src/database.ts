@@ -179,6 +179,9 @@ export class DatabaseManager {
         // Detect serial columns: default nextval(...) -> set serial flag
         if (col.defaultValue && col.defaultValue.match(/^nextval\(/i)) {
           colObj.serial = true;
+          // Capture sequence value and actual max value for repair detection
+          colObj.sequenceLastValue = await this.getSequenceValue(tableName, col.name);
+          colObj.columnMaxValue = await this.getColumnMaxValue(tableName, col.name);
         }
         // Otherwise map defaultValue (direct from PostgreSQL)
         else if (col.defaultValue) {
@@ -502,6 +505,35 @@ export class DatabaseManager {
         columns
       };
     });
+  }
+
+  /**
+   * Get current value of a sequence without advancing it
+   * Returns null if sequence doesn't exist
+   */
+  private async getSequenceValue(tableName: string, columnName: string): Promise<number | null> {
+    const sequenceName = `${tableName}_${columnName}_seq`;
+    const result = await this.pool.query(`
+      SELECT last_value
+      FROM pg_sequences
+      WHERE schemaname = 'public'
+        AND sequencename = $1
+    `, [sequenceName]);
+
+    return result.rows[0]?.last_value ?? null;
+  }
+
+  /**
+   * Get the maximum value currently in a table column
+   * Returns null if table is empty or column has no values
+   */
+  private async getColumnMaxValue(tableName: string, columnName: string): Promise<number | null> {
+    const result = await this.pool.query(`
+      SELECT MAX("${columnName}") as max_value
+      FROM "${tableName}"
+    `);
+
+    return result.rows[0]?.max_value ?? null;
   }
 
   /**

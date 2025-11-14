@@ -126,8 +126,8 @@ SELECT event_id, event_type FROM events ORDER BY event_id;
 
 ```json
 [
-  {"event_id": 100, "event_type": "login"},
-  {"event_id": 101, "event_type": "logout"}
+  {"event_id": "100", "event_type": "login"},
+  {"event_id": "101", "event_type": "logout"}
 ]
 ```
 

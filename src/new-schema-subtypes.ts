@@ -77,6 +77,8 @@ export interface ColumnDef {
 
   // GenLogic-specific properties
   serial?: boolean;                    // THE WART: TRUE if auto-increment (serial/bigserial/smallserial)
+  sequenceLastValue?: number;          // Current sequence value for serial columns (live schema only)
+  columnMaxValue?: number;             // Actual max value in table for this column (live schema only)
   formula?: string;                    // GenLogic formula expression
   automation?: string;                 // GenLogic automation expression
   automationType?: string;             // SUM, COUNT, MIN, MAX, etc.
